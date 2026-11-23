@@ -14,13 +14,12 @@ kh/
     ├── config/                                       # mvp.json, seoul_districts.json
     ├── docs/                                         # MVP_README.md, MVP_REPORT.md, MVP_SOURCES.md
     ├── reports/                                      # mvp_validation.json
-    ├── notices/                                      # SH·LH·청년안심주택 대표 공고문 및 주택목록 원본 5개 (PDF/XLSX)
     ├── geo/                                          # 단지 좌표, 목적지 직선거리, 지하철역 좌표, 청년안심주택 지도 JSON
     └── data/
         ├── public_housing_units.csv                  # SH·LH 공급 호실 정제본 (1,269건)
         ├── public_rent_scenarios.csv                 # 자격·전환 조건별 보증금/월세 정제본 (5,076건)
         ├── notices.json / files.json / summary.json / package_manifest.json
-        └── rent_contracts/                           # 2025년 서울 전월세 계약 CSV 자치구별 25개 (총 1,022,751건, 최대 12.64 MB)
+        └── rent_contracts/                           # 2025년 서울 전월세 계약 CSV 자치구별 25개 (총 583,433건, 최대 7.23 MB · 원본 중복 439,318건 제거)
             └── rent_contracts_<자치구>.csv
 ```
 
