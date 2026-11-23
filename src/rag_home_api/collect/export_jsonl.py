@@ -113,6 +113,22 @@ def law_rows(meta: dict, html_path: Path) -> list[dict]:
     return out
 
 
+def collapse_same_text(rows: list[dict]) -> list[dict]:
+    """본문(text)이 완전히 같은 줄은 처음 것만 남기고, 나머지 줄의 id를 same_text_ids에 모은다.
+    (공고마다 반복되는 서식·유의사항 쪽 때문에 검색 상위가 같은 내용으로 채워지는 것을 막되, 출처 정보는 잃지 않음)"""
+    first: dict[str, dict] = {}
+    out = []
+    for r in rows:
+        keep = first.get(r["text"])
+        if keep is None:
+            r = r | {"same_text_ids": []}
+            first[r["text"]] = r
+            out.append(r)
+        else:
+            keep["same_text_ids"].append(r["id"])
+    return out
+
+
 def read_manifest(path: Path) -> list[dict]:
     return list(csv.DictReader(open(path, encoding="utf-8-sig")))
 
@@ -160,13 +176,16 @@ def main():
 
     manifest = []
     for group, items in groups.items():
+        all_rows = []
+        for meta, rows in items:
+            manifest.append({"group": group, **meta})
+            all_rows += rows
+        kept = collapse_same_text(all_rows)
         with open(OUT / f"{group}.jsonl", "w", encoding="utf-8") as f:
-            for meta, rows in items:
-                manifest.append({"group": group, **meta})
-                for row in rows:
-                    f.write(json.dumps(row, ensure_ascii=False) + "\n")
+            for row in kept:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
         size = (OUT / f"{group}.jsonl").stat().st_size
-        print(f"{group}.jsonl → 문서 {len(items)}개, 줄 {sum(len(r) for _, r in items):,}개, {size / 1e6:.1f}MB")
+        print(f"{group}.jsonl → 문서 {len(items)}개, 줄 {len(kept):,}개(같은 본문 {len(all_rows) - len(kept):,}줄 합침), {size / 1e6:.1f}MB")
 
     fields = ["group", "doc_id", "source", "category", "title", "house_type", "notice_date",
               "pages_with_text", "pages_without_text", "note", "source_url"]
