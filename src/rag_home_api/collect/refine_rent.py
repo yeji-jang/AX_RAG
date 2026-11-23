@@ -5,15 +5,18 @@
 - --zip2025  : 2025 접수 원본 zip(서울특별시_전월세가_2025.csv, CP949) — 2025년 11~12월 계약 보충용
 출력
 - shared/docs/kh/서울_전월세_최근1년/서울_전월세_최근1년_<자치구>.csv (UTF-8 BOM, CRLF)
-  source: 2026접수 = 2026 접수 JSON, 2025접수 = 2025 접수 원본(11~12월 계약 보충). id: SR_ + 거래 내용 해시 12자리
+  source: 2026접수 = 2026 접수 JSON, 2025접수 = 2025 접수 원본(11~12월 계약 보충),
+          국토부 = 팀원이 받은 국토부 실거래(yj 구로구 CSV, bc 신림동 CSV) 중 서울시 자료에 없는 거래
+  id: SR_ + 거래 내용 해시 12자리
 
 처리
 1) 계약일이 기간(기본 2025-11-24 ~ 2026-11-23) 안인 행만
 2) 공통 칸으로 변환, 완전히 같은 거래는 1건만(2026 접수 우선)
-3) yj(구로구 국토부 실거래)·bc(신림동) CSV에 이미 있는 거래는 그쪽에 두고 여기서 뺌
+3) yj·bc 국토부 거래를 같은 칸으로 바꿔 합침. 서울시 자료에 이미 있는 거래는 서울시 쪽만 남김
    (구·동·계약일·보증금·월세 같음 + 지번·층은 양쪽에 있을 때만 같아야 함, 한 행당 한 행만)
+   → 구로구·신림동도 자치구 파일 하나에 모두 들어감
 
-실행: uv run python -m rag_home_api.collect.refine_rent --json-dir <폴더> --zip2025 <zip>
+실행: uv run python -m rag_home_api.collect.refine_rent --json-dir <폴더> --zip2025 <zip> --yj-dir <폴더> --bc-dir <폴더>
 """
 
 import argparse
@@ -49,10 +52,13 @@ def jibun(main, sub) -> str:
 
 
 def period(p) -> str:
-    """'26.02~28.02' → '2026-02~2028-02'"""
+    """'26.02~28.02'(서울시) 또는 '202602~202802'(국토부) → '2026-02~2028-02'"""
     try:
-        a, b = str(p).split("~")
-        f = lambda x: f"20{x.split('.')[0]}-{x.split('.')[1]}"
+        a, b = str(p).strip().split("~")
+        if "." in a:
+            f = lambda x: f"20{x.split('.')[0]}-{x.split('.')[1]}"
+        else:
+            f = lambda x: f"{x[:4]}-{x[4:6]}"
         return f"{f(a)}~{f(b)}"
     except (ValueError, IndexError):
         return ""
@@ -96,47 +102,87 @@ def load(json_dir: Path, zip2025: Path, start: str, end: str) -> list[dict]:
     return out
 
 
-def remove_team_overlap(rows: list[dict]) -> tuple[list[dict], int]:
-    idx = defaultdict(list)  # yj·bc 거래: (구,동,날짜,보증금,월세) → [[지번, 층], ...]
-    for f in glob.glob(str(DOCS / "yj" / "*실거래가*.csv")):
+def clean_jibun(j) -> str:
+    """국토부 번지 '685-222'는 그대로, 단독다가구의 가려진 번지('7**')는 빈칸"""
+    j = str(j or "").strip()
+    return "" if (not j or "*" in j) else j
+
+
+def load_team(yj_dir: Path, bc_dir: Path, start: str, end: str) -> list[dict]:
+    """yj(구로구 국토부 실거래 CSV)·bc(신림동 국토부 API 정제 CSV)를 공통 칸으로 바꾼다."""
+    out = []
+    for f in sorted(yj_dir.glob("*실거래가*.csv")):
         t = open(f, encoding="utf-8-sig", newline="").read()
+        default_type = "오피스텔" if "오피스텔" in f.name else ""
         for d in csv.DictReader(io.StringIO("\r\n".join(t.split("\r\n")[15:]))):
-            p = d["시군구"].split()
             day = d["계약년월"] + d["계약일"].zfill(2)
-            idx[(p[1], p[2], f"{day[:4]}-{day[4:6]}-{day[6:8]}", num(d["보증금(만원)"]), num(d["월세금(만원)"]))].append(
-                [d.get("번지") or None, num(d.get("층"))])
-    for f in glob.glob(str(DOCS / "bc" / "*.csv")):
+            if not (start <= day <= end):
+                continue
+            p = d["시군구"].split()
+            _, r = row(p[1], p[2], clean_jibun(d.get("번지")), "", d.get("단지명") or d.get("건물명"),
+                       d.get("주택유형") or default_type, d["전월세구분"],
+                       d.get("전용면적(㎡)") or d.get("계약면적(㎡)"), d.get("층"), d["건축년도"], day, d["계약기간"],
+                       d["보증금(만원)"], d["월세금(만원)"], d["계약구분"], d["갱신요구권 사용"],
+                       d["종전계약 보증금(만원)"], d["종전계약 월세(만원)"], "국토부")
+            out.append(r)
+    type_map = {"아파트": "아파트", "오피스텔": "오피스텔", "빌라": "연립다세대", "단독/다가구": "단독다가구"}
+    for f in sorted(bc_dir.glob("*.csv")):
         for d in csv.DictReader(open(f, encoding="utf-8-sig", newline="")):
-            a = d["address"].split()
-            jb = a[3] if len(a) > 3 and a[3][:1].isdigit() else None
-            idx[(d["region_gu"], d["region_dong"], d["contract_date"], num(d["deposit_manwon"]),
-                 num(d["monthly_rent_manwon"]))].append([jb, num(d["floor"])])
-    kept, removed = [], 0
+            day = d["contract_date"].replace("-", "")
+            if not (start <= day <= end):
+                continue
+            s = json.loads(d["source_raw"])
+            rent = num(d["monthly_rent_manwon"])
+            _, r = row(d["region_gu"], d["region_dong"], clean_jibun(s.get("jibun")), "",
+                       s.get("aptNm") or s.get("mhouseNm") or s.get("offiNm") or d.get("building_name"),
+                       type_map.get(d["property_category"], d["property_category"]), "전세" if rent == 0 else "월세",
+                       d["area_m2"], d["floor"], d["built_year"], day, s.get("contractTerm"), d["deposit_manwon"],
+                       d["monthly_rent_manwon"], s.get("contractType"), s.get("useRRRight"),
+                       s.get("preDeposit"), s.get("preMonthlyRent"), "국토부")
+            out.append(r)
+    return out
+
+
+def merge_team(rows: list[dict], team: list[dict]) -> tuple[list[dict], int]:
+    """서울시 자료(rows)에 없는 국토부 거래(team)만 더한다. 같은 거래면 서울시 쪽을 남긴다."""
+    idx = defaultdict(list)  # 서울시 거래: (구,동,날짜,보증금,월세) → [[지번, 층], ...]
     for r in rows:
+        idx[(r["region_gu"], r["region_dong"], r["contract_date"], r["deposit_manwon"], r["monthly_rent_manwon"])].append(
+            [r["jibun"] or None, r["floor"] if r["floor"] != "" else None])
+    added = []
+    for r in team:
         key = (r["region_gu"], r["region_dong"], r["contract_date"], r["deposit_manwon"], r["monthly_rent_manwon"])
         j, fl = r["jibun"] or None, (r["floor"] if r["floor"] != "" else None)
         for i, (jj, ff) in enumerate(idx.get(key, [])):
             if (j is None or jj is None or j == jj) and (fl is None or ff is None or fl == ff):
                 idx[key].pop(i)
-                removed += 1
                 break
         else:
-            kept.append(r)
-    return kept, removed
+            added.append(r)
+    return rows + added, len(added)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json-dir", required=True, type=Path)
     ap.add_argument("--zip2025", required=True, type=Path)
+    ap.add_argument("--yj-dir", type=Path, default=DOCS / "yj")
+    ap.add_argument("--bc-dir", type=Path, default=DOCS / "bc")
     ap.add_argument("--start", default="20251124")
     ap.add_argument("--end", default="20261123")
     a = ap.parse_args()
 
     rows = load(a.json_dir, a.zip2025, a.start, a.end)
-    print(f"기간 {a.start}~{a.end} 고유 거래 {len(rows):,}건")
-    rows, removed = remove_team_overlap(rows)
-    print(f"yj·bc와 겹치는 {removed:,}건 제외 → {len(rows):,}건")
+    print(f"기간 {a.start}~{a.end} 서울시 고유 거래 {len(rows):,}건")
+    team = load_team(a.yj_dir, a.bc_dir, a.start, a.end)
+    rows, added = merge_team(rows, team)
+    print(f"국토부(yj·bc) 기간 내 {len(team):,}건 중 서울시 자료에 없는 {added:,}건 추가 → {len(rows):,}건")
+    # 칸이 모두 같은 국토부 거래(같은 건물의 다른 호실일 수 있어 남김)는 id 뒤에 -2, -3 …을 붙여 구분
+    seen = defaultdict(int)
+    for r in rows:
+        seen[r["id"]] += 1
+        if seen[r["id"]] > 1:
+            r["id"] = f"{r['id']}-{seen[r['id']]}"
 
     OUT.mkdir(parents=True, exist_ok=True)
     by_gu = defaultdict(list)
