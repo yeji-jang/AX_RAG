@@ -1,0 +1,27 @@
+"""프로젝트 공통 설정. .env 값을 읽어 한곳에서 관리한다."""
+
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# 프로젝트 최상위 폴더 (노트북·스크립트 어디서 실행해도 같은 경로를 쓰기 위함)
+ROOT = Path(__file__).resolve().parents[2]  # src/rag_home_api/config.py → 프로젝트 최상위
+DATA_DIR = ROOT / "data"
+EVAL_DIR = ROOT / "eval"
+RESULTS_DIR = ROOT / "results"
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=ROOT / ".env", extra="ignore")
+
+    openai_api_key: str
+    data_go_kr_service_key: str = ""  # 공공데이터포털 활용신청 후 채움
+
+    # A/B/C 비교 시 모두 같은 값을 써야 한다 (지침 5장)
+    # 현재 키로 쓸 수 있는 생성 모델은 gpt-6-luna 하나뿐 (2026-11-23 확인)
+    llm_model: str = "gpt-6-luna"
+    rerank_model: str = "gpt-6-luna"
+    embedding_model: str = "text-embedding-3-small"
+
+
+settings = Settings()
