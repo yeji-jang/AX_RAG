@@ -8,7 +8,7 @@ GitHub 단일 파일 용량 제한(100MB 차단 / 50MB 경고)을 준수하도�
 kh/
 ├── README.md
 ├── 서울주택도시개발공사_주택관리현황.json            # SH 주택관리현황 (0.18 MB)
-├── 서울시_부동산_전월세가_정보/                      # 서울시 부동산 전월세가 정보 JSON 자치구별 25개 (총 512,333건, 최대 16.84 MB)
+├── 서울시_부동산_전월세가_정보/                      # 서울시 부동산 전월세가 정보 JSON 자치구별 25개 (총 481,589건 · yj·bc와 겹치는 30,744건 제외, 최대 16.84 MB)
 │   └── 서울시_부동산_전월세가_정보_<자치구>.json
 └── mvp/                                              # 서울주거 RAG MVP 핵심 자료
     ├── config/                                       # mvp.json, seoul_districts.json
@@ -19,7 +19,7 @@ kh/
         ├── public_housing_units.csv                  # SH·LH 공급 호실 정제본 (1,269건)
         ├── public_rent_scenarios.csv                 # 자격·전환 조건별 보증금/월세 정제본 (5,076건)
         ├── notices.json / files.json / summary.json / package_manifest.json
-        └── rent_contracts/                           # 2025년 서울 전월세 계약 CSV 자치구별 25개 (총 583,433건, 최대 7.23 MB · 원본 중복 439,318건 제거)
+        └── rent_contracts/                           # 2025년 서울 전월세 계약 CSV 자치구별 25개 (총 580,277건, 최대 7.23 MB · 원본 중복 439,318건·yj·bc와 겹치는 3,156건 제거)
             └── rent_contracts_<자치구>.csv
 ```
 
