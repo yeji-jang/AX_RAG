@@ -33,10 +33,25 @@ from rag_home_api.config import ROOT
 
 DOCS = ROOT / "src" / "rag_home_api" / "shared" / "docs"
 OUT = DOCS
-FIELDS = ["id", "region_gu", "region_dong", "jibun", "building_name", "housing_type", "lease_type",
-          "area_m2", "floor", "build_year", "contract_date", "contract_period", "deposit_manwon",
-          "monthly_rent_manwon", "new_or_renewal", "renewal_right_used", "prev_deposit_manwon",
-          "prev_rent_manwon", "source"]
+# id 해시에 쓰는 칸 (구간 칸을 더해도 id가 바뀌지 않도록 고정)
+KEY_FIELDS = ["region_gu", "region_dong", "jibun", "building_name", "housing_type", "lease_type",
+              "area_m2", "floor", "build_year", "contract_date", "contract_period", "deposit_manwon",
+              "monthly_rent_manwon", "new_or_renewal", "renewal_right_used", "prev_deposit_manwon",
+              "prev_rent_manwon"]
+FIELDS = ["id", *KEY_FIELDS[:13], "deposit_range", "rent_range", *KEY_FIELDS[13:], "source"]
+
+
+def price_range(manwon) -> str:
+    """만원 단위 금액을 1만·10만·100만·1000만·1억 경계로 나눈 구간 이름 (필터·검색용)"""
+    v = num(manwon)
+    if v is None:
+        return ""
+    if v <= 0:
+        return "없음"
+    for limit, label in ((10, "1만~10만"), (100, "10만~100만"), (1000, "100만~1000만"), (10000, "1000만~1억")):
+        if v < limit:
+            return label
+    return "1억 이상"
 
 
 def num(x):
@@ -73,8 +88,10 @@ def row(gu, dong, main, sub, bldg, usg, rent_se, area, flr, arch, day, prd, grfe
          "renewal_right_used": "예" if str(used or "").strip() in ("○", "O", "Y", "사용") else "",
          "prev_deposit_manwon": num(bgrfe) if num(bgrfe) is not None else "",
          "prev_rent_manwon": num(brtfe) if num(brtfe) is not None else "", "source": source}
-    key = "|".join(str(r[k]) for k in FIELDS[1:-1])
+    key = "|".join(str(r[k]) for k in KEY_FIELDS)
     r["id"] = "SR_" + hashlib.sha1(key.encode()).hexdigest()[:12]
+    r["deposit_range"] = price_range(r["deposit_manwon"])
+    r["rent_range"] = price_range(r["monthly_rent_manwon"])
     return key, r
 
 
