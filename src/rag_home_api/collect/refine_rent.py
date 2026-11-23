@@ -41,6 +41,14 @@ KEY_FIELDS = ["region_gu", "region_dong", "jibun", "building_name", "housing_typ
 FIELDS = ["id", *KEY_FIELDS[:13], "deposit_range", "rent_range", *KEY_FIELDS[13:], "source"]
 
 
+def area2(a) -> str:
+    """면적(㎡)은 소수점 둘째 자리까지 (반올림, 끝의 0은 뺌: 97.924→97.92, 42.10→42.1)"""
+    try:
+        return f"{round(float(a), 2):.2f}".rstrip("0").rstrip(".")
+    except (TypeError, ValueError):
+        return ""
+
+
 def price_range(manwon) -> str:
     """만원 단위 금액을 1만·10만·100만·1000만·1억 경계로 나눈 구간 이름 (필터·검색용)"""
     v = num(manwon)
@@ -89,7 +97,8 @@ def row(gu, dong, main, sub, bldg, usg, rent_se, area, flr, arch, day, prd, grfe
          "prev_deposit_manwon": num(bgrfe) if num(bgrfe) is not None else "",
          "prev_rent_manwon": num(brtfe) if num(brtfe) is not None else "", "source": source}
     key = "|".join(str(r[k]) for k in KEY_FIELDS)
-    r["id"] = "SR_" + hashlib.sha1(key.encode()).hexdigest()[:12]
+    r["id"] = "SR_" + hashlib.sha1(key.encode()).hexdigest()[:12]  # id는 원래 면적 값으로 계산(바뀌지 않게)
+    r["area_m2"] = area2(r["area_m2"])
     r["deposit_range"] = price_range(r["deposit_manwon"])
     r["rent_range"] = price_range(r["monthly_rent_manwon"])
     return key, r
