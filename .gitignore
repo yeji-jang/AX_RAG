@@ -10,3 +10,18 @@ wheels/
 .venv
 
 .env
+# ---- 아래는 feat/cjh 추가 ----
+.env.*
+!.env.example
+.ipynb_checkpoints/
+node_modules/
+.next/
+.vscode/
+Thumbs.db
+
+# 수집 원본·색인 (재생성: uv run python -m rag_home_api.collect.<모듈>)
+data/raw/
+data/index/
+
+# 개인 작업 지침
+CLAUDE.md
