@@ -1,0 +1,222 @@
+[
+  {
+    "path": "data/mvp/housing.sqlite",
+    "name": "housing.sqlite",
+    "bytes": 197890048,
+    "ext": "sqlite",
+    "layer": "정제",
+    "source_url": null,
+    "sha256": "a960ffd0dda08d5bec9bc7b6cf8b825533101993b7b1068143f12d57364acec6",
+    "fetched_at": null
+  },
+  {
+    "path": "data/mvp/notices.json",
+    "name": "notices.json",
+    "bytes": 4418,
+    "ext": "json",
+    "layer": "정제",
+    "source_url": null,
+    "sha256": "001f81336a97167091f1b39eb6340aa31478f71133af40f44fe58977685baaae",
+    "fetched_at": null
+  },
+  {
+    "path": "data/mvp/public_housing_units.csv",
+    "name": "public_housing_units.csv",
+    "bytes": 732315,
+    "ext": "csv",
+    "layer": "정제",
+    "source_url": null,
+    "sha256": "16c9083571b8dc1ede75f063088815de09a0a9d74bcde6df20ecf88bd0e75b30",
+    "fetched_at": null
+  },
+  {
+    "path": "data/mvp/public_rent_scenarios.csv",
+    "name": "public_rent_scenarios.csv",
+    "bytes": 1584057,
+    "ext": "csv",
+    "layer": "정제",
+    "source_url": null,
+    "sha256": "3f6d44a95ca2cb494bca12f5090d9273c51be0c76d453367555d45d086aef6e1",
+    "fetched_at": null
+  },
+  {
+    "path": "data/mvp/rent_contracts.csv",
+    "name": "rent_contracts.csv",
+    "bytes": 159164790,
+    "ext": "csv",
+    "layer": "정제",
+    "source_url": null,
+    "sha256": "44274d4a9cf61339aa41ac589523e8d56f0775bf189a1d87eda3596ef606c940",
+    "fetched_at": null
+  },
+  {
+    "path": "data/processed/destination_distances.csv",
+    "name": "destination_distances.csv",
+    "bytes": 21445,
+    "ext": "csv",
+    "layer": "정제",
+    "source_url": null,
+    "sha256": "0ea7b5d0e4d8303e2733a624975f553f488bf01c2b80f11ccd29a29474142790",
+    "fetched_at": null
+  },
+  {
+    "path": "data/processed/housing_coordinates.csv",
+    "name": "housing_coordinates.csv",
+    "bytes": 6107,
+    "ext": "csv",
+    "layer": "정제",
+    "source_url": null,
+    "sha256": "90c704e12cd1d7a382f0cfefed1a205f4f08305baa5c86c9abf4e99972417cc2",
+    "fetched_at": null
+  },
+  {
+    "path": "data/raw/geo/seoul_city_hall_official.html",
+    "name": "seoul_city_hall_official.html",
+    "bytes": 112595,
+    "ext": "html",
+    "layer": "원본",
+    "source_url": "https://www.seoul.go.kr/seoul/map.do",
+    "sha256": "d2e7b2b9c01102bf21245c3aabb2892a2d121a85eaec6b5dfa526fd8ded7c249",
+    "fetched_at": "2026-11-23T11:09:52.457392+09:00"
+  },
+  {
+    "path": "data/raw/geo/seoul_subway_stations.csv",
+    "name": "seoul_subway_stations.csv",
+    "bytes": 38362,
+    "ext": "csv",
+    "layer": "원본",
+    "source_url": "https://t-data.seoul.go.kr/dataprovide/download.do?id=10229",
+    "sha256": "f6a1eb4282660041ce791ef9391848f320a3b8f7ea7ffbd4365372ea6e5b1608",
+    "fetched_at": "2026-11-23T11:01:04.824777+09:00"
+  },
+  {
+    "path": "data/raw/geo/youth_map_gangnam.json",
+    "name": "youth_map_gangnam.json",
+    "bytes": 5615,
+    "ext": "json",
+    "layer": "원본",
+    "source_url": "https://soco.seoul.go.kr/youth/pgm/home/yohome/maplist.json",
+    "sha256": "e5f9ffaa2b26102234399fccdb26c8cea707e37b75c80653648620283f1e1747",
+    "fetched_at": "2026-11-23T11:06:13.588884+09:00"
+  },
+  {
+    "path": "data/raw/geo/youth_map_gwanak.json",
+    "name": "youth_map_gwanak.json",
+    "bytes": 4454,
+    "ext": "json",
+    "layer": "원본",
+    "source_url": "https://soco.seoul.go.kr/youth/pgm/home/yohome/maplist.json",
+    "sha256": "9203f8c0fde0de69a429d2ec7a630bd57e5fcd8c2ce9a14e27814301466ab050",
+    "fetched_at": "2026-11-23T11:06:12.738554+09:00"
+  },
+  {
+    "path": "data/raw/geo/youth_map_mapo.json",
+    "name": "youth_map_mapo.json",
+    "bytes": 5727,
+    "ext": "json",
+    "layer": "원본",
+    "source_url": "https://soco.seoul.go.kr/youth/pgm/home/yohome/maplist.json",
+    "sha256": "3f240602af28655c48225447703aac86e0aefd57f10674bb1a95d943a79b68f0",
+    "fetched_at": "2026-11-23T11:06:13.195165+09:00"
+  },
+  {
+    "path": "data/raw/notices/lh_2015122300020759/attachments/02_26년_3차_청년매입임대_예비입주자_모집공고문_서울지역본부.pdf",
+    "name": "02_26년_3차_청년매입임대_예비입주자_모집공고문_서울지역본부.pdf",
+    "bytes": 833707,
+    "ext": "pdf",
+    "layer": "원본",
+    "source_url": "https://apply.lh.or.kr/lhapply/lhFile.do?fileid=68646610",
+    "sha256": "f2d6fd02e5a0a5cef243c853285612145172f7162a9c340e0bba2adf2e594477",
+    "fetched_at": "2026-11-23T11:00:57.613677+09:00"
+  },
+  {
+    "path": "data/raw/notices/lh_2015122300020759/attachments/05_26년_3차_청년매입임대_공급주택목록_서울지역본부.xlsx",
+    "name": "05_26년_3차_청년매입임대_공급주택목록_서울지역본부.xlsx",
+    "bytes": 93997,
+    "ext": "xlsx",
+    "layer": "원본",
+    "source_url": "https://apply.lh.or.kr/lhapply/lhFile.do?fileid=68596948",
+    "sha256": "a4e631de056dffdb17958e42a2ca465670a25965cb9c906a7acb0dcdf4f452b2",
+    "fetched_at": "2026-11-23T11:00:58.923695+09:00"
+  },
+  {
+    "path": "data/raw/notices/lh_2015122300020759/page.html",
+    "name": "page.html",
+    "bytes": 1024136,
+    "ext": "html",
+    "layer": "원본",
+    "source_url": "https://apply.lh.or.kr/lhapply/apply/wt/wrtanc/selectWrtancInfo.do?aisTpCd=26&ccrCnntSysDsCd=03&mi=1026&panId=2015122300020759&uppAisTpCd=13",
+    "sha256": "98db18ba50cf68ab97bf9961b883260771633b045012f29f73612c0937781663",
+    "fetched_at": "2026-11-23T10:57:59.964860+09:00"
+  },
+  {
+    "path": "data/raw/notices/sh_306214/attachments/01_1_ [공고문] 2026년 1차 청년 매입임대주택 입주자 모집공고.pdf",
+    "name": "01_1_ [공고문] 2026년 1차 청년 매입임대주택 입주자 모집공고.pdf",
+    "bytes": 1003811,
+    "ext": "pdf",
+    "layer": "원본",
+    "source_url": "https://www.i-sh.co.kr/main/com/file/innoFD.do?brdId=GS0401&seq=306214&fileTp=A&fileSeq=5",
+    "sha256": "71a7748679cd9b6d39b976f9bfc04cb4f151666f53404937c8e83e465d080e15",
+    "fetched_at": "2026-11-23T11:00:38.206036+09:00"
+  },
+  {
+    "path": "data/raw/notices/sh_306214/attachments/02_2_ [주택목록] 2026년 1차 청년 매입임대주택 입주자 모집공고(홈페이지 공개용).pdf",
+    "name": "02_2_ [주택목록] 2026년 1차 청년 매입임대주택 입주자 모집공고(홈페이지 공개용).pdf",
+    "bytes": 623181,
+    "ext": "pdf",
+    "layer": "원본",
+    "source_url": "https://www.i-sh.co.kr/main/com/file/innoFD.do?brdId=GS0401&seq=306214&fileTp=A&fileSeq=6",
+    "sha256": "14ea4d2a987bba51f29f2f07145dbb43aa5fc25ceb0c8697dd34cfc408f9a34e",
+    "fetched_at": "2026-11-23T11:00:39.201691+09:00"
+  },
+  {
+    "path": "data/raw/notices/sh_306214/page.html",
+    "name": "page.html",
+    "bytes": 210976,
+    "ext": "html",
+    "layer": "원본",
+    "source_url": "https://www.i-sh.co.kr/main/lay2/program/S1T294C295/www/brd/m_241/view.do?seq=306214",
+    "sha256": "0cd9ed18483cf5f170bf534237ab2887967492d3f30eed60a7646df65561120b",
+    "fetched_at": "2026-11-23T11:00:00.623969+09:00"
+  },
+  {
+    "path": "data/raw/notices/sh_youth_6624/attachments/01_공공_260731_2026년 2차 청년안심주택 모집공고문.pdf",
+    "name": "01_공공_260731_2026년 2차 청년안심주택 모집공고문.pdf",
+    "bytes": 668962,
+    "ext": "pdf",
+    "layer": "원본",
+    "source_url": "https://soco.seoul.go.kr/coHouse/cmmn/file/fileDown.do?atchFileId=a51ae32dfb81421a9eaaaa16019223eb&fileSn=1",
+    "sha256": "8131ac619c45a7b70b78edb80dcefde6de477f1fb3797522ea68246615d97b9e",
+    "fetched_at": "2026-11-23T11:00:53.147940+09:00"
+  },
+  {
+    "path": "data/raw/notices/sh_youth_6624/page.html",
+    "name": "page.html",
+    "bytes": 56762,
+    "ext": "html",
+    "layer": "원본",
+    "source_url": "https://soco.seoul.go.kr/youth/bbs/BMSR00015/view.do?boardId=6624&menuNo=40",
+    "sha256": "c6fe60556597f18ccc5d700b0e8123a22d08acdceb3a4244edc6fa8efe5ac081",
+    "fetched_at": "2026-11-23T10:57:54.247709+09:00"
+  },
+  {
+    "path": "data/raw/reference/seoul_rent.html",
+    "name": "seoul_rent.html",
+    "bytes": 97177,
+    "ext": "html",
+    "layer": "원본",
+    "source_url": "https://data.seoul.go.kr/dataList/OA-21276/S/1/datasetView.do?tab=A",
+    "sha256": "10ba1d18a77cd6f80bd84c320dee07568f23d8cd4885caf50640dea39a57b2ae",
+    "fetched_at": "2026-11-23T11:01:02.356396+09:00"
+  },
+  {
+    "path": "data/raw/rent/seoul_2025.zip",
+    "name": "seoul_2025.zip",
+    "bytes": 26675279,
+    "ext": "zip",
+    "layer": "원본",
+    "source_url": "https://datafile.seoul.go.kr/bigfile/iot/inf/nio_download.do?useCache=false",
+    "sha256": "d7a887488fb89eb337e134d4ce724b0279b207ec4d4f54e6ee3fb95c6fa49d52",
+    "fetched_at": "2026-11-23T10:57:39.857036+09:00"
+  }
+]
