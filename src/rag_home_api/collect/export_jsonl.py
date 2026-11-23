@@ -129,6 +129,45 @@ def collapse_same_text(rows: list[dict]) -> list[dict]:
     return out
 
 
+_KIWI = None
+
+
+def _space_ratio(s: str):
+    h = len(re.findall(r"[가-힣]", s))
+    return (s.count(" ") / h) if h >= 20 else None
+
+
+def restore_spacing(rows: list[dict]) -> list[dict]:
+    """원본 PDF부터 띄어쓰기가 빠진 쪽(한글 대비 공백 비율 0.08 미만)만 kiwipiepy로 띄어쓰기를 복원한다.
+    줄·표 칸 단위로, 공백이 거의 없는 부분만 고치고 spacing_restored 표시를 남긴다."""
+    global _KIWI
+    out = []
+    for r in rows:
+        body = "\n".join(l for l in r["text"].split("\n") if not l.startswith("|"))
+        ratio = _space_ratio(body)
+        if ratio is None or ratio >= 0.08:
+            out.append(r | {"spacing_restored": False})
+            continue
+        if _KIWI is None:
+            from kiwipiepy import Kiwi
+            _KIWI = Kiwi()
+
+        def fix(s: str) -> str:
+            rr = _space_ratio(s)
+            return _KIWI.space(s, reset_whitespace=False) if rr is not None and rr < 0.08 else s
+
+        lines = []
+        for line in r["text"].split("\n"):
+            if line.startswith("|") and not re.match(r"^\|(-+\|)+$", line):
+                cells = line.strip("|").split("|")
+                line = "| " + " | ".join(fix(c.strip()) for c in cells) + " |"
+            elif not line.startswith("|"):
+                line = fix(line)
+            lines.append(line)
+        out.append(r | {"text": "\n".join(lines), "spacing_restored": True})
+    return out
+
+
 def read_manifest(path: Path) -> list[dict]:
     return list(csv.DictReader(open(path, encoding="utf-8-sig")))
 
@@ -180,7 +219,7 @@ def main():
         for meta, rows in items:
             manifest.append({"group": group, **meta})
             all_rows += rows
-        kept = collapse_same_text(all_rows)
+        kept = restore_spacing(collapse_same_text(all_rows))
         with open(OUT / f"{group}.jsonl", "w", encoding="utf-8") as f:
             for row in kept:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
