@@ -58,5 +58,7 @@
   "duplicate_records_removed": 439318,
   "duplicate_note": "서울시 2025 원본 CSV에 23개 칸이 모두 같은 행이 두 번씩 들어 있어 원본 행번호만 다른 중복을 1건만 남김 (2026-11-23)",
   "overlap_records_removed": 3156,
-  "overlap_note": "yj(구로구 국토부 실거래)·bc(신림동) CSV와 같은 거래는 그쪽에 남기고 여기서는 뺌 (2026-11-23)"
+  "overlap_note": "yj(구로구 국토부 실거래)·bc(신림동) CSV와 같은 거래는 그쪽에 남기고 여기서는 뺌 (2026-11-23)",
+  "rent_contracts_replaced_by": "shared/docs/kh/서울_전월세_최근1년 (최근 1년 527,145건, 2026-11-23 정제)",
+  "rent_contracts_note": "rent_contracts(2025년 계약)는 최근 1년 기준 정제본으로 대체되어 삭제됨. 아래 rent_contracts·district_counts·category_counts는 삭제 전 값"
 }
