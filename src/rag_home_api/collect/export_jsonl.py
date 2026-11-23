@@ -1,4 +1,4 @@
-"""수집한 PDF·법령을 RAG용 JSONL로 변환해 팀 공유 폴더(shared/docs/jh)에 저장한다.
+"""수집한 PDF·법령을 RAG용 JSONL로 변환해 팀 공유 폴더(shared/docs)에 저장한다.
 
 - 공고문·가이드 PDF: 한 줄 = 한 쪽. 글자는 PyMuPDF, 표는 pdfplumber로 찾아 마크다운 표로 바꾸고
   쪽 안의 위아래 순서대로 합친다. 글자가 거의 없는 쪽(도면·사진)은 빼고 문서 목록에 쪽수만 남긴다.
@@ -20,7 +20,7 @@ import pymupdf
 from rag_home_api.config import DATA_DIR, ROOT
 
 RAW = DATA_DIR / "raw"
-OUT = ROOT / "src" / "rag_home_api" / "shared" / "docs" / "jh"
+OUT = ROOT / "src" / "rag_home_api" / "shared" / "docs"
 MIN_CHARS = 30  # 이보다 글자가 적은 쪽은 그림만 있는 쪽으로 보고 뺀다
 
 

@@ -4,7 +4,7 @@
 - --json-dir : 2026 접수 JSON(자치구별 {"DESCRIPTION","DATA"}) 폴더
 - --zip2025  : 2025 접수 원본 zip(서울특별시_전월세가_2025.csv, CP949) — 2025년 11~12월 계약 보충용
 출력
-- shared/docs/kh/서울_전월세_최근1년/서울_전월세_최근1년_<자치구>.csv (UTF-8 BOM, CRLF)
+- shared/docs/서울_전월세_최근1년_<자치구>.csv (UTF-8 BOM, CRLF)
   source: 2026접수 = 2026 접수 JSON, 2025접수 = 2025 접수 원본(11~12월 계약 보충),
           국토부 = 팀원이 받은 국토부 실거래(yj 구로구 CSV, bc 신림동 CSV) 중 서울시 자료에 없는 거래
   id: SR_ + 거래 내용 해시 12자리
@@ -32,7 +32,7 @@ from pathlib import Path
 from rag_home_api.config import ROOT
 
 DOCS = ROOT / "src" / "rag_home_api" / "shared" / "docs"
-OUT = DOCS / "kh" / "서울_전월세_최근1년"
+OUT = DOCS
 FIELDS = ["id", "region_gu", "region_dong", "jibun", "building_name", "housing_type", "lease_type",
           "area_m2", "floor", "build_year", "contract_date", "contract_period", "deposit_manwon",
           "monthly_rent_manwon", "new_or_renewal", "renewal_right_used", "prev_deposit_manwon",
