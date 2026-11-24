@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]  # src/rag_home_api/config.py → 프
 DATA_DIR = ROOT / "data"
 EVAL_DIR = ROOT / "eval"
 RESULTS_DIR = ROOT / "results"
-
+SHARED_DOCS_DIR = ROOT / "src" / "rag_home_api" / "shared" / "docs"
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ROOT / ".env", extra="ignore")
@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-6-luna"
     rerank_model: str = "gpt-6-luna"
     embedding_model: str = "text-embedding-3-small"
-
+    database_url: str
+    collection_name: str = "seoul_housing_unified"
+    index_version: str = "idx-v2-c600-o100" # 현재 청킹 설정 기록 (크기 600, 겹침 100)
 
 settings = Settings()
