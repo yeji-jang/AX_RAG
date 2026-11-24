@@ -1,7 +1,7 @@
-"""구조 기반 CSV 청킹. 전처리·본문·Document 생성·청킹만 수행한다.
+"""재귀적 CSV 청킹. 전처리·본문·Document 생성·청킹만 수행한다.
 
 모듈 import 시 파일을 읽지 않는다. chunk_csv()를 호출하거나 아래처럼 직접 실행한다.
-실행: .venv/bin/python test/bc/structural_chunk.py
+실행: .venv/bin/python src/rag_home_api/test/bc/recursive_chunk.py
 임베딩·외부 API·DB 연결·업로드는 포함하지 않는다.
 """
 
@@ -11,9 +11,10 @@ from pathlib import Path
 import pandas as pd
 from langchain_core.documents import Document
 
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # 파일 위치를 기준으로 저장소 루트를 계산해 현재 작업 디렉터리에 의존하지 않는다.
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_CSV_PATH = PROJECT_ROOT / "src/rag_home_api/shared/docs/서울_전월세_최근1년_관악구.csv"
 
 
@@ -167,45 +168,51 @@ def create_documents(df: pd.DataFrame, source_file: str | Path) -> list[Document
     return documents
 
 
-def structural_chunk(documents):
-    # 구조 기반 청킹 결과를 저장할 목록
+def recursive_chunk(documents, chunk_size=200, chunk_overlap=0):
+    # 잘못된 크기 설정을 조용히 받아들이지 않는다.
+    if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
+        raise ValueError("크기는 양수, 중첩은 0 이상 크기 미만이어야 합니다.")
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", " ", ""], length_function=len,
+    )
     chunks = []
-
     for document in documents:
-        # 원본 거래 ID로 청크 ID 생성
-        transaction_id = document.metadata["id"]
-        chunk_id = f"{transaction_id}_structural_000"
-
-        # 거래 전체 본문을 유지하면서 청크 정보 추가
-        chunk = Document(
-            id=chunk_id,
-            page_content=document.page_content,
-            metadata={
-                **document.metadata,       # 원본 메타데이터 복사
-                "method": "structural",     # 청킹 방식
-                "chunk_index": 0,           # 거래 내 청크 순번
-                "chunk_count": 1,           # 거래당 청크 수
-            },
-        )
-
-        chunks.append(chunk)
-
+        # 거래마다 별도로 분할해 서로 다른 거래가 한 청크에 섞이지 않게 한다.
+        parts = splitter.split_text(document.page_content)
+        for index, text in enumerate(parts):
+            transaction_id = document.metadata["id"]
+            chunks.append(Document(
+                id=f"{transaction_id}_recursive_{index:03d}",
+                page_content=text,
+                # 분리된 청크에도 지역·금액·원본 거래 ID를 모두 유지한다.
+                metadata={**document.metadata, "method": "recursive",
+                          "chunk_index": index, "chunk_count": len(parts),
+                          "chunk_size": chunk_size, "chunk_overlap": chunk_overlap},
+            ))
     return chunks
 
 
-def chunk_csv(csv_path: str | Path = DEFAULT_CSV_PATH) -> list[Document]:
-    """CSV 전처리부터 구조 기반 청킹까지 실행하고 결과 Document 목록을 반환한다."""
+def chunk_csv(
+    csv_path: str | Path = DEFAULT_CSV_PATH,
+    chunk_size: int = 200,
+    chunk_overlap: int = 0,
+) -> list[Document]:
+    """CSV 전처리부터 재귀적 청킹까지 실행하고 결과 Document 목록을 반환한다."""
     df = load_and_clean(csv_path)
     documents = create_documents(df, csv_path)
-    return structural_chunk(documents)
+    return recursive_chunk(documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
 
 def main() -> None:
     """터미널에서 실행할 때 입력 경로를 받아 청킹 결과의 기본 상태를 출력한다."""
-    parser = argparse.ArgumentParser(description="CSV 전처리 및 구조 기반 청킹")
+    parser = argparse.ArgumentParser(description="CSV 전처리 및 재귀적 청킹")
     parser.add_argument("--input", type=Path, default=DEFAULT_CSV_PATH, help="원본 CSV 경로")
+
+    parser.add_argument("--chunk-size", type=int, default=200, help="최대 글자 수")
+    parser.add_argument("--chunk-overlap", type=int, default=0, help="인접 청크의 겹침 크기")
     args = parser.parse_args()
-    chunks = chunk_csv(args.input)
+    chunks = chunk_csv(args.input, chunk_size=args.chunk_size, chunk_overlap=args.chunk_overlap)
 
     # 결과 파일을 자동 생성하지 않고 반환된 청크의 개수·길이와 예시만 확인한다.
     lengths = [len(chunk.page_content) for chunk in chunks]
