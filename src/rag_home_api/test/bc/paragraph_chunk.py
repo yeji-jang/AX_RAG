@@ -1,7 +1,7 @@
 """문단 기반 CSV 청킹. 전처리·본문·Document 생성·청킹만 수행한다.
 
 모듈 import 시 파일을 읽지 않는다. chunk_csv()를 호출하거나 아래처럼 직접 실행한다.
-실행: .venv/bin/python test/bc/paragraph_chunk.py
+실행: .venv/bin/python src/rag_home_api/test/bc/paragraph_chunk.py
 임베딩·외부 API·DB 연결·업로드는 포함하지 않는다.
 """
 
@@ -13,7 +13,7 @@ from langchain_core.documents import Document
 
 
 # 파일 위치를 기준으로 저장소 루트를 계산해 현재 작업 디렉터리에 의존하지 않는다.
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_CSV_PATH = PROJECT_ROOT / "src/rag_home_api/shared/docs/서울_전월세_최근1년_관악구.csv"
 
 
