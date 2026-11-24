@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     database_url: str
     collection_name: str = "seoul_housing_unified"
-    index_version: str = "idx-v2-c600-o100" # 현재 청킹 설정 기록 (크기 600, 겹침 100)
+    index_version: str = "idx-v3-c600-o100-table"  # 구조적 표 보존 + 공고 구분자 + 풍부한 Prefix
 
+    # 검색 B (Hybrid RRF) 가중치·상수 (dev 10문항으로만 튜닝 후 고정)
+    bm25_weight: float = 0.55
+    vector_weight: float = 0.45
+    rrf_k: int = 60
+    
 settings = Settings()

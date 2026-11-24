@@ -1,3 +1,5 @@
+import re
+
 import csv
 from collections import defaultdict
 
@@ -14,11 +16,127 @@ from rag_home_api.ingest.schemas import ChunkMetadata, DocType
 
 from rag_home_api.shared.core.logger import get_logger
 
-# 자르는 우선 순위: 문단(\n\n) -> 줄바꿈 (\n) -> 문장(. ) -> 공백 ( ) -> 글자 ("")
-SEPARATORS = ["\n\n","\n",". "," ",""]
+# 기존 (20줄)
+# SEPARATORS = ["\n\n","\n",". "," ",""]
+# 수정: 문단(\n\n) -> 공고문 항목 기호(\n■, \n•, \n※) -> 줄바꿈(\n) -> 문장(. ) -> 공백( ) -> 글자("")
+SEPARATORS = ["\n\n", "\n■", "\n•", "\n※", "\n", ". ", " ", ""]
 
 def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+_TABLE_SEP_RE = re.compile(r"^\|\s*:?-{2,}")
+
+
+def _is_table_line(line: str) -> bool:
+    s = line.strip()
+    return s.startswith("|") and s.endswith("|") and s.count("|") >= 2
+
+
+def _split_into_blocks(text: str) -> list[tuple[str, str]]:
+    """[1층: 구조적 분리] 한 쪽 텍스트를 ('text', 일반글)과 ('table', 마크다운 표) 블록으로 나눈다."""
+    lines = text.splitlines()
+    blocks: list[tuple[str, str]] = []
+    buf: list[str] = []
+    i = 0
+
+    while i < len(lines):
+        # 현재 줄이 '|...|'이고 다음 줄이 '|---|' 구분선이면 마크다운 표 시작으로 인식
+        if (
+            i + 1 < len(lines)
+            and _is_table_line(lines[i])
+            and _TABLE_SEP_RE.match(lines[i + 1].strip())
+        ):
+            if buf:
+                t = "\n".join(buf).strip()
+                if t:
+                    blocks.append(("text", t))
+                buf = []
+            tlines = [lines[i].strip(), lines[i + 1].strip()]
+            i += 2
+            while i < len(lines) and _is_table_line(lines[i]):
+                tlines.append(lines[i].strip())
+                i += 1
+            blocks.append(("table", "\n".join(tlines)))
+        else:
+            buf.append(lines[i])
+            i += 1
+
+    if buf:
+        t = "\n".join(buf).strip()
+        if t:
+            blocks.append(("text", t))
+    return blocks
+
+
+def _split_table_preserving_header(table_text: str, chunk_size: int) -> list[str]:
+    """[2층: 표 전용 분할] 표를 행 단위로 자르고, 모든 조각 맨 위에 헤더 2줄(|컬럼|, |---|)을 재부착한다."""
+    tlines = table_text.splitlines()
+    if len(tlines) <= 2 or len(table_text) <= chunk_size:
+        return [table_text]
+
+    header = f"{tlines[0]}\n{tlines[1]}"
+    rows = tlines[2:]
+    pieces: list[str] = []
+    cur_rows: list[str] = []
+    cur_len = len(header)
+
+    for row in rows:
+        add_len = 1 + len(row)
+        # 최소 1행은 반드시 포함해 한 행이 중간에서 뚝 잘리지 않도록 보호
+        if cur_rows and cur_len + add_len > chunk_size:
+            pieces.append(header + "\n" + "\n".join(cur_rows))
+            cur_rows = [row]
+            cur_len = len(header) + add_len
+        else:
+            cur_rows.append(row)
+            cur_len += add_len
+
+    if cur_rows:
+        pieces.append(header + "\n" + "\n".join(cur_rows))
+    return pieces
+
+
+def split_text_structured(
+    raw_text: str,
+    splitter: RecursiveCharacterTextSplitter,
+    chunk_size: int,
+    min_heading_chars: int = 120,
+) -> list[str]:
+    """구조적(표·소제목) + 문단·재귀적 하이브리드 청킹."""
+    if len(raw_text) <= chunk_size:
+        return [raw_text]
+
+    # 1층·2층: 블록 성격별 분할
+    pieces: list[str] = []
+    for kind, content in _split_into_blocks(raw_text):
+        if kind == "table":
+            pieces.extend(_split_table_preserving_header(content, chunk_size))
+        elif len(content) <= chunk_size:
+            pieces.append(content)
+        else:
+            pieces.extend(splitter.split_text(content))
+
+    # 3층: 표 위 소제목('2. 임대조건' 등 120자 미만 단독 조각)을 다음 조각 앞에 병합
+    merged: list[str] = []
+    pending = ""
+    for p in pieces:
+        p = p.strip()
+        if not p:
+            continue
+        if pending:
+            p = f"{pending}\n\n{p}"
+            pending = ""
+        if len(p) < min_heading_chars and "|---" not in p:
+            pending = p
+        else:
+            merged.append(p)
+    if pending:
+        if merged:
+            merged[-1] = f"{merged[-1]}\n\n{pending}"
+        else:
+            merged.append(pending)
+
+    return merged
 
 def load_jsonl_chunks(
     jsonl_path: Path,
@@ -93,13 +211,25 @@ def load_jsonl_chunks(
             # chunk_size 이하면 굳이 자르지 않고 1조각 유지
             # 초과하면 자연스러운 경계로 분할
 
-            pieces = [raw_text] if len(raw_text) <= chunk_size else splitter.split_text(raw_text)
+            # 기존: pieces = [raw_text] if len(raw_text) <= chunk_size else splitter.split_text(raw_text)
+            pieces = split_text_structured(raw_text, splitter, chunk_size)
 
-            # 4. 문맥 헤더([제목 | 위치])를 본문 맨 앞에 붙이고 메타데이터로 포장
+            # 4. 풍부한 문맥 Prefix ([기관 | 주택유형 | 공고일] 제목 (위치)) + 메타데이터 포장
             title = row.get("title", "")
+            prefix_parts = [
+                p
+                for p in (
+                    (row.get("source") or "").strip(),
+                    (row.get("house_type") or "").strip(),
+                    f"공고일: {row['notice_date']}" if row.get("notice_date") else "",
+                )
+                if p
+            ]
+            prefix_tag = f"[{' | '.join(prefix_parts)}] " if prefix_parts else ""
+
             for c_idx, piece in enumerate(pieces):
                 chunk_id = f"{doc_id}_{loc_key}_c{c_idx:02d}"
-                body = f"[{title} | {loc_display}]\n{piece.strip()}"
+                body = f"{prefix_tag}{title} ({loc_display})\n\n{piece.strip()}"
 
                 meta = ChunkMetadata(
                     chunk_id=chunk_id,
