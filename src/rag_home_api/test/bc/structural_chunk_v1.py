@@ -1,7 +1,7 @@
-"""구조 기반 CSV 청킹. 전처리·본문·Document 생성·청킹만 수행한다.
+"""구조 기반 청킹 V1: 검색용 요약 문장과 기존 상세 본문을 함께 사용한다.
 
 모듈 import 시 파일을 읽지 않는다. chunk_csv()를 호출하거나 아래처럼 직접 실행한다.
-실행: .venv/bin/python src/rag_home_api/test/bc/structural_chunk.py
+실행: .venv/bin/python src/rag_home_api/test/bc/structural_chunk_v1.py
 임베딩·외부 API·DB 연결·업로드는 포함하지 않는다.
 """
 
@@ -10,6 +10,13 @@ from pathlib import Path
 
 import pandas as pd
 from langchain_core.documents import Document
+
+
+# 본문 구성 버전을 표시해 이후 저장·평가에서 두 실험을 구분한다.
+TEXT_VERSION = "v1"
+
+# 두 버전과 평가 질문에 동일하게 사용하는 환산 기준: 1평 ≈ 3.305785㎡.
+M2_PER_PYEONG = 3.305785
 
 
 # 파일 위치를 기준으로 저장소 루트를 계산해 현재 작업 디렉터리에 의존하지 않는다.
@@ -54,10 +61,18 @@ def load_and_clean(csv_path: str | Path = DEFAULT_CSV_PATH) -> pd.DataFrame:
             raise ValueError(f"{column}에 정수가 아닌 값이 존재합니다.")
         df[column] = numbers.astype(dtype)
 
+    # 원본 임대면적(㎡)은 보존하고, 조건 검색용 평수를 숫자 컬럼으로 추가한다.
+    # 여기서는 반올림하지 않는다. 예: 5.996평을 6평 이상으로 잘못 포함하지 않기 위함.
+    # 원본 면적이 비어 있으면 평수도 결측값으로 유지된다.
+    df["area_pyeong"] = df["area_m2"] / M2_PER_PYEONG
+
     # 계약일을 날짜 타입으로 변환
     df["contract_date"] = pd.to_datetime(
         df["contract_date"], format="%Y-%m-%d", errors="raise"
     )
+    # 헤더를 1행으로 센 원본 CSV의 거래 행 번호를 보존한다.
+    # 원본 행을 삭제하거나 재정렬하기 전에 부여해 출처를 다시 찾을 수 있게 한다.
+    df["source_row"] = df.index + 2
     return df
 
 
@@ -106,6 +121,13 @@ def row_to_text(row):
             if pd.isna(value):
                 continue
 
+            # 두 버전의 상세 본문에 ㎡와 평을 함께 표시한다.
+            # 화면·본문에서만 소수 둘째 자리로 반올림하고 원본 숫자는 유지한다.
+            # CSV의 임대면적을 환산한 값이며 전용·공급면적으로 재해석하지 않는다.
+            if column == "area_m2":
+                lines.append(f"{label}: {value:g}{unit} (약 {row['area_pyeong']:.2f}평)")
+                continue
+
             # 날짜를 YYYY-MM-DD 형태로 표시
             if column == "contract_date":
                 value = value.strftime("%Y-%m-%d")
@@ -124,48 +146,155 @@ def row_to_text(row):
     # 문단 사이는 빈 줄로 연결
     return "\n\n".join(paragraphs)
 
+# 검색용 컬럼 생성 함수
+def add_search_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """기존 컬럼을 조합하여 검색용 요약과 최종 본문을 생성한다."""
 
-def create_documents(df: pd.DataFrame, source_file: str | Path) -> list[Document]:
-    """거래마다 본문과 메타데이터를 묶는다. 날짜는 문자열, 금액은 숫자로 유지한다."""
-    # DataFrame을 거래별 딕셔너리 목록으로 변환
-    records = df.to_dict(orient="records")
+    # 전달받은 df를 직접 조작하지 않도록 복사본 생성
+    df = df.copy()
 
-    # 완성된 Document를 저장할 목록
-    documents = []
+    def join_values(row, columns):
+        """결측값 제외하고 여러 컬럼의 값을 공백으로 연결"""
+        values=[]
 
-    for row in records :
-        # row_to_text 함수로 거래 한 건의 본문 생성
-        text = row_to_text(row)
+        for column in columns:
+            value = row[column]
 
-        # 검색 필터와 원본 거래 추적에 사용할 정보
-        metadata = {}
-
-        for column, value in row.items():
-            # 빈 항목은 메타데이터에서도 생략
+            # 빈 값은 생략, 0은 생략 안함
             if pd.isna(value):
                 continue
 
-            # 날짜 객체는 추후 JSON으로 저장 할 수 있도록 문자열로 변환
+            values.append(str(value))
+
+        return " ".join(values)
+
+    def make_property_text(row):
+        """ 주택 유형,거래 유형,면적을 하나의 설명으로 생성"""
+        parts=[]
+
+        housing_and_lease = join_values(
+            row,
+            ["housing_type", "lease_type"]
+        )
+
+        if housing_and_lease:
+            parts.append(housing_and_lease)
+
+        if pd.notna(row["area_m2"]):
+            # 요약도 상세 본문과 같은 환산값을 사용한다. 반올림은 표시할 때만 한다.
+            parts.append(f"임대면적 {row['area_m2']:g}㎡ (약 {row['area_pyeong']:.2f}평)")
+
+        return ", ".join(parts)
+
+    def make_price_text(row):
+        """보증금과 월세 단위를 포함한 설명으로 생성"""
+
+        parts = []
+
+        if pd.notna(row["deposit_manwon"]):
+            parts.append(f"보증금 {row['deposit_manwon']:,}만원")
+
+        if pd.notna(row["monthly_rent_manwon"]):
+            parts.append(f"월세 {row['monthly_rent_manwon']:,}만원")
+
+        return ", ".join(parts)
+
+    def make_summary(row):
+        """위치,주택,금액 설명을 짧은 검색용 문장으로 연결"""
+        parts=[]
+
+        if row["location_text"]:
+            parts.append(row["location_text"])
+
+        if row["property_text"]:
+            parts.append(row["property_text"])
+
+        description = " ".join(parts)
+
+        sentences = []
+
+        if description:
+            sentences.append(f"{description} 거래 사례.")
+
+        if row["price_text"]:
+            sentences.append(f"{row['price_text']}.")
+
+        return " ".join(sentences)
+
+    # axis=1은 DF의 행을 하나씩 함수에 전달
+    df["location_text"] = df.apply(
+        lambda row: join_values(row, ["region_gu", "region_dong"]),
+        axis=1,
+    )
+
+    df["property_text"] = df.apply(make_property_text, axis=1)
+    df["price_text"] = df.apply(make_price_text, axis=1)
+    df["search_summary"] = df.apply(make_summary, axis=1)
+
+    # 기존 row_to_text()로 만든 상세 본문은 별도 유지
+    df["original_text"] = df.apply(row_to_text, axis=1)
+
+    # 최종 검색 본문 : 요약 문장 + 기존 상세 본문
+    df["search_text"] = (
+        df["search_summary"]
+        + "\n\n"
+        + df["original_text"]
+    )
+
+    return df
+
+def create_documents(
+    df: pd.DataFrame,
+    source_file: str | Path,
+) -> list[Document]:
+    """검색용 본문과 원본 메타데이터를 묶어 Document를 생성한다."""
+
+    # 본문을 만들기 위한 파생 컬럼은 메타데이터에서 제외한다.
+    text_columns = {
+        "location_text",
+        "property_text",
+        "price_text",
+        "search_summary",
+        "original_text",
+        "search_text",
+    }
+
+    records = df.to_dict(orient="records")
+    documents = []
+
+    for row in records:
+        # add_search_columns()에서 생성한 최종 본문을 사용한다.
+        text = row["search_text"]
+
+        metadata = {}
+
+        for column, value in row.items():
+            # 검색용 문자열을 메타데이터에 중복 저장하지 않는다.
+            if column in text_columns:
+                continue
+
+            # 결측값만 제외한다. 숫자 0은 유지한다.
+            if pd.isna(value):
+                continue
+
+            # 날짜 객체는 JSON에 저장할 수 있는 문자열로 변환한다.
             if isinstance(value, pd.Timestamp):
                 value = value.strftime("%Y-%m-%d")
 
-            # 숫자는 문자열로 변환하지 않고 그대로 저장
+            # 지역·거래 유형·금액·면적 등은 그대로 보존한다.
             metadata[column] = value
 
-        # 출처 파일명 추가
         metadata["source_file"] = Path(source_file).name
 
-        # 거래별 Document 생성
         document = Document(
             id=row["id"],
             page_content=text,
-            metadata=metadata
+            metadata=metadata,
         )
 
-        # 목록에 추가
         documents.append(document)
-    return documents
 
+    return documents
 
 def structural_chunk(documents):
     # 구조 기반 청킹 결과를 저장할 목록
@@ -174,7 +303,8 @@ def structural_chunk(documents):
     for document in documents:
         # 원본 거래 ID로 청크 ID 생성
         transaction_id = document.metadata["id"]
-        chunk_id = f"{transaction_id}_structural_000"
+        # 같은 거래라도 V0·V1 청크가 서로 덮어써지지 않게 버전을 넣는다.
+        chunk_id = f"{transaction_id}_structural_{TEXT_VERSION}_000"
 
         # 거래 전체 본문을 유지하면서 청크 정보 추가
         chunk = Document(
@@ -182,6 +312,7 @@ def structural_chunk(documents):
             page_content=document.page_content,
             metadata={
                 **document.metadata,       # 원본 메타데이터 복사
+                "text_version": TEXT_VERSION,  # 본문 구성 버전: v0 또는 v1
                 "method": "structural",     # 청킹 방식
                 "chunk_index": 0,           # 거래 내 청크 순번
                 "chunk_count": 1,           # 거래당 청크 수
@@ -196,19 +327,21 @@ def structural_chunk(documents):
 def chunk_csv(csv_path: str | Path = DEFAULT_CSV_PATH) -> list[Document]:
     """CSV 전처리부터 구조 기반 청킹까지 실행하고 결과 Document 목록을 반환한다."""
     df = load_and_clean(csv_path)
+    df = add_search_columns(df)
     documents = create_documents(df, csv_path)
     return structural_chunk(documents)
 
 
 def main() -> None:
     """터미널에서 실행할 때 입력 경로를 받아 청킹 결과의 기본 상태를 출력한다."""
-    parser = argparse.ArgumentParser(description="CSV 전처리 및 구조 기반 청킹")
+    parser = argparse.ArgumentParser(description=f"CSV 전처리 및 구조 기반 청킹 {TEXT_VERSION.upper()}")
     parser.add_argument("--input", type=Path, default=DEFAULT_CSV_PATH, help="원본 CSV 경로")
     args = parser.parse_args()
     chunks = chunk_csv(args.input)
 
     # 결과 파일을 자동 생성하지 않고 반환된 청크의 개수·길이와 예시만 확인한다.
     lengths = [len(chunk.page_content) for chunk in chunks]
+    print("본문 버전:", TEXT_VERSION.upper())
     print("원본 거래 수:", len({chunk.metadata["id"] for chunk in chunks}))
     print("청크 수:", len(chunks))
     print("평균 길이:", round(sum(lengths) / len(lengths), 2) if lengths else 0)

@@ -1,7 +1,7 @@
-"""재귀적 CSV 청킹. 전처리·본문·Document 생성·청킹만 수행한다.
+"""구조 기반 청킹 V0: 기존 상세 본문만 사용한다.
 
 모듈 import 시 파일을 읽지 않는다. chunk_csv()를 호출하거나 아래처럼 직접 실행한다.
-실행: .venv/bin/python src/rag_home_api/test/bc/recursive_chunk.py
+실행: .venv/bin/python src/rag_home_api/test/bc/structural_chunk_v0.py
 임베딩·외부 API·DB 연결·업로드는 포함하지 않는다.
 """
 
@@ -11,7 +11,13 @@ from pathlib import Path
 import pandas as pd
 from langchain_core.documents import Document
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+# 본문 구성 버전을 표시해 이후 저장·평가에서 두 실험을 구분한다.
+TEXT_VERSION = "v0"
+
+# 두 버전과 평가 질문에 동일하게 사용하는 환산 기준: 1평 ≈ 3.305785㎡.
+M2_PER_PYEONG = 3.305785
+
 
 # 파일 위치를 기준으로 저장소 루트를 계산해 현재 작업 디렉터리에 의존하지 않는다.
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -55,10 +61,18 @@ def load_and_clean(csv_path: str | Path = DEFAULT_CSV_PATH) -> pd.DataFrame:
             raise ValueError(f"{column}에 정수가 아닌 값이 존재합니다.")
         df[column] = numbers.astype(dtype)
 
+    # 원본 임대면적(㎡)은 보존하고, 조건 검색용 평수를 숫자 컬럼으로 추가한다.
+    # 여기서는 반올림하지 않는다. 예: 5.996평을 6평 이상으로 잘못 포함하지 않기 위함.
+    # 원본 면적이 비어 있으면 평수도 결측값으로 유지된다.
+    df["area_pyeong"] = df["area_m2"] / M2_PER_PYEONG
+
     # 계약일을 날짜 타입으로 변환
     df["contract_date"] = pd.to_datetime(
         df["contract_date"], format="%Y-%m-%d", errors="raise"
     )
+    # 헤더를 1행으로 센 원본 CSV의 거래 행 번호를 보존한다.
+    # 원본 행을 삭제하거나 재정렬하기 전에 부여해 출처를 다시 찾을 수 있게 한다.
+    df["source_row"] = df.index + 2
     return df
 
 
@@ -105,6 +119,13 @@ def row_to_text(row):
 
             # 빈 항목은 생략하지만 실제 0은 유지
             if pd.isna(value):
+                continue
+
+            # 두 버전의 상세 본문에 ㎡와 평을 함께 표시한다.
+            # 화면·본문에서만 소수 둘째 자리로 반올림하고 원본 숫자는 유지한다.
+            # CSV의 임대면적을 환산한 값이며 전용·공급면적으로 재해석하지 않는다.
+            if column == "area_m2":
+                lines.append(f"{label}: {value:g}{unit} (약 {row['area_pyeong']:.2f}평)")
                 continue
 
             # 날짜를 YYYY-MM-DD 형태로 표시
@@ -168,54 +189,51 @@ def create_documents(df: pd.DataFrame, source_file: str | Path) -> list[Document
     return documents
 
 
-def recursive_chunk(documents, chunk_size=200, chunk_overlap=0):
-    # 잘못된 크기 설정을 조용히 받아들이지 않는다.
-    if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
-        raise ValueError("크기는 양수, 중첩은 0 이상 크기 미만이어야 합니다.")
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size, chunk_overlap=chunk_overlap,
-        separators=["\n\n", "\n", " ", ""], length_function=len,
-    )
+def structural_chunk(documents):
+    # 구조 기반 청킹 결과를 저장할 목록
     chunks = []
+
     for document in documents:
-        # 거래마다 별도로 분할해 서로 다른 거래가 한 청크에 섞이지 않게 한다.
-        parts = splitter.split_text(document.page_content)
-        for index, text in enumerate(parts):
-            transaction_id = document.metadata["id"]
-            chunks.append(Document(
-                id=f"{transaction_id}_recursive_{index:03d}",
-                page_content=text,
-                # 분리된 청크에도 지역·금액·원본 거래 ID를 모두 유지한다.
-                metadata={**document.metadata, "method": "recursive",
-                          "chunk_index": index, "chunk_count": len(parts),
-                          "chunk_size": chunk_size, "chunk_overlap": chunk_overlap},
-            ))
+        # 원본 거래 ID로 청크 ID 생성
+        transaction_id = document.metadata["id"]
+        # 같은 거래라도 V0·V1 청크가 서로 덮어써지지 않게 버전을 넣는다.
+        chunk_id = f"{transaction_id}_structural_{TEXT_VERSION}_000"
+
+        # 거래 전체 본문을 유지하면서 청크 정보 추가
+        chunk = Document(
+            id=chunk_id,
+            page_content=document.page_content,
+            metadata={
+                **document.metadata,       # 원본 메타데이터 복사
+                "text_version": TEXT_VERSION,  # 본문 구성 버전: v0 또는 v1
+                "method": "structural",     # 청킹 방식
+                "chunk_index": 0,           # 거래 내 청크 순번
+                "chunk_count": 1,           # 거래당 청크 수
+            },
+        )
+
+        chunks.append(chunk)
+
     return chunks
 
 
-def chunk_csv(
-    csv_path: str | Path = DEFAULT_CSV_PATH,
-    chunk_size: int = 200,
-    chunk_overlap: int = 0,
-) -> list[Document]:
-    """CSV 전처리부터 재귀적 청킹까지 실행하고 결과 Document 목록을 반환한다."""
+def chunk_csv(csv_path: str | Path = DEFAULT_CSV_PATH) -> list[Document]:
+    """CSV 전처리부터 구조 기반 청킹까지 실행하고 결과 Document 목록을 반환한다."""
     df = load_and_clean(csv_path)
     documents = create_documents(df, csv_path)
-    return recursive_chunk(documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    return structural_chunk(documents)
 
 
 def main() -> None:
     """터미널에서 실행할 때 입력 경로를 받아 청킹 결과의 기본 상태를 출력한다."""
-    parser = argparse.ArgumentParser(description="CSV 전처리 및 재귀적 청킹")
+    parser = argparse.ArgumentParser(description=f"CSV 전처리 및 구조 기반 청킹 {TEXT_VERSION.upper()}")
     parser.add_argument("--input", type=Path, default=DEFAULT_CSV_PATH, help="원본 CSV 경로")
-
-    parser.add_argument("--chunk-size", type=int, default=200, help="최대 글자 수")
-    parser.add_argument("--chunk-overlap", type=int, default=0, help="인접 청크의 겹침 크기")
     args = parser.parse_args()
-    chunks = chunk_csv(args.input, chunk_size=args.chunk_size, chunk_overlap=args.chunk_overlap)
+    chunks = chunk_csv(args.input)
 
     # 결과 파일을 자동 생성하지 않고 반환된 청크의 개수·길이와 예시만 확인한다.
     lengths = [len(chunk.page_content) for chunk in chunks]
+    print("본문 버전:", TEXT_VERSION.upper())
     print("원본 거래 수:", len({chunk.metadata["id"] for chunk in chunks}))
     print("청크 수:", len(chunks))
     print("평균 길이:", round(sum(lengths) / len(lengths), 2) if lengths else 0)
