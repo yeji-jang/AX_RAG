@@ -38,7 +38,7 @@ def main():
     out = RESULTS / f"{args.split}_원본로그.jsonl"
     meta = {"tag": args.tag, "split": args.split, "eval_version": ev["version"], "eval_sha": eval_sha(),
             "collection": args.collection, "chunks": len(ret.chunks), "modes": args.modes, "models": MODELS,
-            "code": "튜터 방식(BM25Retriever + EnsembleRetriever)", "preset": args.preset,
+            "code": "LangChain(BM25Retriever + EnsembleRetriever + EmbeddingsRedundantFilter + RunnableBranch)", "preset": args.preset,
             "retrieval_config": CONFIG, "started": stamp}
     print(json.dumps(meta, ensure_ascii=False))
     with open(out, "a", encoding="utf-8") as f:
@@ -59,7 +59,7 @@ def run_one(ret: Retriever, mode: str, q: dict, args) -> dict:
     t0 = time.time()
     try:
         row["route"] = route(q["question"])  # law = 법령·가이드만, all = 전체
-        hits = ret.search(mode, q["question"], row["route"])
+        hits = ret.search(mode, q["question"])  # 나누기는 검색기 안의 RunnableBranch가 함
         row["retrieved"] = hits
         allowed = set(q.get("allowed_row_ids") or [])
         if allowed:
