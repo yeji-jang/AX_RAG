@@ -37,7 +37,7 @@ Desktop.ini
 # 재생성: uv run python -m rag_home_api.collect.<모듈> / build_unified_index(rebuild=True)
 data/raw/
 data/index/
-data/chunk_manifest.jsonl
+data/chunk_manifest*.jsonl
 data/cache/
 
 # ---- 로컬 캐시 DB · 로그 · 모델 캐시 ----

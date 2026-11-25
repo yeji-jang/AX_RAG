@@ -1,14 +1,16 @@
-"""프리셋 기반 검색 A vs B(가중치 3종) 비교 & results/scratch/ 자동 로그 저장."""
+"""프리셋 기반 검색 A vs B(가중치 3종) 비교 & test/kh/results/ 자동 로그 저장."""
 
 import json
 import time
 from datetime import datetime
 from pathlib import Path
 
-from rag_home_api.config import RESULTS_DIR, settings
+from rag_home_api.config import settings
 from rag_home_api.retrieval.hybrid_rrf import search_hybrid_rrf
 from rag_home_api.retrieval.vector_retriever import search_vector
 from rag_home_api.test.kh.presets import NOW_AB_PRESETS, ExperimentPreset
+
+KH_RESULTS_DIR = Path(__file__).resolve().parent / "results"
 
 # (질문, 기대 정답 chunk_id 집합) — dev 미니 테스트셋 (214건 소량 DB 기준 검증 완료!)
 MINI_DEV_CASES: list[dict] = [
@@ -59,7 +61,7 @@ def run_retrieval_preset(question: str, preset: ExperimentPreset) -> tuple[list[
 
 
 def save_scratch_log(records: list[dict]) -> Path:
-    out_dir = RESULTS_DIR / "scratch"
+    out_dir = KH_RESULTS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_path = out_dir / f"exp_ab_kh_{ts}.jsonl"
