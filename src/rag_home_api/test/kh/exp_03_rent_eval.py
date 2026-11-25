@@ -1,19 +1,24 @@
-"""[3.1 RAGAS 변환 포함 · presets.py 연동] 전월세 A vs B(가중치 3종) vs B+Filter + RAGAS 4지표 + 기준 미달 자동 진단.
+"""[전월세 RAG 통합 평가 러너] A / B / Filter / C(Re-ranking) / Query Rewrite / Cache / HyDE + 청킹·임베딩 컬렉션 분리 + RAGAS 4지표.
 
 작성자: 최기혁 (kh)
+안전 실행 순서 (rag_eval_guide.html 3장):
+  ① 버전 Cache 조회 → (MISS) → ② Query Rewrite (단일/2구 분해) → ③ HyDE (Vector 임베딩 전용·즉시 폐기)
+  → ④ 검색 A / B(k=12) / C(rerank 12→5) → ⑤ 근거 기반 생성 → ⑥ Cache 저장 (error 제외)
+
 실행 예시:
-    uv run python -m rag_home_api.test.kh.exp_03_rent_eval A_vector --eval kh_rent_dev_v2.json --note "A 기준선 첫 측정"
-    uv run python -m rag_home_api.test.kh.exp_03_rent_eval B_rrf_70_30_filter --note "주어 명시 프롬프트 검증"
-출력: src/rag_home_api/test/kh/results/
-      - exp_rent_ab_ragas_<ts>.jsonl    (문항별 원본 로그 + TP/FP/FN/TN)
-      - summary_rent_ab_ragas_<ts>.json (지표 요약 + eval_version/run_note + 0.6 미만 LLM 원인·개선안)
+    uv run python -m rag_home_api.test.kh.exp_03_rent_eval A_vector --eval kh_rent_dev_v2.json --note "S1: A 기준선"
+    uv run python -m rag_home_api.test.kh.exp_03_rent_eval C_rrf_70_30_filter_rerank --eval kh_rent_dev_v2.json --note "S5: 검색 C 추가"
+    uv run python -m rag_home_api.test.kh.exp_03_rent_eval --list-presets
 """
+
+from __future__ import annotations
 
 import argparse
 import json
 import re
 import statistics
 import time
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -28,10 +33,15 @@ from ragas.metrics import (
     ResponseRelevancy,
 )
 
+from rag_home_api.config import DATA_DIR, settings
+from rag_home_api.optimize.cache import VersionedRAGCache, build_cache_key
+from rag_home_api.optimize.hyde import generate_hyde_document, verify_hyde_isolation
+from rag_home_api.optimize.query_rewriter import SubQueryPlan, rewrite_query
 from rag_home_api.retrieval.hybrid_rrf import search_hybrid_rrf
+from rag_home_api.retrieval.reranker import rerank_candidates
 from rag_home_api.retrieval.vector_retriever import search_vector
 from rag_home_api.shared.core.vector_store import get_embeddings, get_llm
-from rag_home_api.test.kh.presets import RENT_AB_PRESETS, ExperimentPreset
+from rag_home_api.test.kh.presets import PRESET_REGISTRY, RENT_AB_PRESETS, ExperimentPreset
 from rag_home_api.test.kh.rent_chunker import KH_EVAL_DIR, KH_RESULTS_DIR, RENT_COLLECTION_NAME
 
 # problem.md 전월세 목표치 (0.6 이상)
@@ -45,7 +55,6 @@ SEOUL_DISTRICTS: tuple[str, ...] = (
     "용산구", "은평구", "종로구", "중구", "중랑구",
 )
 
-# 1차·2차 실측(DEV-07/08 TMI 감점 + DEV-01/04/07 주어 생략 감점) 반영 답변 프롬프트
 ANSWER_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
@@ -86,23 +95,17 @@ DIAG_PROMPT = ChatPromptTemplate.from_messages(
 )
 
 
-def extract_rent_filters(question: str) -> dict | None:
-    """LLM 호출 없이(0원·0ms) 질문에서 단일 조건이 명확한 경우에만 메타데이터 필터를 추출한다.
-
-    복합 비교 질문(예: 2개 구 비교, 전세 vs 월세 동시 비교)에서는 모호한 축의 필터를 생략해
-    정답 청크 1개가 필터로 잘리는 부작용을 방지한다.
-    """
+def extract_rent_filters(question: str) -> dict[str, str] | None:
+    """LLM 호출 없이(0원·0ms) 질문에서 단일 조건이 명확한 경우에만 메타데이터 필터를 추출한다."""
     q = question
     filters: dict[str, str] = {}
 
-    # 1) 자치구: 정확히 1개만 언급된 경우에만 적용
     found_gu = [g for g in SEOUL_DISTRICTS if g in q]
     if len(found_gu) == 1:
         filters["district"] = found_gu[0]
 
-    # 2) 전월세 구분: '전세' 또는 '월세' 중 1가지만 명확히 매칭된 경우에만 적용
     has_jeonse = bool(
-        re.search(r"전세(?!사기|자금|대출)|월세\s*없이|다달이\s*(?:임대료|돈)?\s*(?:안|없이)", q)
+        re.search(r"전세(?!사기|자금|대출)|월세\s*없이|다달이\s*(?:임대료|돈)?\s*(?:안|없이)|보증금만", q)
     )
     has_wolse = bool(re.search(r"월세(?!\s*없이)|다달이\s*내는|매달\s*내는", q))
     if has_jeonse and not has_wolse:
@@ -110,7 +113,6 @@ def extract_rent_filters(question: str) -> dict | None:
     elif has_wolse and not has_jeonse:
         filters["lease_type"] = "월세"
 
-    # 3) 주택유형: 1가지만 명확히 매칭된 경우에만 적용
     h_matches: set[str] = set()
     if "아파트" in q:
         h_matches.add("아파트")
@@ -123,7 +125,6 @@ def extract_rent_filters(question: str) -> dict | None:
     if len(h_matches) == 1:
         filters["housing_type"] = next(iter(h_matches))
 
-    # 4) 면적대: 1개 구간만 명확히 언급된 경우에만 적용
     b_matches: set[str] = set()
     if any(w in q for w in ("33㎡ 이하", "33㎡이하", "원룸급", "원룸")):
         b_matches.add("33이하")
@@ -169,35 +170,57 @@ def _calc_retrieval_metrics(
     }
 
 
-def _run_preset_search(
-    question: str,
+def _merge_subquery_hits(per_sub_hits: list[list[dict]], limit: int) -> list[dict]:
+    """2개 서브쿼리 검색 결과를 라운드로빈 교차 병합(중복 제거)해 양쪽 지역 모두 상위에 보장한다."""
+    merged: list[dict] = []
+    seen: set[str] = set()
+    max_len = max((len(lst) for lst in per_sub_hits), default=0)
+    for idx in range(max_len):
+        for lst in per_sub_hits:
+            if idx < len(lst):
+                item = lst[idx]
+                cid = item["chunk_id"]
+                if cid not in seen:
+                    seen.add(cid)
+                    copy_item = dict(item)
+                    copy_item["rank_before"] = len(merged) + 1
+                    merged.append(copy_item)
+                    if len(merged) >= limit:
+                        return merged
+    return merged
+
+
+def _search_single_plan(
+    plan: SubQueryPlan,
     preset: ExperimentPreset,
-    collection_name: str,
-) -> tuple[list[dict], dict | None, bool]:
-    """프리셋 1개에 따라 검색 실행 (필터 ON 시 결과 3건 미만이면 필터 해제 폴백!)."""
-    applied_filters = extract_rent_filters(question) if preset.use_metadata_filter else None
+    override_semantic: str | None = None,
+) -> tuple[list[dict], dict[str, str] | None, bool]:
+    """서브쿼리 1건에 대해 A 또는 B 검색(+ 경량 필터 폴백)을 수행한다."""
+    kw_q = plan.keyword_query
+    sem_q = override_semantic or plan.semantic_query
+    applied_filters = (plan.filters or extract_rent_filters(kw_q)) if preset.use_metadata_filter else None
     fallback_used = False
 
-    def _exec(flt: dict | None) -> list[dict]:
+    def _exec(flt: dict[str, str] | None) -> list[dict]:
         if preset.pipeline_mode == "A_vector":
             return search_vector(
-                question,
+                sem_q,
                 top_k=preset.candidate_k,
                 filters=flt,
-                collection_name=collection_name,
+                collection_name=preset.collection_name,
+                embedding_model=preset.embedding_model,
             )
-        if preset.pipeline_mode == "B_hybrid":
-            return search_hybrid_rrf(
-                keyword_query=question,
-                semantic_query=question,
-                top_k=preset.candidate_k,
-                filters=flt,
-                bm25_weight=preset.bm25_weight,
-                vector_weight=preset.vector_weight,
-                rrf_k=preset.rrf_k,
-                collection_name=collection_name,
-            )
-        raise NotImplementedError(f"아직 미구현 모드: {preset.pipeline_mode}")
+        return search_hybrid_rrf(
+            keyword_query=kw_q,
+            semantic_query=sem_q,
+            top_k=preset.candidate_k,
+            filters=flt,
+            bm25_weight=preset.bm25_weight,
+            vector_weight=preset.vector_weight,
+            rrf_k=preset.rrf_k,
+            collection_name=preset.collection_name,
+            embedding_model=preset.embedding_model,
+        )
 
     hits = _exec(applied_filters)
     if applied_filters and len(hits) < 3:
@@ -206,44 +229,115 @@ def _run_preset_search(
     return hits, applied_filters, fallback_used
 
 
-def _count_manifest_chunks() -> int:
-    """전월세 청크 매니페스트 줄 수(총 청크 수 N, TN 계산용)를 반환한다."""
-    manifest = Path(__file__).resolve().parents[3] / "data" / "chunk_manifest_rent_kh.jsonl"
-    if manifest.exists():
-        return sum(1 for line in manifest.read_text(encoding="utf-8").splitlines() if line.strip())
+def _run_full_retrieval_pipeline(question: str, preset: ExperimentPreset) -> dict:
+    """안전 실행 순서: ② Query Rewrite → ③ HyDE(Vector 전용·폐기) → ④ 검색 A/B(k=12)/C(k=5)."""
+    rewrite_info: dict | None = None
+    if preset.use_rewrite:
+        rw = rewrite_query(question)
+        plans = rw.sub_queries
+        rewrite_info = rw.to_dict()
+    else:
+        plans = [SubQueryPlan(keyword_query=question, semantic_query=question, filters=None)]
+
+    hyde_doc: str | None = None
+    hyde_fallback = False
+    if preset.use_hyde:
+        hyde_doc, hyde_fallback = generate_hyde_document(plans[0].semantic_query if len(plans) == 1 else question)
+
+    per_sub_hits: list[list[dict]] = []
+    applied_filters_list: list[dict[str, str] | None] = []
+    any_fallback = False
+    for idx, plan in enumerate(plans):
+        # HyDE 가상 문서는 오직 Vector semantic_query에만 투입하고 검색 직후 폐기!
+        sem_override = hyde_doc if (preset.use_hyde and len(plans) == 1) else None
+        if preset.use_hyde and len(plans) > 1:
+            sub_hyde, sub_fb = generate_hyde_document(plan.semantic_query)
+            sem_override = sub_hyde
+            hyde_fallback = hyde_fallback or sub_fb
+            if idx == 0:
+                hyde_doc = sub_hyde
+        sub_hits, flt, fb = _search_single_plan(plan, preset, override_semantic=sem_override)
+        per_sub_hits.append(sub_hits)
+        applied_filters_list.append(flt)
+        any_fallback = any_fallback or fb
+
+    candidates_12 = (
+        per_sub_hits[0][: preset.candidate_k]
+        if len(per_sub_hits) == 1
+        else _merge_subquery_hits(per_sub_hits, limit=preset.candidate_k)
+    )
+
+    rerank_fallback = False
+    if preset.pipeline_mode == "C_hybrid_rerank":
+        final_top_k, rerank_fallback = rerank_candidates(
+            query=question,
+            candidates=candidates_12,
+            top_k=preset.top_k,
+        )
+    else:
+        final_top_k = candidates_12[: preset.top_k]
+
+    applied_filters_out = (
+        applied_filters_list[0]
+        if len(applied_filters_list) == 1
+        else {"sub_filters": applied_filters_list}
+    )
+    return {
+        "candidates_12": candidates_12,
+        "final_hits": final_top_k,
+        "applied_filters": applied_filters_out,
+        "filter_fallback": any_fallback,
+        "rewrite_info": rewrite_info,
+        "hyde_doc": hyde_doc,
+        "hyde_fallback": hyde_fallback,
+        "rerank_fallback": rerank_fallback,
+    }
+
+
+def _count_manifest_chunks(collection_name: str = RENT_COLLECTION_NAME) -> int:
+    cand = (
+        DATA_DIR / "chunk_manifest_rent_kh.jsonl"
+        if collection_name == RENT_COLLECTION_NAME
+        else DATA_DIR / f"chunk_manifest_{collection_name}.jsonl"
+    )
+    if cand.exists():
+        return sum(1 for line in cand.read_text(encoding="utf-8").splitlines() if line.strip())
     return 6200
 
 
 def run_ab_and_ragas(
     eval_path: Path,
     presets: list[ExperimentPreset] = RENT_AB_PRESETS,
-    collection_name: str = RENT_COLLECTION_NAME,
     run_ragas: bool = True,
     owner: str = "kh",
     domain: str = "rent",
     run_note: str = "",
 ) -> Path:
-    """presets.py 기반 A/B/Filter 일괄 비교 + RAGAS 4지표 + 기준 미달 문항 LLM 진단 저장."""
+    """presets.py 기반 A/B/Filter/C/Rewrite/Cache/HyDE 평가 + RAGAS 4지표 + 기준 미달 진단."""
     items = json.loads(eval_path.read_text(encoding="utf-8"))
     answerable = [x for x in items if x["expected_status"] == "answered"]
     unanswerable = [x for x in items if x["expected_status"] == "insufficient_evidence"]
-    total_corpus_chunks = _count_manifest_chunks()
 
     llm = get_llm()
     answer_chain = ANSWER_PROMPT | llm
+    cache_store = VersionedRAGCache()
 
     KH_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_path = KH_RESULTS_DIR / f"exp_rent_ab_ragas_{ts}.jsonl"
     summary_path = KH_RESULTS_DIR / f"summary_rent_ab_ragas_{ts}.json"
+
+    first_col = presets[0].collection_name if presets else RENT_COLLECTION_NAME
+    first_emb = presets[0].embedding_model if presets else settings.embedding_model
     summary_report: dict = {
         "timestamp": ts,
         "owner": owner,
         "domain": domain,
         "eval_version": eval_path.stem,
         "eval_path": str(eval_path),
-        "collection_name": collection_name,
-        "total_corpus_chunks": total_corpus_chunks,
+        "collection_name": first_col,
+        "embedding_model": first_emb,
+        "total_corpus_chunks": _count_manifest_chunks(first_col),
         "run_note": run_note,
         "ragas_target": RAGAS_TARGET,
         "modes": {},
@@ -253,9 +347,12 @@ def run_ab_and_ragas(
         mode = preset.name
         candidate_k = preset.candidate_k
         top_k = preset.top_k
+        total_corpus_chunks = _count_manifest_chunks(preset.collection_name)
         print(
-            f"\n==================== [{mode}] 실행 ({len(items)}문항 | "
-            f"eval={eval_path.name} | bm25={preset.bm25_weight}, vec={preset.vector_weight}, filter={preset.use_metadata_filter}) ====================",
+            f"\n==================== [{mode}] 실행 ({len(items)}문항 | eval={eval_path.name} | "
+            f"col={preset.collection_name} | emb={preset.embedding_model} | "
+            f"mode={preset.pipeline_mode}, filter={preset.use_metadata_filter}, "
+            f"rewrite={preset.use_rewrite}, cache={preset.use_cache}, hyde={preset.use_hyde}) ====================",
             flush=True,
         )
         latencies: list[float] = []
@@ -266,23 +363,98 @@ def run_ab_and_ragas(
         citation_ok = 0
         filter_used_cnt = 0
         filter_fallback_cnt = 0
+        cache_hit_cnt = 0
+        hyde_isolated_ok = 0
 
         for item in items:
             q = item["user_input"]
             expected = set(item["allowed_chunk_ids"])
 
+            cache_key = build_cache_key(
+                query=q,
+                collection_name=preset.collection_name,
+                index_version=preset.chunk_strategy,
+                embedding_model=preset.embedding_model,
+                llm_model=settings.llm_model,
+                prompt_version=preset.prompt_version,
+                preset_dict=preset.to_dict(),
+                user_scope="public",
+            )
+
             t0 = time.perf_counter()
-            hits, applied_filters, fallback_used = _run_preset_search(q, preset, collection_name)
-            retrieval_ms = round((time.perf_counter() - t0) * 1000, 1)
+            cached = cache_store.get(cache_key) if preset.use_cache else None
+            if cached is not None:
+                cache_hit_cnt += 1
+                retrieval_ms = round((time.perf_counter() - t0) * 1000, 1)
+                ids_12 = cached["ids_12"]
+                top5_ids = cached["top5_ids"]
+                contexts = cached["retrieved_contexts"]
+                response_text = cached["response"]
+                applied_filters = cached.get("applied_filters")
+                fallback_used = bool(cached.get("filter_fallback", False))
+                rewrite_info = cached.get("rewrite_info")
+                hyde_iso = cached.get("hyde_isolation", {"hyde_used": False, "context_isolated": True, "response_isolated": True})
+                rerank_fallback = bool(cached.get("rerank_fallback", False))
+                rank_moves = cached.get("rank_moves", [])
+                cache_hit = True
+            else:
+                cache_hit = False
+                pipe = _run_full_retrieval_pipeline(q, preset)
+                retrieval_ms = round((time.perf_counter() - t0) * 1000, 1)
+                ids_12 = [h["chunk_id"] for h in pipe["candidates_12"]]
+                final_hits = pipe["final_hits"]
+                top5_ids = [h["chunk_id"] for h in final_hits]
+                contexts = [h["document"].page_content for h in final_hits]
+                applied_filters = pipe["applied_filters"]
+                fallback_used = pipe["filter_fallback"]
+                rewrite_info = pipe["rewrite_info"]
+                rerank_fallback = pipe["rerank_fallback"]
+                rank_moves = [
+                    {
+                        "chunk_id": h["chunk_id"],
+                        "rank_before": h.get("rank_before"),
+                        "rank_after": h.get("rank_after", i),
+                        "rerank_score": h.get("rerank_score"),
+                    }
+                    for i, h in enumerate(final_hits, start=1)
+                ]
+
+                response_text = ""
+                if run_ragas:
+                    ctx_joined = "\n\n---\n\n".join(contexts)
+                    response_text = str(answer_chain.invoke({"context": ctx_joined, "question": q}).content)
+
+                hyde_iso = verify_hyde_isolation(
+                    response_text=response_text,
+                    retrieved_contexts=contexts,
+                    hypothetical_doc=pipe["hyde_doc"],
+                )
+                if preset.use_cache and run_ragas:
+                    cache_store.set(
+                        cache_key,
+                        {
+                            "status": "ok",
+                            "ids_12": ids_12,
+                            "top5_ids": top5_ids,
+                            "retrieved_contexts": contexts,
+                            "response": response_text,
+                            "applied_filters": applied_filters,
+                            "filter_fallback": fallback_used,
+                            "rewrite_info": rewrite_info,
+                            "hyde_isolation": hyde_iso,
+                            "rerank_fallback": rerank_fallback,
+                            "rank_moves": rank_moves,
+                        },
+                        ttl_seconds=preset.cache_ttl_seconds,
+                    )
+
             latencies.append(retrieval_ms)
             if applied_filters:
                 filter_used_cnt += 1
             if fallback_used:
                 filter_fallback_cnt += 1
-
-            ids_12 = [h["chunk_id"] for h in hits]
-            top_docs = [h["document"] for h in hits[:top_k]]
-            contexts = [d.page_content for d in top_docs]
+            if hyde_iso.get("context_isolated") and hyde_iso.get("response_isolated"):
+                hyde_isolated_ok += 1
 
             m12 = (
                 _calc_retrieval_metrics(ids_12, expected, k=candidate_k, total_corpus_chunks=total_corpus_chunks)
@@ -290,7 +462,7 @@ def run_ab_and_ragas(
                 else {}
             )
             m5 = (
-                _calc_retrieval_metrics(ids_12, expected, k=top_k, total_corpus_chunks=total_corpus_chunks)
+                _calc_retrieval_metrics(top5_ids, expected, k=top_k, total_corpus_chunks=total_corpus_chunks)
                 if expected
                 else {}
             )
@@ -300,10 +472,7 @@ def run_ab_and_ragas(
                 top1_list.append(m5["top1"])
                 mrr5_list.append(m5[f"mrr@{top_k}"])
 
-            response_text = ""
             if run_ragas:
-                ctx_joined = "\n\n---\n\n".join(contexts)
-                response_text = str(answer_chain.invoke({"context": ctx_joined, "question": q}).content)
                 if item["expected_status"] == "insufficient_evidence":
                     if "확인할 수 없음" in response_text or "정보가 없" in response_text:
                         refusal_ok += 1
@@ -326,8 +495,13 @@ def run_ab_and_ragas(
             record = {
                 "mode": mode,
                 "preset": preset.to_dict(),
+                "cache_hit": cache_hit,
                 "applied_filters": applied_filters,
                 "filter_fallback": fallback_used,
+                "rewrite_info": rewrite_info,
+                "hyde_isolation": hyde_iso,
+                "rerank_fallback": rerank_fallback,
+                "rank_moves": rank_moves,
                 "question_id": item["question_id"],
                 "eval_category": item.get("eval_category", ""),
                 "question_type": item["question_type"],
@@ -336,7 +510,7 @@ def run_ab_and_ragas(
                 "retrieval_ms": retrieval_ms,
                 "metrics_k12": m12,
                 "metrics_k5": m5,
-                "top5_ids": ids_12[:top_k],
+                "top5_ids": top5_ids,
                 "retrieved_contexts": contexts,
                 "reference_contexts": item.get("reference_contexts", []),
                 "response": response_text,
@@ -355,6 +529,8 @@ def run_ab_and_ragas(
                 "top1": f"{sum(top1_list)}/{len(top1_list)}",
                 f"mrr@{top_k}": round(statistics.mean(mrr5_list), 4) if mrr5_list else 0.0,
                 "filter_applied": f"{filter_used_cnt}/{len(items)} (fallback={filter_fallback_cnt})",
+                "cache_hits": f"{cache_hit_cnt}/{len(items)}",
+                "hyde_isolated": f"{hyde_isolated_ok}/{len(items)}",
             },
             "latency_ms": {
                 "avg": round(statistics.mean(latencies), 1),
@@ -372,7 +548,7 @@ def run_ab_and_ragas(
         print(f"  [지연시간] {mode_summary['latency_ms']}", flush=True)
 
         if run_ragas and ragas_rows:
-            print(f"  [거절 평가] {mode_summary['refusal']}", flush=True)
+            print(f"  [거절 평가] {mode_summary['refusal']} (고지={mode_summary['scope_notice']})", flush=True)
             ragas_ds = EvaluationDataset.from_list(
                 [
                     {
@@ -435,18 +611,18 @@ def run_ab_and_ragas(
                             "scores": json.dumps(scores, ensure_ascii=False),
                         }
                     )
-                    item_diag = {
-                        "question_id": qid,
-                        "user_input": ragas_rows[idx]["user_input"],
-                        "failed_metrics": failed,
-                        "all_scores": scores,
-                        "llm_diagnosis": str(diag.content),
-                    }
-                    mode_summary["underperforming_items"].append(item_diag)
+                    mode_summary["underperforming_items"].append(
+                        {
+                            "question_id": qid,
+                            "user_input": ragas_rows[idx]["user_input"],
+                            "failed_metrics": failed,
+                            "all_scores": scores,
+                            "llm_diagnosis": str(diag.content),
+                        }
+                    )
                     print(f"  ⚠️ [기준 미달 {qid}] {failed}", flush=True)
 
         summary_report["modes"][mode] = mode_summary
-        # 프리셋 1개 끝날 때마다 중간 저장 (실행 중에도 Streamlit 대시보드에서 실시간 확인 가능!)
         summary_path.write_text(json.dumps(summary_report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"\n원본 로그 저장: {log_path}")
@@ -455,14 +631,26 @@ def run_ab_and_ragas(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="전월세 RAG 평가 러너 (단일 변인 A/B/Filter + RAGAS)")
-    parser.add_argument("presets", nargs="*", help="실행할 프리셋 이름(비우면 RENT_AB_PRESETS 전체)")
+    parser = argparse.ArgumentParser(description="전월세 RAG 통합 평가 러너 (A/B/Filter/C/Rewrite/Cache/HyDE)")
+    parser.add_argument("presets", nargs="*", help="실행할 프리셋 이름 (예: A_vector, C_filter_rewrite)")
+    parser.add_argument("--list-presets", action="store_true", help="사용 가능한 전체 프리셋 목록 출력")
     parser.add_argument("--eval", dest="eval_file", default="", help="평가셋 파일명 또는 경로 (예: kh_rent_dev_v2.json)")
+    parser.add_argument("--collection", default="", help="프리셋의 collection_name 강제 오버라이드 (청킹 비교용)")
+    parser.add_argument("--embedding-model", default="", help="프리셋의 embedding_model 강제 오버라이드 (임베딩 비교용)")
     parser.add_argument("--note", default="", help="이번 실험 가설·변경 변수 1줄 메모")
     parser.add_argument("--owner", default="kh", help="작성자/팀원 식별자 (기본: kh)")
     parser.add_argument("--domain", default="rent", help="도메인 (rent / law / public_housing)")
     parser.add_argument("--no-ragas", action="store_true", help="검색 지표만 빠르게 측정 (RAGAS 생성/채점 생략)")
     args = parser.parse_args()
+
+    if args.list_presets:
+        for pname, p in PRESET_REGISTRY.items():
+            print(
+                f"- {pname:26s} | mode={p.pipeline_mode:15s} | bm25={p.bm25_weight} | "
+                f"filter={p.use_metadata_filter} | rewrite={p.use_rewrite} | cache={p.use_cache} | "
+                f"hyde={p.use_hyde} | col={p.collection_name} | emb={p.embedding_model}"
+            )
+        raise SystemExit(0)
 
     if args.eval_file:
         cand = Path(args.eval_file)
@@ -474,10 +662,24 @@ if __name__ == "__main__":
         if not target.exists():
             target = KH_EVAL_DIR / "kh_rent_dev_draft.json"
 
-    selected_names = set(args.presets)
-    chosen_presets = (
-        [p for p in RENT_AB_PRESETS if p.name in selected_names] if selected_names else RENT_AB_PRESETS
-    )
+    if args.presets:
+        unknown = [n for n in args.presets if n not in PRESET_REGISTRY]
+        if unknown:
+            raise SystemExit(f"알 수 없는 프리셋: {unknown}. --list-presets 로 목록을 확인하세요.")
+        chosen_presets = [PRESET_REGISTRY[n] for n in args.presets]
+    else:
+        chosen_presets = list(RENT_AB_PRESETS)
+
+    if args.collection or args.embedding_model:
+        chosen_presets = [
+            replace(
+                p,
+                collection_name=args.collection or p.collection_name,
+                embedding_model=args.embedding_model or p.embedding_model,
+            )
+            for p in chosen_presets
+        ]
+
     run_ab_and_ragas(
         eval_path=target,
         presets=chosen_presets,
