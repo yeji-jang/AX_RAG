@@ -5,6 +5,8 @@ B: BM25(kiwipiepy 형태소) + 벡터 → RRF로 합쳐 상위 5
 """
 
 import pickle
+import re
+from difflib import SequenceMatcher
 
 from kiwipiepy import Kiwi
 from langchain_openai import OpenAIEmbeddings
@@ -21,6 +23,8 @@ CONFIG = {
     "rrf_k": 60,  # RRF 상수: 점수 = Σ 1/(rrf_k + 순위)
     "bm25_pos": ["NNG", "NNP", "NR", "SN", "SL", "SH", "XR", "VV", "VA"],  # BM25에 쓰는 품사
     "dedupe": "chunk_id",  # 중복 제거 기준
+    # r1: 여러 공고에 거의 같은 안내문이 반복돼 상위를 독차지 → 공백 뺀 글자 유사도 0.9 이상이면 먼저 나온 하나만 남김
+    "near_dup_ratio": 0.9,
 }
 
 _kiwi = Kiwi()
@@ -49,6 +53,25 @@ class Retriever:
         path.write_bytes(pickle.dumps(toks))
         return toks
 
+    def near_dedupe(self, hits: list[dict], n: int) -> list[dict]:
+        """순서대로 보며, 이미 고른 것과 거의 같은 글(유사도 ≥ near_dup_ratio)은 건너뜀. 건너뛴 것은 dup_of_me로 기록."""
+        ratio = CONFIG.get("near_dup_ratio")
+        if not ratio:
+            return hits[:n]
+        kept, norm = [], {}
+        for h in hits:
+            t = re.sub(r"\s+", "", self.by_id[h["chunk_id"]].page_content)
+            dup = next((k for k in kept if SequenceMatcher(None, norm[k["chunk_id"]], t).quick_ratio() >= ratio
+                        and SequenceMatcher(None, norm[k["chunk_id"]], t).ratio() >= ratio), None)
+            if dup:
+                dup.setdefault("dup_of_me", []).append(h["chunk_id"])
+                continue
+            norm[h["chunk_id"]] = t
+            kept.append(h)
+            if len(kept) == n:
+                break
+        return kept
+
     # --- A ---
     def vector(self, query: str, n: int) -> list[dict]:
         hits = self.store.similarity_search_with_score(query, k=n)
@@ -72,7 +95,7 @@ class Retriever:
                 m = merged.setdefault(h["chunk_id"], {k: h[k] for k in ("chunk_id", "row_id", "doc_id")} | {"rrf": 0.0})
                 m.update({k: v for k, v in h.items() if k not in m})
                 m["rrf"] += 1 / (CONFIG["rrf_k"] + h[key])
-        out = sorted(merged.values(), key=lambda m: -m["rrf"])[:n]
+        out = self.near_dedupe(sorted(merged.values(), key=lambda m: -m["rrf"]), n)
         for i, m in enumerate(out):
             m["rrf"] = round(m["rrf"], 5)
             m["rrf_rank"] = i + 1
@@ -80,8 +103,8 @@ class Retriever:
 
     def search(self, mode: str, query: str) -> list[dict]:
         k = CONFIG["k"]
-        if mode == "A":
-            return self.vector(query, k)
+        if mode == "A":  # 거의 같은 글 합치기를 A에도 똑같이 적용 — 비교 대상은 검색 방식만
+            return self.near_dedupe(self.vector(query, CONFIG["vector_candidates"]), k)
         if mode == "B":
             return self.hybrid(query, k)
         raise ValueError(f"지원하지 않는 검색 방식: {mode}")
