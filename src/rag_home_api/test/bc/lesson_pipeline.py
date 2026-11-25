@@ -3,6 +3,8 @@
 import os
 import sys
 from pathlib import Path
+from functools import lru_cache
+from copy import deepcopy
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
@@ -21,11 +23,12 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnableLambda
 from langchain_openai import OpenAIEmbeddings
 from langchain_postgres import PGVector
 
 from structural_chunk_v0 import DEFAULT_CSV_PATH, PROJECT_ROOT
+from metadata_filters import validate_filter, matches_filter
 
 load_dotenv(PROJECT_ROOT / '.env')
 MODELS = {'small': 'text-embedding-3-small', 'large': 'text-embedding-3-large'}
@@ -82,18 +85,31 @@ def save_documents(version='v0', size='small'):
         print(f'{min(start + 256, len(docs))}/{len(docs)} · 신규 {len(pending)}건', flush=True)
 
 
-def build_retrievers(version='v0', size='small'):
+@lru_cache(maxsize=1)
+def cross_encoder_model():
+    return HuggingFaceCrossEncoder(
+        model_name='Dongjin-kr/ko-reranker', model_kwargs={'max_length': 512},
+    )
+
+
+def build_retrievers(version='v0', size='small', search_filter=None):
+    validate_filter(search_filter)
+    search_filter = deepcopy(search_filter)
+    local_docs = [doc for doc in documents(version) if matches_filter(doc.metadata, search_filter)]
+    if not local_docs:
+        return {name: RunnableLambda(lambda question: []) for name in ('A', 'B', 'C')}
+    filter_kwargs = {'filter': search_filter} if search_filter else {}
     # 교안 3장 1강: 벡터 저장소를 Retriever로 변환
     store = vector_store(version, size)
-    vector_retriever = store.as_retriever(search_kwargs={'k': K})
-    vector_candidates = store.as_retriever(search_kwargs={'k': CANDIDATES})
+    vector_retriever = store.as_retriever(search_kwargs={'k': K, **filter_kwargs})
+    vector_candidates = store.as_retriever(search_kwargs={'k': CANDIDATES, **filter_kwargs})
 
     # 교안 5장 1·2강: BM25Retriever와 EnsembleRetriever
     def tokenize(text):
         # 교안 5장 2·4강의 custom_tokenizer를 그대로 사용한다.
         return text.split()
 
-    keyword_retriever = BM25Retriever.from_documents(documents(version), preprocess_func=tokenize)
+    keyword_retriever = BM25Retriever.from_documents(local_docs, preprocess_func=tokenize)
     keyword_retriever.k = CANDIDATES
     hybrid_retriever = EnsembleRetriever(
         retrievers=[keyword_retriever, vector_candidates], weights=[0.5, 0.5],
@@ -104,9 +120,7 @@ def build_retrievers(version='v0', size='small'):
         return docs[:CANDIDATES]
 
     # 교안 5장 4강: 로컬 Cross-Encoder를 압축 검색기에 연결
-    cross_encoder = HuggingFaceCrossEncoder(
-        model_name='Dongjin-kr/ko-reranker', model_kwargs={'max_length': 512},
-    )
+    cross_encoder = cross_encoder_model()
     compressor = CrossEncoderReranker(model=cross_encoder, top_n=K)
     rerank_retriever = ContextualCompressionRetriever(
         base_retriever=hybrid_retriever | first_candidates,
@@ -146,8 +160,19 @@ def build_chain(retriever):
          '정보가 없으면 추측하지 마세요. 답변은 한국어 5문장 이내로 작성하세요.\n\n[검색 문맥]\n{context}'),
         ('human', '{question}'),
     ])
-    chain = (
-        {'context': retriever | format_docs, 'question': RunnablePassthrough()}
-        | prompt | llm() | StrOutputParser()
-    )
+    generation_chain = None
+
+    def answer(question):
+        nonlocal generation_chain
+        used_documents.clear()
+        docs = retriever.invoke(question)
+        context = format_docs(docs)
+        if not used_documents:
+            return ('현재 매물 존재·입주 가능 여부는 제공된 과거 거래 데이터로 확인할 수 없습니다. '
+                    '이번 검색 결과에서 조건에 맞는 과거 참고 사례를 찾지 못했습니다.')
+        if generation_chain is None:
+            generation_chain = prompt | llm() | StrOutputParser()
+        return generation_chain.invoke({'context': context, 'question': question})
+
+    chain = RunnableLambda(answer)
     return chain, used_documents

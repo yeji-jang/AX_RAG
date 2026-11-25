@@ -4,18 +4,7 @@ from run_course import read, save, accepted_transactions
 
 # 아래 값은 Dev 질문에 적힌 지역·유형·예산·면적·층 조건을 사람이 직접 지정한 것이다.
 # 거래 ID·모범 답안·대표 근거의 금액을 필터로 사용하지 않는다.
-FILTERS = {
-    'D01': {'region_dong':'신림동','lease_type':'월세','deposit_manwon':{'$lte':500},
-            'monthly_rent_manwon':{'$lte':45},'area_pyeong':{'$gte':5}},
-    'D02': {'region_dong':'봉천동','housing_type':'오피스텔','lease_type':'월세',
-            'deposit_manwon':{'$lte':1000},'monthly_rent_manwon':{'$lte':70},
-            'build_year':{'$gte':2018},'area_pyeong':{'$gte':5}},
-    'D03': {'region_dong':'남현동','housing_type':'연립다세대','lease_type':'전세',
-            'deposit_manwon':{'$lte':25000},'area_pyeong':{'$gte':8}},
-    'D04': {'region_gu':'관악구','housing_type':'아파트','lease_type':'월세',
-            'deposit_manwon':{'$lte':5000},'monthly_rent_manwon':{'$lte':120},
-            'area_pyeong':{'$gte':15},'floor':{'$gte':5}},
-}
+from metadata_filters import MANUAL_DEV_FILTERS as FILTERS
 
 
 def main():

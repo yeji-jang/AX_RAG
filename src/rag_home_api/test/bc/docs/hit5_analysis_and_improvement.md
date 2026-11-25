@@ -1,5 +1,13 @@
 # Hit@5 저조 원인 분석 및 검색 개선 가이드
 
+> **2026-11-25 후속 작업 구분:** 아래 A/B/C 성능표는 Kiwi BM25·LLM reranker를
+> 사용한 과거 별도 실험 기록이다. 현재 `lesson_pipeline.py`의 `text.split()` BM25·
+> Cross-Encoder 구성 성능으로 간주하지 않는다. D01~D04의 1/4→4/4도 당시
+> 수동 필터 벡터 검색 진단이다. 이후 필터 체인 연결·자연어 조건 변환·정규화를 구현했다.
+> [최종 실행 안내](./filter_evaluation.md) 기준 Dev는 A/B/C 각각 7/8, 기존 Test는 각각
+> 17/17이다. 기존 질문을 분석해 보완한 회귀 평가이며 새 최종 Test는 실행하지 않았다.
+> 같은 원본 교안 코드 재실행, 초기 필터 및 후속 정규화 결과는 비교 HTML에 구분했다.
+
 > 관련 보고서: [embedding_comparison_report.md](./embedding_comparison_report.md)  
 > 관련 실험 코드: [structural_chunk_v0.py](../structural_chunk_v0.py) · [check_metadata_filter.py](../check_metadata_filter.py)
 
