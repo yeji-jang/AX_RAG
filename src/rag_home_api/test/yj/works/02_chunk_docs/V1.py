@@ -110,12 +110,21 @@ def split_and_enrich(
             else:
                 content = text
 
+            # 청크 ID 형식 
+            #   검색 평가 Hit@5에서 청답 청크 상위 5개가 있는지 구분할 수 있는 식별자
+            # 청크 V1과 V2의 중복을 막기 위해 CHUNK_VERSION을 두었음
+            chunk_id = f"{doc.metadata['id']}_ck{CHUNK_VERSION}_c{idx:02d}"
+
             meta = PublicRentalChunkMetadata(
                 **doc.metadata,
+                chunk_id=chunk_id,
                 chunk_index=idx,
                 content_hash=compute_sha256(content),  # prefix 포함 본문 기준
             )
-            enriched.append(Document(page_content=content, metadata=meta.model_dump()))
+            enriched.append(Document(
+                id=chunk_id, 
+                page_content=content, 
+                metadata=meta.model_dump()))
 
     return enriched
 
