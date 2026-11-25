@@ -412,9 +412,12 @@
 청년안심주택_공고문,YOUTH_6379,청년안심주택,청년안심주택 민간임대,[민간임대] 연신내역 루체스테이션 추가모집공고,민간임대,20251127,4,0,4,,https://soco.seoul.go.kr/youth/bbs/BMSR00015/view.do?boardId=6379&menuNo=400008
 청년안심주택_공고문,YOUTH_6378,청년안심주택,청년안심주택 민간임대,[민간임대] 서초역 서초꽃마을 주얼리 추가모집공고,민간임대,20251127,3,0,3,,https://soco.seoul.go.kr/youth/bbs/BMSR00015/view.do?boardId=6378&menuNo=400008
 청년안심주택_공고문,YOUTH_6377,청년안심주택,청년안심주택 민간임대,[민간임대] 양재역 도곡 더써밋타워 추가모집공고,민간임대,20251127,3,0,3,,https://soco.seoul.go.kr/youth/bbs/BMSR00015/view.do?boardId=6377&menuNo=400008
-일반전월세_법령가이드,LAW_HLPA,법제처 국가법령정보센터,일반 전월세 법령,주택임대차보호법,,,42,0,41,"본칙 조문 42개(쪽 대신 조문 단위, 부칙 제외)",https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95
+일반전월세_법령가이드,LAW_HLPA,법제처 국가법령정보센터,일반 전월세 법령,주택임대차보호법,,,41,0,41,"본칙 조문 41개(쪽 대신 조문 단위, 부칙 제외)",https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95
 일반전월세_법령가이드,LAW_HLPA_DECREE,법제처 국가법령정보센터,일반 전월세 법령,주택임대차보호법 시행령,,,36,0,35,"본칙 조문 36개(쪽 대신 조문 단위, 부칙 제외)",https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95%20%EC%8B%9C%ED%96%89%EB%A0%B9
 일반전월세_법령가이드,LAW_REPORT,법제처 국가법령정보센터,일반 전월세 법령,부동산 거래신고 등에 관한 법률,,,36,0,36,"본칙 조문 36개(쪽 대신 조문 단위, 부칙 제외)",https://www.law.go.kr/법령/%EB%B6%80%EB%8F%99%EC%82%B0%20%EA%B1%B0%EB%9E%98%EC%8B%A0%EA%B3%A0%20%EB%93%B1%EC%97%90%20%EA%B4%80%ED%95%9C%20%EB%B2%95%EB%A5%A0
+일반전월세_법령가이드,LAW_REPORT_DECREE,법제처 국가법령정보센터,일반 전월세 법령,부동산 거래신고 등에 관한 법률 시행령,,,2,0,2,"본칙 조문 2개(쪽 대신 조문 단위, 부칙 제외) — 제4조의3·제20조만 사용",https://www.law.go.kr/법령/%EB%B6%80%EB%8F%99%EC%82%B0%20%EA%B1%B0%EB%9E%98%EC%8B%A0%EA%B3%A0%20%EB%93%B1%EC%97%90%20%EA%B4%80%ED%95%9C%20%EB%B2%95%EB%A5%A0%20%EC%8B%9C%ED%96%89%EB%A0%B9
+일반전월세_법령가이드,LAW_CIVIL,법제처 국가법령정보센터,일반 전월세 법령,민법,,,36,0,36,"본칙 조문 36개(쪽 대신 조문 단위, 부칙 제외) — 제618조~제654조만 사용",https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95
+일반전월세_법령가이드,LAW_RESIDENT,법제처 국가법령정보센터,일반 전월세 법령,주민등록법,,,7,0,7,"본칙 조문 7개(쪽 대신 조문 단위, 부칙 제외) — 제10조·제11조·제16조·제16조의2·제18조·제29조의2·제40조만 사용",https://www.law.go.kr/법령/%EC%A3%BC%EB%AF%BC%EB%93%B1%EB%A1%9D%EB%B2%95
 일반전월세_법령가이드,GUIDE_SEOUL_YOUTH_ATOZ,서울특별시,일반 전월세 가이드,"전세 계약, 두렵지 않아요 – 전세사기 예방 AtoZ (2025.10)",,,0,0,0,전자책 뷰어(ebook.seoul.go.kr)라 정적 수집 불가 → Selenium 대상,https://housing.seoul.go.kr/site/main/content/sh05_070200
 일반전월세_법령가이드,GUIDE_STD_CONTRACT,법무부,일반 전월세 가이드,"주택임대차 표준계약서(2023.10.6. 개정, 원본게시용)",,,5,0,5,,https://www.moj.go.kr/bbs/moj/118/575868/artclView.do
 일반전월세_법령가이드,GUIDE_HLPA_COMMENTARY,국토교통부·법무부,일반 전월세 가이드,주택임대차보호법 해설집,,,66,8,66,"선 없는 표 1쪽 OCR(gpt-6-luna, 2026-11-24) 판독 — 모델 판독이라 원문과 다를 수 있음",https://www.molit.go.kr/USR/policyData/m_34681/dtl.jsp?id=4484
