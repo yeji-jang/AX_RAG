@@ -8,7 +8,7 @@ from datetime import datetime
 from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 
-from common import MODELS, RESULTS, eval_sha, load_eval
+from common import MODELS, RESULTS, eval_sha, load_eval, require_dev_api_scope
 from retrieve import CONFIG, Retriever, apply_preset, route
 
 MODEL = "Dongjin-kr/ko-reranker"
@@ -67,6 +67,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
     args = p.parse_args()
+    require_dev_api_scope("ce06a5d5ac03")
     apply_preset("route")
     questions = load_eval("dev")["items"]
     if len(questions) != 10 or sum(q["expected_status"] == "answered" for q in questions) != 8:

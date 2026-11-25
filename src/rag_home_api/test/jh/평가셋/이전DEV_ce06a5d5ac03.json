@@ -1,0 +1,375 @@
+{
+  "version": "inactive-dev-ce06a5d5ac03",
+  "eval_sha": "ce06a5d5ac03",
+  "active": false,
+  "source_commit": "838c454b5edc25d26bfe36d87c02bab701a9f68a",
+  "source_file_hashes": {
+    "법령파트_평가셋.json": "439b67423dc4231a86942594d09e3c90727c329552566e2416f9b489898d2be4",
+    "후보풀_공공임대.json": "f04ea2c052f8381b81689487127eff87689dd53de1a076144d005f9e590a4f42"
+  },
+  "test_items_sha256": "38574b8a4907f181cbb3bbbe00ed16c7bfdd468acf22e1f8440670879683d24f",
+  "score_history": [
+    {
+      "run_id": "dev-rewrite-c-20261125",
+      "C": {
+        "hit5": "7/8",
+        "all_facts": "2/8",
+        "no_evidence": "2/2"
+      },
+      "rewrite_C": {
+        "hit5": "8/8",
+        "all_facts": "2/8",
+        "no_evidence": "2/2"
+      }
+    },
+    {
+      "run_id": "dev-answer-grounding-20261125",
+      "all_facts_before": "2/8",
+      "all_facts_after": "3/8"
+    },
+    {
+      "run_id": "dev-neighbor-c-20261125",
+      "all_evidence_before": "3/8",
+      "all_evidence_after": "3/8",
+      "generation_executed": false
+    }
+  ],
+  "raw_logs": "results/dev_원본로그.jsonl (local full version)",
+  "items": [
+    {
+      "question_id": "JH-DEV-01",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "이사하고 나서 전입신고는 언제까지 해야 하나요?",
+      "key_facts": [
+        "새 거주지에 전입한 날부터 14일 이내",
+        "신거주지 시장·군수·구청장에게 전입신고"
+      ],
+      "allowed_doc_ids": [
+        "LAW_RESIDENT"
+      ],
+      "allowed_row_ids": [
+        "LAW_RESIDENT_본칙_023"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주민등록법 제16조 제1항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_RESIDENT_본칙_023",
+          "quote": "신거주지에 전입한 날부터 14일 이내에 신거주지의 시장ㆍ군수 또는 구청장에게 전입신고(轉入申告)를 하여야 한다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "6단계 작동 확인에서 벡터 검색 상위 5개에 이 조문이 없었음(같은 안내문 반복) — 튜닝 대상",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-02",
+      "split": "dev",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "월세 계약하면 따로 신고해야 하나요?",
+      "key_facts": [
+        "보증금 6천만 원 초과 또는 월 차임 30만 원 초과 계약이 대상",
+        "금액 변동 없이 기간만 연장하는 갱신은 제외",
+        "계약 체결일부터 30일 이내 신고",
+        "임대인·임차인 공동 신고(한쪽이 거부하면 단독 신고 가능)"
+      ],
+      "allowed_doc_ids": [
+        "LAW_REPORT_DECREE",
+        "LAW_REPORT",
+        "GUIDE_STD_CONTRACT"
+      ],
+      "allowed_row_ids": [
+        "LAW_REPORT_DECREE_본칙_006",
+        "LAW_REPORT_본칙_008",
+        "GUIDE_STD_CONTRACT_p004"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "부동산 거래신고법 시행령 제4조의3 제1항 / 부동산 거래신고법 제6조의2 제1항·제3항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_REPORT_DECREE_본칙_006",
+          "quote": "보증금이 6천만원을 초과하거나 월 차임이 30만원을 초과하는 주택 임대차 계약"
+        },
+        {
+          "row_id": "LAW_REPORT_본칙_008",
+          "quote": "임대차 계약의 체결일부터 30일 이내에 주택 소재지를 관할하는 신고관청에 공동으로 신고하여야 한다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "6단계 작동 확인에서 신고 조문이 상위 5개에 없었음 — 튜닝 대상",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-03",
+      "split": "dev",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "이사 나갈 때 원상복구는 어디까지 해야 하나요?",
+      "key_facts": [
+        "원래 상태로 복구해 반환",
+        "시설물 노후화·통상 생기는 파손은 원상복구 의무 아님",
+        "임차인이 수리·변경한 부분은 원칙적으로 철거"
+      ],
+      "allowed_doc_ids": [
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_CASES"
+      ],
+      "allowed_row_ids": [
+        "GUIDE_STD_CONTRACT_p002",
+        "GUIDE_HLPA_COMMENTARY_p011",
+        "GUIDE_SEOUL_CASES_p116",
+        "GUIDE_SEOUL_CASES_p118",
+        "GUIDE_SEOUL_CASES_p119"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차 표준계약서 2쪽 제9조(계약의 종료) / 주택임대차보호법 해설집 11쪽",
+      "evidence_quotes": [
+        {
+          "row_id": "GUIDE_STD_CONTRACT_p002",
+          "quote": "시설물의 노후화나 통상 생길 수 있는 파손 등은 임차인의 원상복구의무에 포함되지 아니한다"
+        },
+        {
+          "row_id": "GUIDE_HLPA_COMMENTARY_p011",
+          "quote": "임차주택을 원래의 상태로 회복하여 반환해야 합니다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "6단계 작동 확인에서 특정 단지 원상복구 조항만 나옴 — 튜닝 대상",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-04",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "자녀 없이 혼자 살고 첫 직장 다닌 지 1년 됐는데, LH 서울삼전·강동천호·수서 행복주택에 청년으로 신청하려면 어떤 자격이 필요한가요?",
+      "key_facts": [
+        "19~39세 청년 또는 사회초년생(소득 있는 업무 종사 기간 총 5년 이내)",
+        "무주택·미혼",
+        "1인 가구 월평균소득 4,576,036원(120%) 이하",
+        "총자산 2억5,100만 원 이하·자동차 4,542만 원 이하",
+        "주택청약종합저축 가입 증명"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p009",
+        "LH_2015122300021098_p001"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 9쪽 3-2. 청년 계층 / 같은 쪽 ④",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p009",
+          "quote": "소득이 있는 업무에 종사한 기간이 총 5년 이내인 자"
+        },
+        {
+          "row_id": "LH_2015122300021098_p009",
+          "quote": "총 자산가액이 25,100만원 이하이고 총 자산 중 자동차가액이 4,542만원 이하"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "④ 자격 확인",
+      "axis": "공공임대",
+      "note": "6단계 작동 확인에서 500자 서랍은 제목뿐인 짧은 청크가 1위 — 튜닝 대상 / 팀장 DEV-02와 같은 근거(9쪽 청년 자격) — 합칠 때 하나만 남길 것",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-05",
+      "split": "dev",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "신독산역 센트레빌 웨스트온은 지하철역에서 몇 분 거리예요?",
+      "key_facts": [
+        "1호선 독산역 1번 출구 도보 10분",
+        "신안산선 신독산역 1번 출구(예정)에서 직선거리 100m 이내"
+      ],
+      "allowed_doc_ids": [
+        "YOUTH_6642",
+        "YOUTH_6584"
+      ],
+      "allowed_row_ids": [
+        "YOUTH_6642_p030",
+        "YOUTH_6584_p030"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "[민간임대] 신독산역 센트레빌 웨스트온 최초모집공고(2026.08.18) 30쪽 / 같은 단지 최초모집공고(2026.07.07) 30쪽",
+      "evidence_quotes": [
+        {
+          "row_id": "YOUTH_6642_p030",
+          "quote": "사업대상지는 지하철 1호선 독산역 1번출구 도보10분거리"
+        },
+        {
+          "row_id": "YOUTH_6584_p030",
+          "quote": "사업대상지는 지하철 1호선 독산역 1번출구 도보10분거리"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "③ 선택지 비교",
+      "axis": "공공임대",
+      "note": "사용자 질문(회사 근처 지하철역)을 단지 기준으로 바꿈 — 회사 기준 거리는 지도 API가 필요해 범위 밖",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-06",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "계약갱신요구권을 써서 재계약할 때 집주인이 월세를 얼마까지 올릴 수 있나요?",
+      "key_facts": [
+        "증액은 약정 차임·보증금의 20분의 1(5%)을 넘지 못함",
+        "계약·증액 후 1년 이내 재증액 불가"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA",
+        "LAW_HLPA_DECREE",
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_015",
+        "LAW_HLPA_DECREE_본칙_009",
+        "GUIDE_STD_CONTRACT_p004",
+        "GUIDE_HLPA_COMMENTARY_p007",
+        "GUIDE_HLPA_COMMENTARY_p018",
+        "GUIDE_HLPA_COMMENTARY_p019",
+        "GUIDE_HLPA_COMMENTARY_p032",
+        "GUIDE_HLPA_COMMENTARY_p033",
+        "GUIDE_HLPA_COMMENTARY_p034",
+        "GUIDE_HLPA_COMMENTARY_p061",
+        "GUIDE_HLPA_COMMENTARY_p069",
+        "GUIDE_SEOUL_HLPA_2020_p032",
+        "GUIDE_SEOUL_HLPA_2020_p034",
+        "GUIDE_SEOUL_HLPA_2020_p038",
+        "GUIDE_SEOUL_HLPA_2020_p044",
+        "GUIDE_SEOUL_HLPA_2020_p049",
+        "GUIDE_SEOUL_HLPA_2020_p050",
+        "GUIDE_SEOUL_HLPA_2020_p080",
+        "GUIDE_SEOUL_HLPA_2020_p084",
+        "GUIDE_SEOUL_HLPA_2020_p107"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제7조 제1항·제2항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_015",
+          "quote": "약정한 차임이나 보증금의 20분의 1의 금액을 초과하지 못한다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-07",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "계약금을 보냈는데 더 좋은 집을 찾았어요. 계약을 취소할 수 있나요?",
+      "key_facts": [
+        "중도금(없으면 잔금) 지급 전까지 해제 가능",
+        "임차인은 계약금 포기",
+        "임대인은 계약금 배액 상환"
+      ],
+      "allowed_doc_ids": [
+        "GUIDE_STD_CONTRACT"
+      ],
+      "allowed_row_ids": [
+        "GUIDE_STD_CONTRACT_p002"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차 표준계약서 2쪽 제5조(계약의 해제)",
+      "evidence_quotes": [
+        {
+          "row_id": "GUIDE_STD_CONTRACT_p002",
+          "quote": "임차인은 계약금을 포기하고 이 계약을 해제할 수 있다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-08",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "원룸 월세 계약할 때 중개수수료는 누가, 언제 내나요?",
+      "key_facts": [
+        "전·월세 중개보수는 임대인·임차인이 각각 부담",
+        "약정 없으면 잔금 지급 완료일에 지급"
+      ],
+      "allowed_doc_ids": [
+        "GUIDE_SEOUL_CASES"
+      ],
+      "allowed_row_ids": [
+        "GUIDE_SEOUL_CASES_p040"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차 상담사례집 40쪽 Q2",
+      "evidence_quotes": [
+        {
+          "row_id": "GUIDE_SEOUL_CASES_p040",
+          "quote": "잔금 지급이 완료되는 날에 지급하면 됩니다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-09",
+      "split": "dev",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "LH수서1 행복주택 주변에 마트나 병원 같은 생활 인프라는 어떻게 돼 있나요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "absence_reason": "해당 공고(LH_2015122300021098) 전체에 마트·병원·공원·상권·편의점·생활권·인프라 설명 없음('학교'는 자격 요건 문맥뿐). 공고는 '현장을 방문해 주변여건을 확인'하라는 안내(p031)만 있음 — 비슷한 말은 있는데 답은 없는 문항 (2026-11-25 확인).",
+      "stage": "③ 선택지 비교",
+      "axis": "공공임대",
+      "note": "사용자 질문(근처 인프라). 임계치 정할 때 '비슷하지만 답 없음' 사례",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-DEV-10",
+      "split": "dev",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "깡통전세인지 판단하려면 전세가율이 몇 퍼센트를 넘으면 위험한가요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "absence_reason": "공유 JSONL 3개에서 '깡통|전세가율|전세가 비율|전세 사기' 0건 (2026-11-25 확인). 전세사기 예방 AtoZ 전자책 미수집.",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "no_evidence"
+    }
+  ]
+}

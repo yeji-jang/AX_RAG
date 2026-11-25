@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 import httpx
 from openai import OpenAI
 
-from common import DOCS, FILES, RESULTS, load_chunks
+from common import DOCS, FILES, RESULTS, load_chunks, require_dev_api_scope
 from rag_home_api.config import settings
 from run_rewrite_c import ANSWER_PROMPT, PUBLIC_HOSTS, generate
 
@@ -41,6 +41,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=["inspect", "compare"])
     args = parser.parse_args()
+    require_dev_api_scope("ce06a5d5ac03")
     records = [json.loads(line) for line in OUTPUT.read_text(encoding="utf-8").splitlines()]
     baseline = [r for r in records if r.get("record_type") == "rewrite_result"
                 and r.get("run_id") == BASE_RUN and r.get("mode") == "C"]

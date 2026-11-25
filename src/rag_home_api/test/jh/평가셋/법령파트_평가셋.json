@@ -1,13 +1,13 @@
 {
-  "part": "법령·가이드(최지훈)",
+  "part": "임대차 관련 법령 DEV(최지훈) 및 기존 TEST",
   "updated": "2026-11-25",
   "format": "팀장(최기혁) dev.json 형식 + eval_category·allowed_row_ids·evidence_quotes",
   "data": "shared/docs v1 + 법령 보강(4,985줄)",
   "rules": [
-    "정답(key_facts)·근거는 공유 JSONL 원문에서 직접 확인해 적음",
-    "allowed_row_ids = 근거 쪽·조문 줄 id. 가격·전환 3문항은 allowed_chunk_ids(500/100·1000/200)를 우선 사용하며 나머지는 원문 줄 기준 잠정 채점. 팀 청킹 확정 후 전체 청크 매핑 필요",
-    "같은 규칙을 그대로 설명하는 가이드·법령 사본 쪽도 허용 근거에 넣음(공고문 속 공공임대 규칙은 제외)",
-    "test는 팀 확정 후 수정 금지. 고칠 때는 커밋 메시지에 무엇을 왜 고쳤는지 남김"
+    "활성 개인 DEV는 이 파일의 10문항(답변 가능 8, 근거 부족 2)만 사용함",
+    "DEV의 허용 근거는 법령 원문과 500/100·1000/200 청크임. 질문이 묻는 내용만 필수 정답으로 두고 적용 조건을 기록함",
+    "이전 DEV는 이전DEV_ce06a5d5ac03.json 및 기존 로그·커밋으로 보존함",
+    "기존 TEST 객체를 유지하며 신규 DEV의 외부 전송 범위 확인 전 모델 호출하지 않음"
   ],
   "items": [
     {
@@ -15,10 +15,9 @@
       "split": "dev",
       "question_type": "direct",
       "expected_status": "answered",
-      "question": "이사하고 나서 전입신고는 언제까지 해야 하나요?",
+      "question": "주민등록법 제16조에 따라 새 임차주택으로 이사한 경우 전입신고는 언제까지 해야 하나요?",
       "key_facts": [
-        "새 거주지에 전입한 날부터 14일 이내",
-        "신거주지 시장·군수·구청장에게 전입신고"
+        "새 거주지에 전입한 날부터 14일 이내"
       ],
       "allowed_doc_ids": [
         "LAW_RESIDENT"
@@ -26,99 +25,170 @@
       "allowed_row_ids": [
         "LAW_RESIDENT_본칙_023"
       ],
-      "allowed_chunk_ids": [],
+      "allowed_chunk_ids": [
+        "LAW_RESIDENT_본칙_023_s500_c01",
+        "LAW_RESIDENT_본칙_023_s1000_c01"
+      ],
       "source_location": "주민등록법 제16조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%EB%AF%BC%EB%93%B1%EB%A1%9D%EB%B2%95",
       "evidence_quotes": [
         {
           "row_id": "LAW_RESIDENT_본칙_023",
-          "quote": "신거주지에 전입한 날부터 14일 이내에 신거주지의 시장ㆍ군수 또는 구청장에게 전입신고(轉入申告)를 하여야 한다"
+          "quote": "제16조(거주지의 이동) ①하나의 세대에 속하는 자의 전원 또는 그 일부가 거주지를 이동하면 제11조나 제12조에 따른 신고의무자가 신거주지에 전입한 날부터 14일 이내에 신거주지의 시장ㆍ군수 또는 구청장에게 전입신고(轉入申告)를 하여야 한다."
         }
       ],
+      "application_conditions": [
+        "새 거주지로 거주지를 이동하는 경우. 기한만 물으므로 신고 기관은 필수 정답에서 제외함"
+      ],
       "absence_reason": "",
-      "stage": "⑥ 계약·입주",
-      "axis": "일반 전월세",
-      "note": "6단계 작동 확인에서 벡터 검색 상위 5개에 이 조문이 없었음(같은 안내문 반복) — 튜닝 대상",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "유지·필수 사실 축소 / 수집 조문 기준",
       "eval_category": "answerable"
     },
     {
       "question_id": "JH-DEV-02",
       "split": "dev",
-      "question_type": "multi_hop_reasoning",
+      "question_type": "direct",
       "expected_status": "answered",
-      "question": "월세 계약하면 따로 신고해야 하나요?",
+      "question": "서울에서 주택 임대차 계약의 신고 대상이 되는 보증금·월세 기준은 무엇이고, 금액 변동 없이 기간만 연장한 갱신도 포함되나요?",
       "key_facts": [
-        "보증금 6천만 원 초과 또는 월 차임 30만 원 초과 계약이 대상",
-        "금액 변동 없이 기간만 연장하는 갱신은 제외",
-        "계약 체결일부터 30일 이내 신고",
-        "임대인·임차인 공동 신고(한쪽이 거부하면 단독 신고 가능)"
+        "보증금 6천만원 초과 또는 월 차임 30만원 초과",
+        "보증금과 차임의 증감 없이 기간만 연장하는 갱신은 신고 대상에서 제외"
       ],
       "allowed_doc_ids": [
-        "LAW_REPORT_DECREE",
-        "LAW_REPORT",
-        "GUIDE_STD_CONTRACT"
+        "LAW_REPORT_DECREE"
       ],
       "allowed_row_ids": [
-        "LAW_REPORT_DECREE_본칙_006",
-        "LAW_REPORT_본칙_008",
-        "GUIDE_STD_CONTRACT_p004"
+        "LAW_REPORT_DECREE_본칙_006"
       ],
-      "allowed_chunk_ids": [],
-      "source_location": "부동산 거래신고법 시행령 제4조의3 제1항 / 부동산 거래신고법 제6조의2 제1항·제3항",
+      "allowed_chunk_ids": [
+        "LAW_REPORT_DECREE_본칙_006_s500_c01",
+        "LAW_REPORT_DECREE_본칙_006_s1000_c01"
+      ],
+      "source_location": "부동산 거래신고 등에 관한 법률 시행령 제4조의3 제1항·제2항",
+      "source_url": "https://www.law.go.kr/법령/%EB%B6%80%EB%8F%99%EC%82%B0%20%EA%B1%B0%EB%9E%98%EC%8B%A0%EA%B3%A0%20%EB%93%B1%EC%97%90%20%EA%B4%80%ED%95%9C%20%EB%B2%95%EB%A5%A0%20%EC%8B%9C%ED%96%89%EB%A0%B9",
       "evidence_quotes": [
         {
           "row_id": "LAW_REPORT_DECREE_본칙_006",
-          "quote": "보증금이 6천만원을 초과하거나 월 차임이 30만원을 초과하는 주택 임대차 계약"
-        },
-        {
-          "row_id": "LAW_REPORT_본칙_008",
-          "quote": "임대차 계약의 체결일부터 30일 이내에 주택 소재지를 관할하는 신고관청에 공동으로 신고하여야 한다"
+          "quote": "제4조의3(주택 임대차 계약의 신고) ① 법 제6조의2제1항 본문에서 “대통령령으로 정하는 금액을 초과하는 임대차 계약”이란 보증금이 6천만원을 초과하거나 월 차임이 30만원을 초과하는 주택 임대차 계약(계약을 갱신하는 경우로서 보증금 및 차임의 증감 없이 임대차 기간만 연장하는 계약은 제외한다)을 말한다."
         }
       ],
+      "application_conditions": [
+        "신고 대상 지역에 속하는 서울의 주택 임대차 계약. 경계는 초과이고 두 금액은 또는 관계임. 신고 기한과 신고 방식은 묻지 않음"
+      ],
       "absence_reason": "",
-      "stage": "⑥ 계약·입주",
-      "axis": "일반 전월세",
-      "note": "6단계 작동 확인에서 신고 조문이 상위 5개에 없었음 — 튜닝 대상",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "유지·질문 범위 명확화 / 수집 조문 기준",
       "eval_category": "answerable"
     },
     {
       "question_id": "JH-DEV-03",
       "split": "dev",
-      "question_type": "multi_hop_reasoning",
+      "question_type": "direct",
       "expected_status": "answered",
-      "question": "이사 나갈 때 원상복구는 어디까지 해야 하나요?",
+      "question": "민법상 임대인은 주택을 인도한 뒤 계약이 존속하는 동안 어떤 상태를 유지해야 하나요?",
       "key_facts": [
-        "원래 상태로 복구해 반환",
-        "시설물 노후화·통상 생기는 파손은 원상복구 의무 아님",
-        "임차인이 수리·변경한 부분은 원칙적으로 철거"
+        "계약 존속 중 임차인이 사용·수익하는 데 필요한 상태를 유지해야 함"
       ],
       "allowed_doc_ids": [
-        "GUIDE_STD_CONTRACT",
-        "GUIDE_HLPA_COMMENTARY",
-        "GUIDE_SEOUL_CASES"
+        "LAW_CIVIL"
       ],
       "allowed_row_ids": [
-        "GUIDE_STD_CONTRACT_p002",
-        "GUIDE_HLPA_COMMENTARY_p011",
-        "GUIDE_SEOUL_CASES_p116",
-        "GUIDE_SEOUL_CASES_p118",
-        "GUIDE_SEOUL_CASES_p119"
+        "LAW_CIVIL_본칙_632"
       ],
-      "allowed_chunk_ids": [],
-      "source_location": "주택임대차 표준계약서 2쪽 제9조(계약의 종료) / 주택임대차보호법 해설집 11쪽",
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_632_s500_c01",
+        "LAW_CIVIL_본칙_632_s1000_c01"
+      ],
+      "source_location": "민법 제623조",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
       "evidence_quotes": [
         {
-          "row_id": "GUIDE_STD_CONTRACT_p002",
-          "quote": "시설물의 노후화나 통상 생길 수 있는 파손 등은 임차인의 원상복구의무에 포함되지 아니한다"
-        },
-        {
-          "row_id": "GUIDE_HLPA_COMMENTARY_p011",
-          "quote": "임차주택을 원래의 상태로 회복하여 반환해야 합니다"
+          "row_id": "LAW_CIVIL_본칙_632",
+          "quote": "제623조(임대인의 의무) 임대인은 목적물을 임차인에게 인도하고 계약존속중 그 사용, 수익에 필요한 상태를 유지하게 할 의무를 부담한다."
         }
       ],
+      "application_conditions": [
+        "임대차가 존속하는 동안의 임대인 의무. 구체적 수리비·배상액은 묻지 않음"
+      ],
       "absence_reason": "",
-      "stage": "⑦ 이직·퇴거",
-      "axis": "일반 전월세",
-      "note": "6단계 작동 확인에서 특정 단지 원상복구 조항만 나옴 — 튜닝 대상",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·임대인 유지 의무 / 수집 조문 기준",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-04",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임차인이 임차물의 보존에 필요한 비용을 지출했다면 민법상 임대인에게 상환을 청구할 수 있나요?",
+      "key_facts": [
+        "임차물 보존에 관한 필요비를 지출한 임차인은 임대인에게 상환을 청구할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_635"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_635_s500_c01",
+        "LAW_CIVIL_본칙_635_s1000_c01"
+      ],
+      "source_location": "민법 제626조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_635",
+          "quote": "제626조(임차인의 상환청구권) ①임차인이 임차물의 보존에 관한 필요비를 지출한 때에는 임대인에 대하여 그 상환을 청구할 수 있다."
+        }
+      ],
+      "application_conditions": [
+        "임차물 보존에 관한 필요비를 지출한 경우. 제2항의 유익비 상환 조건은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·필요비 상환 / 수집 조문 기준",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-05",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임차인 과실 없이 주택 일부가 멸실되어 그 부분을 사용·수익할 수 없다면, 민법상 차임 감액을 청구할 수 있고 감액 기준은 무엇인가요?",
+      "key_facts": [
+        "사용·수익할 수 없는 부분의 비율에 따른 차임 감액을 청구할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_636"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_636_s500_c01",
+        "LAW_CIVIL_본칙_636_s1000_c01"
+      ],
+      "source_location": "민법 제627조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_636",
+          "quote": "제627조(일부멸실 등과 감액청구, 해지권) ①임차물의 일부가 임차인의 과실없이 멸실 기타 사유로 인하여 사용, 수익할 수 없는 때에는 임차인은 그 부분의 비율에 의한 차임의 감액을 청구할 수 있다."
+        }
+      ],
+      "application_conditions": [
+        "임차인의 과실 없는 일부 멸실 등으로 그 부분을 사용·수익할 수 없는 경우. 제2항의 계약 해지는 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·무과실 일부 사용불능 감액 / 수집 조문 기준",
       "eval_category": "answerable"
     },
     {
@@ -126,52 +196,35 @@
       "split": "dev",
       "question_type": "direct",
       "expected_status": "answered",
-      "question": "계약갱신요구권을 써서 재계약할 때 집주인이 월세를 얼마까지 올릴 수 있나요?",
+      "question": "주택임대차보호법 제7조에 따른 월세 증액청구의 법정 상한은 기존 월세의 몇 퍼센트인가요?",
       "key_facts": [
-        "증액은 약정 차임·보증금의 20분의 1(5%)을 넘지 못함",
-        "계약·증액 후 1년 이내 재증액 불가"
+        "기존 월세의 20분의 1인 5%를 초과할 수 없음"
       ],
       "allowed_doc_ids": [
-        "LAW_HLPA",
-        "LAW_HLPA_DECREE",
-        "GUIDE_STD_CONTRACT",
-        "GUIDE_HLPA_COMMENTARY",
-        "GUIDE_SEOUL_HLPA_2020"
+        "LAW_HLPA"
       ],
       "allowed_row_ids": [
-        "LAW_HLPA_본칙_015",
-        "LAW_HLPA_DECREE_본칙_009",
-        "GUIDE_STD_CONTRACT_p004",
-        "GUIDE_HLPA_COMMENTARY_p007",
-        "GUIDE_HLPA_COMMENTARY_p018",
-        "GUIDE_HLPA_COMMENTARY_p019",
-        "GUIDE_HLPA_COMMENTARY_p032",
-        "GUIDE_HLPA_COMMENTARY_p033",
-        "GUIDE_HLPA_COMMENTARY_p034",
-        "GUIDE_HLPA_COMMENTARY_p061",
-        "GUIDE_HLPA_COMMENTARY_p069",
-        "GUIDE_SEOUL_HLPA_2020_p032",
-        "GUIDE_SEOUL_HLPA_2020_p034",
-        "GUIDE_SEOUL_HLPA_2020_p038",
-        "GUIDE_SEOUL_HLPA_2020_p044",
-        "GUIDE_SEOUL_HLPA_2020_p049",
-        "GUIDE_SEOUL_HLPA_2020_p050",
-        "GUIDE_SEOUL_HLPA_2020_p080",
-        "GUIDE_SEOUL_HLPA_2020_p084",
-        "GUIDE_SEOUL_HLPA_2020_p107"
+        "LAW_HLPA_본칙_015"
       ],
-      "allowed_chunk_ids": [],
-      "source_location": "주택임대차보호법 제7조 제1항·제2항",
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_015_s500_c01",
+        "LAW_HLPA_본칙_015_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제7조 제2항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
       "evidence_quotes": [
         {
           "row_id": "LAW_HLPA_본칙_015",
-          "quote": "약정한 차임이나 보증금의 20분의 1의 금액을 초과하지 못한다"
+          "quote": "② 제1항에 따른 증액청구는 약정한 차임이나 보증금의 20분의 1의 금액을 초과하지 못한다. 다만, 특별시ㆍ광역시ㆍ특별자치시ㆍ도 및 특별자치도는 관할 구역 내의 지역별 임대차 시장 여건 등을 고려하여 본문의 범위에서 증액청구의 상한을 조례로 달리 정할 수 있다. <신설 2020. 7. 31.>"
         }
       ],
+      "application_conditions": [
+        "제7조 제1항의 증액청구 요건이 있는 주택 임대차. 지방자치단체는 법정 상한 범위 안에서 조례로 달리 정할 수 있어 항상 5% 인상이 허용된다고 답하지 않음. 재증액 금지 기간은 묻지 않음"
+      ],
       "absence_reason": "",
-      "stage": "⑦ 이직·퇴거",
-      "axis": "일반 전월세",
-      "note": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "유지·증액 상한 조문 범위 명확화 / 수집 조문 기준",
       "eval_category": "answerable"
     },
     {
@@ -179,30 +232,35 @@
       "split": "dev",
       "question_type": "direct",
       "expected_status": "answered",
-      "question": "계약금을 보냈는데 더 좋은 집을 찾았어요. 계약을 취소할 수 있나요?",
+      "question": "임차권등기명령 신청과 그 임차권등기에 든 비용을 임대인에게 청구할 수 있나요?",
       "key_facts": [
-        "중도금(없으면 잔금) 지급 전까지 해제 가능",
-        "임차인은 계약금 포기",
-        "임대인은 계약금 배액 상환"
+        "임차권등기명령 신청과 관련 임차권등기에 든 비용을 임대인에게 청구할 수 있음"
       ],
       "allowed_doc_ids": [
-        "GUIDE_STD_CONTRACT"
+        "LAW_HLPA"
       ],
       "allowed_row_ids": [
-        "GUIDE_STD_CONTRACT_p002"
+        "LAW_HLPA_본칙_005"
       ],
-      "allowed_chunk_ids": [],
-      "source_location": "주택임대차 표준계약서 2쪽 제5조(계약의 해제)",
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_005_s500_c04",
+        "LAW_HLPA_본칙_005_s1000_c02"
+      ],
+      "source_location": "주택임대차보호법 제3조의3 제8항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
       "evidence_quotes": [
         {
-          "row_id": "GUIDE_STD_CONTRACT_p002",
-          "quote": "임차인은 계약금을 포기하고 이 계약을 해제할 수 있다"
+          "row_id": "LAW_HLPA_본칙_005",
+          "quote": "⑧ 임차인은 제1항에 따른 임차권등기명령의 신청과 그에 따른 임차권등기와 관련하여 든 비용을 임대인에게 청구할 수 있다."
         }
       ],
+      "application_conditions": [
+        "제1항의 임차권등기명령 신청 및 그에 따른 등기 관련 비용. 신청 관할·대항력·우선변제권 취득 요건은 묻지 않음"
+      ],
       "absence_reason": "",
-      "stage": "⑥ 계약·입주",
-      "axis": "일반 전월세",
-      "note": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·임차권등기 비용 청구 / 수집 조문 기준",
       "eval_category": "answerable"
     },
     {
@@ -210,47 +268,77 @@
       "split": "dev",
       "question_type": "direct",
       "expected_status": "answered",
-      "question": "원룸 월세 계약할 때 중개수수료는 누가, 언제 내나요?",
+      "question": "주거용으로 임대한 주택의 일부가 주거 외 목적으로 사용되는 경우에도 주택임대차보호법이 적용되나요?",
       "key_facts": [
-        "전·월세 중개보수는 임대인·임차인이 각각 부담",
-        "약정 없으면 잔금 지급 완료일에 지급"
+        "주거용 건물의 일부가 주거 외 목적으로 사용되는 경우에도 주택임대차보호법이 적용됨"
       ],
       "allowed_doc_ids": [
-        "GUIDE_SEOUL_CASES"
+        "LAW_HLPA"
       ],
       "allowed_row_ids": [
-        "GUIDE_SEOUL_CASES_p040"
+        "LAW_HLPA_본칙_002"
       ],
-      "allowed_chunk_ids": [],
-      "source_location": "주택임대차 상담사례집 40쪽 Q2",
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_002_s500_c01",
+        "LAW_HLPA_본칙_002_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제2조",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
       "evidence_quotes": [
         {
-          "row_id": "GUIDE_SEOUL_CASES_p040",
-          "quote": "잔금 지급이 완료되는 날에 지급하면 됩니다"
+          "row_id": "LAW_HLPA_본칙_002",
+          "quote": "제2조(적용 범위) 이 법은 주거용 건물(이하 “주택”이라 한다)의 전부 또는 일부의 임대차에 관하여 적용한다. 그 임차주택(賃借住宅)의 일부가 주거 외의 목적으로 사용되는 경우에도 또한 같다."
         }
       ],
+      "application_conditions": [
+        "주거용 건물의 임대차이며 그 일부만 주거 외 목적으로 사용하는 경우. 전체가 주거 외 용도인 경우까지 확대하지 않음"
+      ],
       "absence_reason": "",
-      "stage": "⑥ 계약·입주",
-      "axis": "일반 전월세",
-      "note": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·법 적용 범위 / 수집 조문 기준",
       "eval_category": "answerable"
     },
     {
-      "question_id": "JH-DEV-10",
+      "question_id": "JH-DEV-09",
       "split": "dev",
       "question_type": "unanswerable",
       "expected_status": "insufficient_evidence",
-      "question": "깡통전세인지 판단하려면 전세가율이 몇 퍼센트를 넘으면 위험한가요?",
+      "question": "민법에 정해진 임대주택 벽지 훼손의 제곱미터당 법정 배상액은 얼마인가요?",
       "key_facts": [],
       "allowed_doc_ids": [],
       "allowed_row_ids": [],
       "allowed_chunk_ids": [],
       "source_location": "",
       "evidence_quotes": [],
-      "absence_reason": "공유 JSONL 3개에서 '깡통|전세가율|전세가 비율|전세 사기' 0건 (2026-11-25 확인). 전세사기 예방 AtoZ 전자책 미수집.",
-      "stage": "⑤ 매물 점검",
-      "axis": "일반 전월세",
-      "note": "",
+      "application_conditions": [
+        "수집 법령 원문으로 필요한 법정 수치를 확정할 수 없는 경우"
+      ],
+      "absence_reason": "수집 민법과 공유 JSONL에는 벽지 훼손의 제곱미터당 법정 단가표가 없음. 벽지와 제곱미터·㎡·단가, 제곱미터·㎡와 배상 조합을 공백 제거 후 3개 공유 JSONL 전체에서 대조해 0건임. 개별 상담사례의 비용을 법정 단가로 일반화하지 않음.",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·수집본 기준 근거 부족",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-DEV-10",
+      "split": "dev",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "부동산 거래신고 등에 관한 법률 시행령 별표 3의 주택 임대차 계약 지연신고 기간별 과태료 세부금액표를 알려주세요.",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "application_conditions": [
+        "수집 법령 원문으로 필요한 법정 수치를 확정할 수 없는 경우"
+      ],
+      "absence_reason": "수집 시행령은 제4조의3과 제20조 두 조문뿐이며 별표 3 본문을 포함하지 않음. 제20조의 별표 참조나 과태료 상한으로 지연기간별 표를 복원할 수 없음. 3개 공유 JSONL에서 지연기간과 신고 지연 과태료 조합을 공백 제거 후 대조해 세부표 부재를 확인함.",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·수집본 기준 근거 부족",
       "eval_category": "no_evidence"
     },
     {
@@ -663,5 +751,8 @@
       "note": "",
       "eval_category": "no_evidence"
     }
-  ]
+  ],
+  "benchmark": "law-dev-v1",
+  "replaces_dev_eval_sha": "ce06a5d5ac03",
+  "dev_external_api_scope": "pending_user_confirmation"
 }

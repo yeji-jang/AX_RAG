@@ -19,6 +19,9 @@ split = sys.argv[1] if len(sys.argv) > 1 else "dev"
 questions = {q["question_id"]: q for q in load_eval(split)["items"]}
 print(f"지금 평가셋({eval_sha()}) 기준")
 for meta, rows in load_groups(RESULTS / f"{split}_원본로그.jsonl"):
+    if split == "dev" and meta["eval_sha"] != eval_sha():
+        print(f"{meta['tag']}: 이전 DEV({meta['eval_sha']}) 기록이므로 현재 DEV로 재채점하지 않음")
+        continue
     tally = defaultdict(lambda: [0, 0])
     for r in rows:
         if r["expected_status"] == "answered":

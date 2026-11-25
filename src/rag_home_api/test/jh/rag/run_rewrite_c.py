@@ -16,7 +16,7 @@ from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
 
 import retrieve
-from common import DOCS, FILES, RESULTS, eval_sha, load_chunks, load_eval
+from common import DOCS, FILES, RESULTS, eval_sha, load_chunks, load_eval, require_dev_api_scope
 from rag_home_api.config import settings
 from run_c import COLLECTION, MODEL, CrossEncoderReranker, HuggingFaceCrossEncoder, evidence_rank
 
@@ -190,6 +190,7 @@ def main():
     parser.add_argument("stage", choices=["prepare", "compare"])
     parser.add_argument("--run-id", required=True)
     args = parser.parse_args()
+    require_dev_api_scope("ce06a5d5ac03")
     questions = load_eval("dev")["items"]
     if len(questions) != 10 or any(q["split"] != "dev" for q in questions):
         raise ValueError("DevOnly")

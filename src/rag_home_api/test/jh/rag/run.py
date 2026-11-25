@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 
-from common import MODELS, RESULTS, eval_sha, load_eval  # noqa: E402
+from common import MODELS, RESULTS, eval_sha, load_eval, require_dev_api_scope  # noqa: E402
 from retrieve import CONFIG, PRESETS, Retriever, apply_preset, route  # noqa: E402
 from score import evidence_rank  # noqa: E402
 
@@ -30,6 +30,9 @@ def main():
     ap.add_argument("--tag", required=True)
     ap.add_argument("--preset", default="tok", choices=list(PRESETS))
     args = ap.parse_args()
+
+    if args.split == "dev":
+        require_dev_api_scope()
 
     apply_preset(args.preset)
     ev = load_eval(args.split)

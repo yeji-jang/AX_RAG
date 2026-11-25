@@ -21,6 +21,8 @@ JH = ROOT / "src" / "rag_home_api" / "test" / "jh"
 DOCS = ROOT / "src" / "rag_home_api" / "shared" / "docs"
 EVAL = JH / "평가셋"
 EVAL_FILES = ["법령파트_평가셋.json", "후보풀_공공임대.json"]
+# 신규 DEV의 외부 전송 범위를 확인한 뒤 해당 해시만 추가함.
+DEV_API_APPROVED_EVALS = frozenset({"ce06a5d5ac03"})
 RESULTS = JH / "results"
 CACHE = JH / "out"  # 깃 제외(.gitignore) — BM25 토큰 캐시
 
@@ -79,3 +81,12 @@ def eval_sha() -> str:
     for name in EVAL_FILES:
         h.update((EVAL / name).read_bytes())
     return h.hexdigest()[:12]
+
+
+def require_dev_api_scope(expected_eval_sha: str | None = None) -> None:
+    """새 DEV의 미승인 전송과 이전 실험의 평가 기준 혼용을 막음."""
+    current = eval_sha()
+    if expected_eval_sha is not None and current != expected_eval_sha:
+        raise ValueError("이전 DEV 전용 실험입니다. 현재 DEV로 재실행하거나 해석하지 마세요.")
+    if current not in DEV_API_APPROVED_EVALS:
+        raise PermissionError("신규 DEV 질문의 외부 API 전송 범위 확인이 필요합니다.")
