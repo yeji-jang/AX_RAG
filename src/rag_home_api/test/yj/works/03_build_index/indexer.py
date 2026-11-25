@@ -42,9 +42,14 @@ COLLECTION = "yj_" + CHUNK_FILE.split("공고문_")[1].removesuffix(".jsonl")
 # → "yj_preV2_chunkV1_cs800_ov100"
 
 #===================================================================
-# 2. 청크 JSONL → Document (id = chunk_id)
+# 2. 청크 JSONL → Document (DB 기본키 id = "{COLLECTION}:{chunk_id}")
 #===================================================================
-def load_chunks(path: Path) -> list[Document]:
+def make_db_id(collection: str, chunk_id: str) -> str:
+    """PGVector 테이블 전체 PK(e.id) 충돌 방지를 위해 컬렉션 이름을 접두어로 붙임"""
+    return f"{collection}:{chunk_id}"
+
+
+def load_chunks(path: Path, collection: str = COLLECTION) -> list[Document]:
     docs: list[Document] = []
     with path.open("r", encoding="utf-8") as f:
         for line in f:
@@ -52,7 +57,8 @@ def load_chunks(path: Path) -> list[Document]:
                 continue
             data = json.loads(line)
             text = data.pop("text")
-            docs.append(Document(id=data["chunk_id"], page_content=text, metadata=data))
+            db_id = make_db_id(collection, data["chunk_id"])
+            docs.append(Document(id=db_id, page_content=text, metadata=data))
     return docs
 
 #===================================================================
@@ -95,6 +101,28 @@ def diff_chunks(docs: list[Document], existing: dict[str, str]) -> dict:
     deleted_ids = [cid for cid in existing if cid not in file_ids]
     return {"new": new, "updated": updated, "unchanged": unchanged, "deleted_ids": deleted_ids}
 
+def migrate_legacy_ids(collection: str) -> int:
+    """기존에 chunk_id만으로 저장된 행이 있으면 재임베딩 없이 '{collection}:{chunk_id}'로 PK만 갱신"""
+    query = """
+        UPDATE langchain_pg_embedding e
+        SET id = c.name || ':' || (e.cmetadata->>'chunk_id')
+        FROM langchain_pg_collection c
+        WHERE e.collection_id = c.uuid
+          AND c.name = %s
+          AND e.id = (e.cmetadata->>'chunk_id')
+    """
+    conn = get_raw_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(query, (collection,))
+        migrated = cur.rowcount
+        conn.commit()
+        return migrated
+    except psycopg.errors.UndefinedTable:
+        return 0
+    finally:
+        conn.close()
+
 
 #===================================================================
 # 5. 적재 (증분 또는 전체 재적재)
@@ -102,6 +130,11 @@ def diff_chunks(docs: list[Document], existing: dict[str, str]) -> dict:
 def index_chunks(docs: list[Document], rebuild: bool = False, allow_delete: bool = True) -> dict:
     # 벡터 스토어를 먼저 만들면 LangChain 테이블이 없을 때 자동으로 생성됨
     store = get_vector_store(COLLECTION, reset=rebuild)
+
+    if not rebuild:
+        migrated = migrate_legacy_ids(COLLECTION)
+        if migrated:
+            logger.info(f"기존 PK 형식 변환 완료 : {migrated:,}건 -> '{COLLECTION}:{{chunk_id}}'")
 
     existing = {} if rebuild else fetch_existing_hashes(COLLECTION)
     diff = diff_chunks(docs, existing)
@@ -143,7 +176,7 @@ def verify(collection: str) -> dict:
     query = """
         SELECT COUNT(*),
                COUNT(*) FILTER (WHERE e.embedding IS NULL),
-               COUNT(*) FILTER (WHERE e.id <> e.cmetadata->>'chunk_id'),
+               COUNT(*) FILTER (WHERE e.id <> (c.name || ':' || (e.cmetadata->>'chunk_id'))),
                MIN(vector_dims(e.embedding))
         FROM langchain_pg_embedding e
         JOIN langchain_pg_collection c ON e.collection_id = c.uuid
