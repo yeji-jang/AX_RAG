@@ -50,9 +50,8 @@ class SampleEvaluationResult(BaseModel):
     status: Literal["answered", "insufficient_evidence", "error"]
     hit_at_5: int | None = Field(default=None, description="답변 가능 문항 Hit@5 (0/1), 근거 없음은 None")
     elapsed_sec: float = Field(description="검색+재정렬+생성 전체 응답 시간(초)")
-    context_precision: float = 0.0
-    context_recall: float = 0.0
-    faithfulness: float = 0.0
-    answer_relevancy: float = 0.0
-    failure_type: str = Field(description="PASS / RETRIEVAL_FAILURE / HALLUCINATION_FAILURE / IRRELEVANT_ANSWER / ERROR")
+    context_precision: float | None = None
+    context_recall: float | None = None
+    faithfulness: float | None = None
+    answer_relevancy: float | None = None
     prescription: str = Field(description="자동 진단된 개선 처방")
