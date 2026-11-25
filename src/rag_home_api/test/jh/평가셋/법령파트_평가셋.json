@@ -6,6 +6,7 @@
   "rules": [
     "정답(key_facts)·근거는 공유 JSONL 원문에서 직접 확인해 적음",
     "allowed_row_ids = 근거 쪽·조문 줄 id. allowed_chunk_ids는 메인 청킹 확정 후 이 줄 id로 채움",
+    "같은 규칙을 그대로 설명하는 가이드·법령 사본 쪽도 허용 근거에 넣음(공고문 속 공공임대 규칙은 제외)",
     "test는 팀 확정 후 수정 금지. 고칠 때는 커밋 메시지에 무엇을 왜 고쳤는지 남김"
   ],
   "items": [
@@ -53,11 +54,13 @@
       ],
       "allowed_doc_ids": [
         "LAW_REPORT_DECREE",
-        "LAW_REPORT"
+        "LAW_REPORT",
+        "GUIDE_STD_CONTRACT"
       ],
       "allowed_row_ids": [
         "LAW_REPORT_DECREE_본칙_006",
-        "LAW_REPORT_본칙_008"
+        "LAW_REPORT_본칙_008",
+        "GUIDE_STD_CONTRACT_p004"
       ],
       "allowed_chunk_ids": [],
       "source_location": "부동산 거래신고법 시행령 제4조의3 제1항 / 부동산 거래신고법 제6조의2 제1항·제3항",
@@ -90,11 +93,15 @@
       ],
       "allowed_doc_ids": [
         "GUIDE_STD_CONTRACT",
-        "GUIDE_HLPA_COMMENTARY"
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_CASES"
       ],
       "allowed_row_ids": [
         "GUIDE_STD_CONTRACT_p002",
-        "GUIDE_HLPA_COMMENTARY_p011"
+        "GUIDE_HLPA_COMMENTARY_p011",
+        "GUIDE_SEOUL_CASES_p116",
+        "GUIDE_SEOUL_CASES_p118",
+        "GUIDE_SEOUL_CASES_p119"
       ],
       "allowed_chunk_ids": [],
       "source_location": "주택임대차 표준계약서 2쪽 제9조(계약의 종료) / 주택임대차보호법 해설집 11쪽",
@@ -125,10 +132,33 @@
         "계약·증액 후 1년 이내 재증액 불가"
       ],
       "allowed_doc_ids": [
-        "LAW_HLPA"
+        "LAW_HLPA",
+        "LAW_HLPA_DECREE",
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
       ],
       "allowed_row_ids": [
-        "LAW_HLPA_본칙_015"
+        "LAW_HLPA_본칙_015",
+        "LAW_HLPA_DECREE_본칙_009",
+        "GUIDE_STD_CONTRACT_p004",
+        "GUIDE_HLPA_COMMENTARY_p007",
+        "GUIDE_HLPA_COMMENTARY_p018",
+        "GUIDE_HLPA_COMMENTARY_p019",
+        "GUIDE_HLPA_COMMENTARY_p032",
+        "GUIDE_HLPA_COMMENTARY_p033",
+        "GUIDE_HLPA_COMMENTARY_p034",
+        "GUIDE_HLPA_COMMENTARY_p061",
+        "GUIDE_HLPA_COMMENTARY_p069",
+        "GUIDE_SEOUL_HLPA_2020_p032",
+        "GUIDE_SEOUL_HLPA_2020_p034",
+        "GUIDE_SEOUL_HLPA_2020_p038",
+        "GUIDE_SEOUL_HLPA_2020_p044",
+        "GUIDE_SEOUL_HLPA_2020_p049",
+        "GUIDE_SEOUL_HLPA_2020_p050",
+        "GUIDE_SEOUL_HLPA_2020_p080",
+        "GUIDE_SEOUL_HLPA_2020_p084",
+        "GUIDE_SEOUL_HLPA_2020_p107"
       ],
       "allowed_chunk_ids": [],
       "source_location": "주택임대차보호법 제7조 제1항·제2항",
@@ -234,10 +264,19 @@
         "임차인은 2년 미만 기간이 유효하다고 주장할 수 있음"
       ],
       "allowed_doc_ids": [
-        "LAW_HLPA"
+        "LAW_HLPA",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
       ],
       "allowed_row_ids": [
-        "LAW_HLPA_본칙_010"
+        "LAW_HLPA_본칙_010",
+        "GUIDE_HLPA_COMMENTARY_p010",
+        "GUIDE_HLPA_COMMENTARY_p027",
+        "GUIDE_HLPA_COMMENTARY_p060",
+        "GUIDE_SEOUL_HLPA_2020_p019",
+        "GUIDE_SEOUL_HLPA_2020_p020",
+        "GUIDE_SEOUL_HLPA_2020_p052",
+        "GUIDE_SEOUL_HLPA_2020_p077"
       ],
       "allowed_chunk_ids": [],
       "source_location": "주택임대차보호법 제4조 제1항",
@@ -266,10 +305,22 @@
         "차임·보증금 증감은 5% 범위"
       ],
       "allowed_doc_ids": [
-        "LAW_HLPA"
+        "LAW_HLPA",
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
       ],
       "allowed_row_ids": [
-        "LAW_HLPA_본칙_014"
+        "LAW_HLPA_본칙_014",
+        "GUIDE_STD_CONTRACT_p004",
+        "GUIDE_HLPA_COMMENTARY_p017",
+        "GUIDE_HLPA_COMMENTARY_p018",
+        "GUIDE_HLPA_COMMENTARY_p022",
+        "GUIDE_HLPA_COMMENTARY_p025",
+        "GUIDE_HLPA_COMMENTARY_p061",
+        "GUIDE_SEOUL_HLPA_2020_p012",
+        "GUIDE_SEOUL_HLPA_2020_p018",
+        "GUIDE_SEOUL_HLPA_2020_p060"
       ],
       "allowed_chunk_ids": [],
       "source_location": "주택임대차보호법 제6조의3 제1항·제2항·제3항",
@@ -296,10 +347,17 @@
         "임대인이 통지 받은 날부터 3개월 후 효력"
       ],
       "allowed_doc_ids": [
-        "LAW_HLPA"
+        "LAW_HLPA",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
       ],
       "allowed_row_ids": [
-        "LAW_HLPA_본칙_013"
+        "LAW_HLPA_본칙_013",
+        "GUIDE_HLPA_COMMENTARY_p027",
+        "GUIDE_HLPA_COMMENTARY_p060",
+        "GUIDE_SEOUL_HLPA_2020_p021",
+        "GUIDE_SEOUL_HLPA_2020_p022",
+        "GUIDE_SEOUL_HLPA_2020_p105"
       ],
       "allowed_chunk_ids": [],
       "source_location": "주택임대차보호법 제6조의2",
@@ -358,11 +416,15 @@
       ],
       "allowed_doc_ids": [
         "LAW_HLPA",
-        "GUIDE_STD_CONTRACT"
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
       ],
       "allowed_row_ids": [
         "LAW_HLPA_본칙_008",
-        "GUIDE_STD_CONTRACT_p001"
+        "GUIDE_STD_CONTRACT_p001",
+        "GUIDE_HLPA_COMMENTARY_p060",
+        "GUIDE_SEOUL_HLPA_2020_p104"
       ],
       "allowed_chunk_ids": [],
       "source_location": "주택임대차보호법 제3조의6 제1항 / 주택임대차 표준계약서 1쪽 확정일자 부여란",
@@ -437,10 +499,16 @@
         "경매·공매 때 후순위권리자보다 우선변제"
       ],
       "allowed_doc_ids": [
-        "LAW_HLPA"
+        "LAW_HLPA",
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_SEOUL_CASES"
       ],
       "allowed_row_ids": [
-        "LAW_HLPA_본칙_004"
+        "LAW_HLPA_본칙_004",
+        "GUIDE_STD_CONTRACT_p004",
+        "GUIDE_SEOUL_CASES_p053",
+        "GUIDE_SEOUL_CASES_p062",
+        "GUIDE_SEOUL_CASES_p063"
       ],
       "allowed_chunk_ids": [],
       "source_location": "주택임대차보호법 제3조의2 제2항",
@@ -466,10 +534,12 @@
         "차임 연체액이 2기 차임액에 이르면 임대인이 해지할 수 있음"
       ],
       "allowed_doc_ids": [
-        "LAW_CIVIL"
+        "LAW_CIVIL",
+        "GUIDE_STD_CONTRACT"
       ],
       "allowed_row_ids": [
-        "LAW_CIVIL_본칙_649"
+        "LAW_CIVIL_본칙_649",
+        "GUIDE_STD_CONTRACT_p002"
       ],
       "allowed_chunk_ids": [],
       "source_location": "민법 제640조",
@@ -496,10 +566,12 @@
         "계약 전 미납국세·지방세 열람 동의로 대신 가능"
       ],
       "allowed_doc_ids": [
-        "LAW_HLPA"
+        "LAW_HLPA",
+        "GUIDE_STD_CONTRACT"
       ],
       "allowed_row_ids": [
-        "LAW_HLPA_본칙_009"
+        "LAW_HLPA_본칙_009",
+        "GUIDE_STD_CONTRACT_p004"
       ],
       "allowed_chunk_ids": [],
       "source_location": "주택임대차보호법 제3조의7 제2호",
@@ -527,10 +599,16 @@
         "임차인이 만료 2개월 전까지 통지하지 않은 경우도 같음"
       ],
       "allowed_doc_ids": [
-        "LAW_HLPA"
+        "LAW_HLPA",
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
       ],
       "allowed_row_ids": [
-        "LAW_HLPA_본칙_012"
+        "LAW_HLPA_본칙_012",
+        "GUIDE_STD_CONTRACT_p004",
+        "GUIDE_HLPA_COMMENTARY_p060",
+        "GUIDE_SEOUL_HLPA_2020_p105"
       ],
       "allowed_chunk_ids": [],
       "source_location": "주택임대차보호법 제6조 제1항·제2항",

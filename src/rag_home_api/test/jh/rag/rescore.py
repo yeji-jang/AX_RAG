@@ -2,7 +2,7 @@
 
 예) uv run python src/rag_home_api/test/jh/rag/rescore.py dev
 평가셋을 고친 효과(채점 기준 변화)와 검색을 고친 효과를 나눠 보기 위함.
-예전 평가셋 버전(eval_v1~v3)으로 채점하려면 커밋 ec09b78에서 꺼내 쓴다.
+예전 평가셋 버전으로 채점하려면 그 버전이 커밋된 시점의 평가셋 파일을 꺼내 쓴다(git log 평가셋/).
 """
 
 import sys
