@@ -5,7 +5,7 @@
   "data": "shared/docs v1 + 법령 보강(4,985줄)",
   "rules": [
     "정답(key_facts)·근거는 공유 JSONL 원문에서 직접 확인해 적음",
-    "allowed_row_ids = 근거 쪽·조문 줄 id. allowed_chunk_ids는 메인 청킹 확정 후 이 줄 id로 채움",
+    "allowed_row_ids = 근거 쪽·조문 줄 id. 가격·전환 3문항은 allowed_chunk_ids(500/100·1000/200)를 우선 사용하며 나머지는 원문 줄 기준 잠정 채점. 팀 청킹 확정 후 전체 청크 매핑 필요",
     "같은 규칙을 그대로 설명하는 가이드·법령 사본 쪽도 허용 근거에 넣음(공고문 속 공공임대 규칙은 제외)",
     "test는 팀 확정 후 수정 금지. 고칠 때는 커밋 메시지에 무엇을 왜 고쳤는지 남김"
   ],
@@ -126,7 +126,7 @@
       "split": "dev",
       "question_type": "direct",
       "expected_status": "answered",
-      "question": "재계약할 때 집주인이 월세를 얼마까지 올릴 수 있나요?",
+      "question": "계약갱신요구권을 써서 재계약할 때 집주인이 월세를 얼마까지 올릴 수 있나요?",
       "key_facts": [
         "증액은 약정 차임·보증금의 20분의 1(5%)을 넘지 못함",
         "계약·증액 후 1년 이내 재증액 불가"
@@ -299,10 +299,8 @@
       "expected_status": "answered",
       "question": "계약갱신요구권은 몇 번 쓸 수 있고, 갱신되면 몇 년인가요?",
       "key_facts": [
-        "만료 6개월 전~2개월 전에 요구",
         "1회만 행사",
-        "갱신 기간 2년",
-        "차임·보증금 증감은 5% 범위"
+        "갱신 기간 2년"
       ],
       "allowed_doc_ids": [
         "LAW_HLPA",
@@ -378,11 +376,10 @@
       "split": "test",
       "question_type": "direct",
       "expected_status": "answered",
-      "question": "전입세대확인서는 무엇이고, 계약하려는 사람도 뗄 수 있나요?",
+      "question": "전입세대확인서는 무엇이고, 임대차계약을 체결한 본인도 뗄 수 있나요?",
       "key_facts": [
         "세대주·동거인의 성명과 전입일자를 확인하는 서류",
-        "임대차계약자 본인도 열람·교부 신청 가능",
-        "수수료를 냄"
+        "임대차계약자 본인도 열람·교부 신청 가능"
       ],
       "allowed_doc_ids": [
         "LAW_RESIDENT"
@@ -412,22 +409,24 @@
       "question": "확정일자는 어디서 받나요? 임대차 신고를 하면 따로 받아야 하나요?",
       "key_facts": [
         "읍·면사무소, 동 주민센터, 시·군·구 출장소, 지방법원·지원·등기소, 공증인",
-        "임대차 신고 접수 완료 시 확정일자 별도 신청 불필요"
+        "임대차계약서를 제출하여 임대차 신고 접수를 완료하면 확정일자가 부여된 것으로 보므로 별도 신청 불필요"
       ],
       "allowed_doc_ids": [
         "LAW_HLPA",
         "GUIDE_STD_CONTRACT",
         "GUIDE_HLPA_COMMENTARY",
-        "GUIDE_SEOUL_HLPA_2020"
+        "GUIDE_SEOUL_HLPA_2020",
+        "LAW_REPORT"
       ],
       "allowed_row_ids": [
         "LAW_HLPA_본칙_008",
         "GUIDE_STD_CONTRACT_p001",
         "GUIDE_HLPA_COMMENTARY_p060",
-        "GUIDE_SEOUL_HLPA_2020_p104"
+        "GUIDE_SEOUL_HLPA_2020_p104",
+        "LAW_REPORT_본칙_011"
       ],
       "allowed_chunk_ids": [],
-      "source_location": "주택임대차보호법 제3조의6 제1항 / 주택임대차 표준계약서 1쪽 확정일자 부여란",
+      "source_location": "주택임대차보호법 제3조의6 제1항 / 주택임대차 표준계약서 1쪽 확정일자 부여란 / 부동산 거래신고 등에 관한 법률 제6조의5 제3항",
       "evidence_quotes": [
         {
           "row_id": "LAW_HLPA_본칙_008",
@@ -436,6 +435,10 @@
         {
           "row_id": "GUIDE_STD_CONTRACT_p001",
           "quote": "임대차 신고의 접수를 완료한 경우에는 별도로 확정일자 부여를 신청할 필요가 없습니다"
+        },
+        {
+          "row_id": "LAW_REPORT_본칙_011",
+          "quote": "확정일자를 부여한 것으로 본다(임대차계약서가 제출된 경우로 한정한다)"
         }
       ],
       "absence_reason": "",

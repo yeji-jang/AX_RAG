@@ -19,6 +19,7 @@ sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 
 from common import MODELS, RESULTS, eval_sha, load_eval  # noqa: E402
 from retrieve import CONFIG, PRESETS, Retriever, apply_preset, route  # noqa: E402
+from score import evidence_rank  # noqa: E402
 
 
 def main():
@@ -61,11 +62,11 @@ def run_one(ret: Retriever, mode: str, q: dict, args) -> dict:
         row["route"] = route(q["question"])  # law = 법령·가이드만, all = 전체
         hits = ret.search(mode, q["question"])  # 나누기는 검색기 안의 RunnableBranch가 함
         row["retrieved"] = hits
-        allowed = set(q.get("allowed_row_ids") or [])
-        if allowed:
-            ranks = [i + 1 for i, h in enumerate(hits) if h["row_id"] in allowed]
-            row["hit5"] = bool(ranks)
-            row["first_hit_rank"] = ranks[0] if ranks else None
+        row["evidence_unit"] = "chunk" if q.get("allowed_chunk_ids") else "row"
+        if q["expected_status"] == "answered":
+            rank = evidence_rank(hits, q)
+            row["hit5"] = rank is not None
+            row["first_hit_rank"] = rank
     except Exception as e:  # noqa: BLE001 — 검색 오류는 따로 기록
         row |= {"status": "error", "error": repr(e)[:300]}
     row["latency_sec"] = round(time.time() - t0, 2)

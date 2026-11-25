@@ -13,15 +13,19 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.stdout.reconfigure(encoding="utf-8")
 
 from common import RESULTS, eval_sha, load_eval  # noqa: E402
-from score import load_groups  # noqa: E402
+from score import evidence_rank, load_groups  # noqa: E402
 
 split = sys.argv[1] if len(sys.argv) > 1 else "dev"
-allowed = {q["question_id"]: set(q["allowed_row_ids"]) for q in load_eval(split)["items"]}
+questions = {q["question_id"]: q for q in load_eval(split)["items"]}
 print(f"지금 평가셋({eval_sha()}) 기준")
 for meta, rows in load_groups(RESULTS / f"{split}_원본로그.jsonl"):
     tally = defaultdict(lambda: [0, 0])
     for r in rows:
         if r["expected_status"] == "answered":
-            tally[r["mode"]][0] += any(h["row_id"] in allowed[r["question_id"]] for h in r["retrieved"])
+            tally[r["mode"]][0] += evidence_rank(r.get("retrieved", []), questions[r["question_id"]]) is not None
             tally[r["mode"]][1] += 1
     print(f"{meta['tag']:22} (실행 당시 평가셋 {meta['eval_sha']})", {m: f"{a}/{b}" for m, (a, b) in tally.items()})
+    changed = sorted({r["question_id"] for r in rows
+                      if r.get("question") != questions[r["question_id"]]["question"]})
+    if changed:
+        print("질문 문구가 달라 이전 질문 결과로만 해석할 문항:", ", ".join(changed))
