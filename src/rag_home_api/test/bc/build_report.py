@@ -132,10 +132,10 @@ def main():
     <section><h2>근거 없음 3문항의 실제 응답</h2>{table(['ID','구성','응답'],none_rows)}<p class="muted">이 9개 응답은 RAGAS 참고 근거 문항 평균에 넣지 않았습니다. 관리비·역 도보시간·반려동물·현재 매물 상태는 제공 데이터에 없으므로 사실을 추정하지 않았는지 별도로 교차 검토해야 합니다. 팀원의 정답 충족·근거 적합·정보 부족 대응 최종 채점은 남아 있습니다.</p></section>
     <section id="cases"><h2>기존 20문항의 A/B/C 원본 응답 60건</h2><div class="filters"><button data-filter="all" class="active">전체</button><button data-filter="A">A</button><button data-filter="B">B</button><button data-filter="C">C</button></div>{''.join(cases)}</section>
     <section><h2>실행·보존 정보</h2><p>현재 남아 있는 기존 코드·질문 파일 {len(existing_preserved)}개의 SHA-256이 보존 기록과 일치함을 확인했습니다. 기존 측정 원본은 이 폴더의 <code>results/</code>에 보관했습니다. 이번 수정은 교안 보고서를 업데이트한 것이며, 현재 경로에 없는 이전 SDK HTML은 복원하지 않았습니다.</p>
-    <h3>앞으로 개선할 때 사용할 Dev 실행 명령</h3><pre>.venv/bin/python src/rag_home_api/test/bc/course_run/run_course.py --stage dev
-.venv/bin/python src/rag_home_api/test/bc/course_run/run_course.py --stage dev-ragas
-.venv/bin/python src/rag_home_api/test/bc/course_run/check_metadata_filter.py
-.venv/bin/python src/rag_home_api/test/bc/course_run/build_report.py</pre>
+    <h3>앞으로 개선할 때 사용할 Dev 실행 명령</h3><pre>.venv/bin/python src/rag_home_api/test/bc/run_course.py --stage dev
+.venv/bin/python src/rag_home_api/test/bc/run_course.py --stage dev-ragas
+.venv/bin/python src/rag_home_api/test/bc/check_metadata_filter.py
+.venv/bin/python src/rag_home_api/test/bc/build_report.py</pre>
     <p class="muted">이번 수정에서는 위 Dev 실험을 새로 실행하지 않았습니다. 향후 실행하면 Dev 10문항×A/B/C 30건과 별도 Dev RAGAS 파일에 저장됩니다. 기존 abc/ragas 단계는 과거 20문항 실험 재현용입니다. 새 T21~T40은 자동 실행 단계에 연결하지 않았으므로, 설정 고정 후 별도 최종 평가 실행을 준비해야 합니다.</p>
     <details><summary>고정 실행 설정</summary><pre>{esc(json.dumps(config,ensure_ascii=False,indent=2))}</pre></details>
     <p class="muted">기존 20문항 실험은 course_20261125_v2_draft를 고정해 수행한 기록입니다. 새 평가셋은 course_20261125_v3_holdout_draft로 분리했으며 RAG 파이프라인을 실행하지 않았습니다. 팀 교차 검토 후 문항·근거를 바꾸면 새 버전으로 고정해야 합니다. 수동 필터 Dev 진단은 기존 20문항 점수와 분리했습니다. 향후 Dev에서 정한 설정을 고정한 뒤 새 Test를 평가하고, 결과를 보고 고친 추가 실험은 별도로 남깁니다. 기존 교안 재실행에서는 본문 재임베딩 요금은 추가되지 않았으며 질의 임베딩·생성·RAGAS 호출에는 API 요금이 발생했습니다. 당시 실제 토큰 사용량은 별도로 수집하지 않아 정확한 추가 청구액은 제시하지 않았습니다.</p></section>
