@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 
 from common import MODELS, RESULTS, eval_sha, load_eval  # noqa: E402
-from retrieve import CONFIG, Retriever  # noqa: E402
+from retrieve import CONFIG, Retriever, route  # noqa: E402
 
 
 def main():
@@ -54,7 +54,8 @@ def run_one(ret: Retriever, mode: str, q: dict, args) -> dict:
            "query_used": q["question"], "status": "retrieval_only"}
     t0 = time.time()
     try:
-        hits = ret.search(mode, q["question"])
+        row["route"] = route(q["question"])  # law = 법령·가이드만, all = 전체
+        hits = ret.search(mode, q["question"], row["route"])
         row["retrieved"] = hits
         allowed = set(q.get("allowed_row_ids") or [])
         if allowed:
