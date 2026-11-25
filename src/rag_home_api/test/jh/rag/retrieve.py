@@ -4,6 +4,8 @@ A: 벡터 검색만 (PGVector 코사인 거리, 상위 5)
 B: BM25(kiwipiepy 형태소) + 벡터 → RRF로 합쳐 상위 5
 """
 
+import hashlib
+import json
 import pickle
 import re
 from difflib import SequenceMatcher
@@ -21,7 +23,10 @@ CONFIG = {
     "vector_candidates": 20,  # RRF에 넣을 벡터 후보 수
     "bm25_candidates": 20,  # RRF에 넣을 BM25 후보 수
     "rrf_k": 60,  # RRF 상수: 점수 = Σ 1/(rrf_k + 순위)
-    "bm25_pos": ["NNG", "NNP", "NR", "SN", "SL", "SH", "XR", "VV", "VA"],  # BM25에 쓰는 품사
+    # BM25에 쓰는 품사. r1-route까지는 동사·형용사(VV·VA)도 썼음
+    # r1-tok: 하다·되다·있다 같은 일반 동사·형용사를 빼고 명사·숫자·외국어·한자·어근만 + 흔한 일반 명사 제외
+    "bm25_pos": ["NNG", "NNP", "NR", "SN", "SL", "SH", "XR"],
+    "bm25_stopwords": ["때", "경우", "얼마", "몇", "사항", "해당", "등", "것", "수", "후"],
     "dedupe": "chunk_id",  # 중복 제거 기준
     # r1: 여러 공고에 거의 같은 안내문이 반복돼 상위를 독차지 → 공백 뺀 글자 유사도 0.9 이상이면 먼저 나온 하나만 남김
     "near_dup_ratio": 0.9,
@@ -46,8 +51,12 @@ def route(question: str) -> str:
 _kiwi = Kiwi()
 
 
+def _keep(tok) -> bool:
+    return tok.tag in CONFIG["bm25_pos"] and tok.form not in CONFIG.get("bm25_stopwords", [])
+
+
 def tokenize(text: str) -> list[str]:
-    return [t.form for t in _kiwi.tokenize(text) if t.tag in CONFIG["bm25_pos"]]
+    return [t.form for t in _kiwi.tokenize(text) if _keep(t)]
 
 
 class Retriever:
@@ -62,11 +71,11 @@ class Retriever:
 
     def _tokens(self) -> list[list[str]]:
         CACHE.mkdir(exist_ok=True)
-        path = CACHE / f"bm25_tokens_{self.collection}_{len(self.chunks)}.pkl"
+        rule = hashlib.sha256(json.dumps([CONFIG["bm25_pos"], CONFIG.get("bm25_stopwords", [])]).encode()).hexdigest()[:8]
+        path = CACHE / f"bm25_tokens_{self.collection}_{len(self.chunks)}_{rule}.pkl"  # 단어 규칙이 바뀌면 캐시도 따로
         if path.exists():
             return pickle.loads(path.read_bytes())
-        toks = [[t.form for t in sent if t.tag in CONFIG["bm25_pos"]]
-                for sent in _kiwi.tokenize([c.page_content for c in self.chunks])]
+        toks = [[t.form for t in sent if _keep(t)] for sent in _kiwi.tokenize([c.page_content for c in self.chunks])]
         path.write_bytes(pickle.dumps(toks))
         return toks
 
