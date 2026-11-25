@@ -1,12 +1,29 @@
 import psycopg
 from langchain_core.embeddings import Embeddings
+from langchain_core.language_models import BaseChatModel
 from langchain_core.vectorstores import VectorStore
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_postgres import PGVector
 from langchain_postgres.vectorstores import DistanceStrategy
 from pydantic import SecretStr
 
 from rag_home_api.config import settings
+
+
+# temperature=1(기본값)만 허용하는 최신/추론 모델 접두사 (gpt-6-luna 포함)
+_FIXED_TEMP_PREFIXES = ("gpt-5", "gpt-6", "o1", "o3", "o4")
+
+
+def get_llm(for_rerank: bool = False, temperature: float | None = None) -> BaseChatModel:
+    """팀 공통 LLM 팩토리 (답변 생성 · 평가셋 초안 · Reranker · RAGAS Judge 공용)."""
+    model_name = settings.rerank_model if for_rerank else settings.llm_model
+    kwargs: dict = {
+        "model": model_name,
+        "api_key": SecretStr(settings.openai_api_key),
+    }
+    if temperature is not None and not model_name.startswith(_FIXED_TEMP_PREFIXES):
+        kwargs["temperature"] = temperature
+    return ChatOpenAI(**kwargs)
 
 
 def get_embeddings() -> Embeddings:

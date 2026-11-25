@@ -71,7 +71,16 @@ def _match_filters(meta: dict, filters: dict | None) -> bool:
     """vector_retriever._build_pg_filter와 동일한 필터 조건을 BM25에도 적용한다."""
     if not filters:
         return True
-    for key in ("doc_type", "district", "source", "category"):
+    for key in (
+        "doc_type",
+        "district",
+        "dong",
+        "housing_type",
+        "lease_type",
+        "area_band",
+        "source",
+        "category",
+    ):
         if filters.get(key) and meta.get(key) != filters[key]:
             return False
     if filters.get("max_deposit_krw") is not None:
@@ -89,9 +98,11 @@ def search_bm25(
     query: str,
     top_k: int = 12,
     filters: dict | None = None,
+    collection_name: str | None = None,
 ) -> list[dict]:
     """rank_bm25 + Kiwi 토크나이저로 키워드 매칭 상위 청크를 검색한다."""
-    docs, bm25 = _load_corpus_cached(settings.collection_name, settings.index_version)
+    target_collection = collection_name or settings.collection_name
+    docs, bm25 = _load_corpus_cached(target_collection, settings.index_version)
     if not docs or bm25 is None:
         return []
 
