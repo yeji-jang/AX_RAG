@@ -1,0 +1,343 @@
+{
+  "part": "공공임대·청년안심 후보(다른 파트 참고용)",
+  "updated": "2026-11-25",
+  "format": "팀장(최기혁) dev.json 형식 + eval_category·allowed_row_ids·evidence_quotes",
+  "data": "shared/docs v1 + 법령 보강(4,985줄)",
+  "rules": [
+    "정답(key_facts)·근거는 공유 JSONL 원문에서 직접 확인해 적음",
+    "allowed_row_ids = 근거 쪽·조문 줄 id. allowed_chunk_ids는 메인 청킹 확정 후 이 줄 id로 채움",
+    "test는 팀 확정 후 수정 금지. 고칠 때는 커밋 메시지에 무엇을 왜 고쳤는지 남김"
+  ],
+  "items": [
+    {
+      "question_id": "JH-DEV-04",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "첫 직장 다닌 지 1년 됐는데, LH 서울삼전·강동천호·수서 행복주택에 청년으로 신청할 수 있나요?",
+      "key_facts": [
+        "19~39세 청년 또는 사회초년생(소득 있는 업무 종사 기간 총 5년 이내)",
+        "무주택·미혼",
+        "1인 가구 월평균소득 4,576,036원(120%) 이하",
+        "총자산 2억5,100만 원 이하·자동차 4,542만 원 이하",
+        "주택청약종합저축 가입 증명"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p009"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 9쪽 3-2. 청년 계층 / 같은 쪽 ④",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p009",
+          "quote": "소득이 있는 업무에 종사한 기간이 총 5년 이내인 자"
+        },
+        {
+          "row_id": "LH_2015122300021098_p009",
+          "quote": "총 자산가액이 25,100만원 이하이고 총 자산 중 자동차가액이 4,542만원 이하"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "④ 자격 확인",
+      "axis": "공공임대",
+      "note": "6단계 작동 확인에서 500자 서랍은 제목뿐인 짧은 청크가 1위 — 튜닝 대상 / 팀장 DEV-02와 같은 근거(9쪽 청년 자격) — 합칠 때 하나만 남길 것",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-05",
+      "split": "dev",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "신독산역 센트레빌 웨스트온은 지하철역에서 몇 분 거리예요?",
+      "key_facts": [
+        "1호선 독산역 1번 출구 도보 10분",
+        "신안산선 신독산역 1번 출구(예정)에서 직선거리 100m 이내"
+      ],
+      "allowed_doc_ids": [
+        "YOUTH_6642",
+        "YOUTH_6584"
+      ],
+      "allowed_row_ids": [
+        "YOUTH_6642_p030",
+        "YOUTH_6584_p030"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "[민간임대] 신독산역 센트레빌 웨스트온 최초모집공고(2026.08.18) 30쪽 / 같은 단지 최초모집공고(2026.07.07) 30쪽",
+      "evidence_quotes": [
+        {
+          "row_id": "YOUTH_6642_p030",
+          "quote": "사업대상지는 지하철 1호선 독산역 1번출구 도보10분거리"
+        },
+        {
+          "row_id": "YOUTH_6584_p030",
+          "quote": "사업대상지는 지하철 1호선 독산역 1번출구 도보10분거리"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "③ 선택지 비교",
+      "axis": "공공임대",
+      "note": "사용자 질문(회사 근처 지하철역)을 단지 기준으로 바꿈 — 회사 기준 거리는 지도 API가 필요해 범위 밖",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-09",
+      "split": "dev",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "LH수서1 행복주택 주변에 마트나 병원 같은 생활 인프라는 어떻게 돼 있나요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "absence_reason": "해당 공고(LH_2015122300021098) 전체에 마트·병원·공원·상권·편의점·생활권·인프라 설명 없음('학교'는 자격 요건 문맥뿐). 공고는 '현장을 방문해 주변여건을 확인'하라는 안내(p031)만 있음 — 비슷한 말은 있는데 답은 없는 문항 (2026-11-25 확인).",
+      "stage": "③ 선택지 비교",
+      "axis": "공공임대",
+      "note": "사용자 질문(근처 인프라). 임계치 정할 때 '비슷하지만 답 없음' 사례",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-TEST-04",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "LH수서1 행복주택 14A형 청년 계층의 임대보증금과 월 임대료는 얼마인가요?",
+      "key_facts": [
+        "임대보증금 52,200천 원(5,220만 원)",
+        "월 임대료 182,700원"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p003"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 3쪽 임대조건표(원본 대조 완료 쪽)",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p003",
+          "quote": "| LH 수서1 | 14A | 청년 | 420 | 10 | 100 | 14.69 | 8.3190 | 10.3948 | 33.4038 | 52,200 | 2,610 | 49,590 | 182,700 |"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "② 예산",
+      "axis": "공공임대",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-06",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "영등포구청역 포레나당산 청년안심주택 추가모집의 신청 자격은 무엇인가요?",
+      "key_facts": [
+        "모집공고일 기준 만 19~39세",
+        "신청자·입주 예정 세대원 전원 무주택",
+        "자동차 기준가액 4,542만 원 이내",
+        "청약자·계약자·입주자 동일인"
+      ],
+      "allowed_doc_ids": [
+        "YOUTH_6711"
+      ],
+      "allowed_row_ids": [
+        "YOUTH_6711_p003"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "[민간임대] 영등포구청역 포레나당산 추가모집공고 3쪽 / 같은 쪽",
+      "evidence_quotes": [
+        {
+          "row_id": "YOUTH_6711_p003",
+          "quote": "임차인 모집공고일 기준 만 19세 이상 39세 이하여야 합니다"
+        },
+        {
+          "row_id": "YOUTH_6711_p003",
+          "quote": "모든 계층의 신청자 및 입주 예정 세대원 전부는 무주택 요건을 충족해야 합니다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "④ 자격 확인",
+      "axis": "공공임대",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-09",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "LH 서울삼전·강동천호·수서 행복주택 예비입주자 모집은 어떻게 신청하나요? 현장 접수도 되나요?",
+      "key_facts": [
+        "LH청약플러스 홈페이지 또는 모바일로 신청",
+        "현장 접수 불가"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p002"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 2쪽",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p002",
+          "quote": "LH청약플러스 홈페이지(https://apply.lh.or.kr) 또는 모바일(LH청약 플러스)로 받습니다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "④ 자격 확인",
+      "axis": "공공임대",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-10",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "대흥역 리마크빌 마포 청년안심주택 단지 안에는 어떤 편의시설이 있나요?",
+      "key_facts": [
+        "지상 1·2층 입주민 편의시설: 입주민 회의실, 북카페, 체력단련실, 멀티룸, 코인세탁실",
+        "지상 1층 근린생활시설"
+      ],
+      "allowed_doc_ids": [
+        "YOUTH_6678"
+      ],
+      "allowed_row_ids": [
+        "YOUTH_6678_p015"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "[민간임대] 대흥역 리마크빌 마포 최초모집공고(2026.09.22) 15쪽",
+      "evidence_quotes": [
+        {
+          "row_id": "YOUTH_6678_p015",
+          "quote": "지상1층, 2층에는 입주민 편의시설(입주민 회의실, 북카페, 체력단련실, 멀티룸, 코인세탁실) 등이 계획되며"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "③ 선택지 비교",
+      "axis": "공공임대",
+      "note": "사용자 질문(인프라)에서 나온 단지 안 시설 문항",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-14",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "직장 다니는 청년이 강동천호 행복주택 36B형에 들어가면 보증금이랑 월세가 얼마예요?",
+      "key_facts": [
+        "청년(소득有) 임대보증금 108,360천 원(1억836만 원)",
+        "월 임대료 406,350원"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p003"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 3쪽 임대조건표(원본 대조 완료 쪽)",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p003",
+          "quote": "| 강동 천호 | 36B | 청년 (소득有) | 7 | 0 | 10 | 36.33 | 29.8705 | 33.5441 | 99.7446 | 108,360 | 5,418 | 102,942 | 406,350 |"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "② 예산",
+      "axis": "공공임대",
+      "note": "사용자 질문(월세·보증금)을 단지·조건 기준으로 바꿈 — 지역 평균 시세는 실거래가 데이터 영역이라 문서 평가에서 제외",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-16",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "LH 서울삼전 행복주택은 구축이에요, 신축이에요?",
+      "key_facts": [
+        "최초 입주 2015년 8월"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p001"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 1쪽 건설위치 표",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p001",
+          "quote": "| 서울삼전 | 서울특별시 송파구 백제고분로 32길 40-5(삼전동 170-27) | 40호 | '15.08 |"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "③ 선택지 비교",
+      "axis": "공공임대",
+      "note": "사용자 질문(구축/신축). 정답은 '최초 입주 시기' 사실로 채점 — 구축·신축 판단 표현은 보조",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-17",
+      "split": "test",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "행복주택 수서1 14A형에서 보증금을 더 내고 월세를 줄일 수 있나요?",
+      "key_facts": [
+        "보증금↔월 임대료 전환은 임차인 선택",
+        "보증금 100만 원 단위",
+        "최대 21,000천 원 증액 시 보증금 73,200천 원·월 77,700원"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p005",
+        "LH_2015122300021098_p003"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 5쪽 / 같은 공고 3쪽 임대조건표(원본 대조 완료 쪽)",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p005",
+          "quote": "임차인의 선택사항으로서 임대보증금 100만원 단위로 전환 가능합니다"
+        },
+        {
+          "row_id": "LH_2015122300021098_p003",
+          "quote": "(+)21,000 | 73,200 | 77,700"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "② 예산",
+      "axis": "공공임대",
+      "note": "",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-19",
+      "split": "test",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "2027년 상반기 SH 행복주택 모집 공고는 언제 나오나요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "absence_reason": "'2027 … 행복주택|모집 공고' 0건 — 수집 범위(공고일 2025-11~2026-11)에 앞으로의 공고 일정 없음 (2026-11-25 확인).",
+      "stage": "③ 선택지 비교",
+      "axis": "공공임대",
+      "note": "",
+      "eval_category": "no_evidence"
+    }
+  ]
+}

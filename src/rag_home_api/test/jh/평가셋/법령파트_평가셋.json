@@ -1,0 +1,586 @@
+{
+  "part": "법령·가이드(최지훈)",
+  "updated": "2026-11-25",
+  "format": "팀장(최기혁) dev.json 형식 + eval_category·allowed_row_ids·evidence_quotes",
+  "data": "shared/docs v1 + 법령 보강(4,985줄)",
+  "rules": [
+    "정답(key_facts)·근거는 공유 JSONL 원문에서 직접 확인해 적음",
+    "allowed_row_ids = 근거 쪽·조문 줄 id. allowed_chunk_ids는 메인 청킹 확정 후 이 줄 id로 채움",
+    "test는 팀 확정 후 수정 금지. 고칠 때는 커밋 메시지에 무엇을 왜 고쳤는지 남김"
+  ],
+  "items": [
+    {
+      "question_id": "JH-DEV-01",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "이사하고 나서 전입신고는 언제까지 해야 하나요?",
+      "key_facts": [
+        "새 거주지에 전입한 날부터 14일 이내",
+        "신거주지 시장·군수·구청장에게 전입신고"
+      ],
+      "allowed_doc_ids": [
+        "LAW_RESIDENT"
+      ],
+      "allowed_row_ids": [
+        "LAW_RESIDENT_본칙_023"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주민등록법 제16조 제1항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_RESIDENT_본칙_023",
+          "quote": "신거주지에 전입한 날부터 14일 이내에 신거주지의 시장ㆍ군수 또는 구청장에게 전입신고(轉入申告)를 하여야 한다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "6단계 작동 확인에서 벡터 검색 상위 5개에 이 조문이 없었음(같은 안내문 반복) — 튜닝 대상",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-02",
+      "split": "dev",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "월세 계약하면 따로 신고해야 하나요?",
+      "key_facts": [
+        "보증금 6천만 원 초과 또는 월 차임 30만 원 초과 계약이 대상",
+        "금액 변동 없이 기간만 연장하는 갱신은 제외",
+        "계약 체결일부터 30일 이내 신고",
+        "임대인·임차인 공동 신고(한쪽이 거부하면 단독 신고 가능)"
+      ],
+      "allowed_doc_ids": [
+        "LAW_REPORT_DECREE",
+        "LAW_REPORT"
+      ],
+      "allowed_row_ids": [
+        "LAW_REPORT_DECREE_본칙_006",
+        "LAW_REPORT_본칙_008"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "부동산 거래신고법 시행령 제4조의3 제1항 / 부동산 거래신고법 제6조의2 제1항·제3항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_REPORT_DECREE_본칙_006",
+          "quote": "보증금이 6천만원을 초과하거나 월 차임이 30만원을 초과하는 주택 임대차 계약"
+        },
+        {
+          "row_id": "LAW_REPORT_본칙_008",
+          "quote": "임대차 계약의 체결일부터 30일 이내에 주택 소재지를 관할하는 신고관청에 공동으로 신고하여야 한다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "6단계 작동 확인에서 신고 조문이 상위 5개에 없었음 — 튜닝 대상",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-03",
+      "split": "dev",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "이사 나갈 때 원상복구는 어디까지 해야 하나요?",
+      "key_facts": [
+        "원래 상태로 복구해 반환",
+        "시설물 노후화·통상 생기는 파손은 원상복구 의무 아님",
+        "임차인이 수리·변경한 부분은 원칙적으로 철거"
+      ],
+      "allowed_doc_ids": [
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_HLPA_COMMENTARY"
+      ],
+      "allowed_row_ids": [
+        "GUIDE_STD_CONTRACT_p002",
+        "GUIDE_HLPA_COMMENTARY_p011"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차 표준계약서 2쪽 제9조(계약의 종료) / 주택임대차보호법 해설집 11쪽",
+      "evidence_quotes": [
+        {
+          "row_id": "GUIDE_STD_CONTRACT_p002",
+          "quote": "시설물의 노후화나 통상 생길 수 있는 파손 등은 임차인의 원상복구의무에 포함되지 아니한다"
+        },
+        {
+          "row_id": "GUIDE_HLPA_COMMENTARY_p011",
+          "quote": "임차주택을 원래의 상태로 회복하여 반환해야 합니다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "6단계 작동 확인에서 특정 단지 원상복구 조항만 나옴 — 튜닝 대상",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-06",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "재계약할 때 집주인이 월세를 얼마까지 올릴 수 있나요?",
+      "key_facts": [
+        "증액은 약정 차임·보증금의 20분의 1(5%)을 넘지 못함",
+        "계약·증액 후 1년 이내 재증액 불가"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_015"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제7조 제1항·제2항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_015",
+          "quote": "약정한 차임이나 보증금의 20분의 1의 금액을 초과하지 못한다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-07",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "계약금을 보냈는데 더 좋은 집을 찾았어요. 계약을 취소할 수 있나요?",
+      "key_facts": [
+        "중도금(없으면 잔금) 지급 전까지 해제 가능",
+        "임차인은 계약금 포기",
+        "임대인은 계약금 배액 상환"
+      ],
+      "allowed_doc_ids": [
+        "GUIDE_STD_CONTRACT"
+      ],
+      "allowed_row_ids": [
+        "GUIDE_STD_CONTRACT_p002"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차 표준계약서 2쪽 제5조(계약의 해제)",
+      "evidence_quotes": [
+        {
+          "row_id": "GUIDE_STD_CONTRACT_p002",
+          "quote": "임차인은 계약금을 포기하고 이 계약을 해제할 수 있다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-08",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "원룸 월세 계약할 때 중개수수료는 누가, 언제 내나요?",
+      "key_facts": [
+        "전·월세 중개보수는 임대인·임차인이 각각 부담",
+        "약정 없으면 잔금 지급 완료일에 지급"
+      ],
+      "allowed_doc_ids": [
+        "GUIDE_SEOUL_CASES"
+      ],
+      "allowed_row_ids": [
+        "GUIDE_SEOUL_CASES_p040"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차 상담사례집 40쪽 Q2",
+      "evidence_quotes": [
+        {
+          "row_id": "GUIDE_SEOUL_CASES_p040",
+          "quote": "잔금 지급이 완료되는 날에 지급하면 됩니다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-10",
+      "split": "dev",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "깡통전세인지 판단하려면 전세가율이 몇 퍼센트를 넘으면 위험한가요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "absence_reason": "공유 JSONL 3개에서 '깡통|전세가율|전세가 비율|전세 사기' 0건 (2026-11-25 확인). 전세사기 예방 AtoZ 전자책 미수집.",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-TEST-01",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임대차 기간을 2년 미만으로 정하면 그 기간은 어떻게 되나요?",
+      "key_facts": [
+        "2년 미만으로 정한 임대차는 2년으로 봄",
+        "임차인은 2년 미만 기간이 유효하다고 주장할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_010"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제4조 제1항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_010",
+          "quote": "기간을 정하지 아니하거나 2년 미만으로 정한 임대차는 그 기간을 2년으로 본다. 다만, 임차인은 2년 미만으로 정한 기간이 유효함을 주장할 수 있다."
+        }
+      ],
+      "absence_reason": "",
+      "stage": "① 이사 결정",
+      "axis": "일반 전월세",
+      "note": "팀장 DEV-03(제3조 대항력)과 근거가 겹쳐 교체, 직접 검색 10개를 맞추려고 법 용어로 물음",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-02",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "계약갱신요구권은 몇 번 쓸 수 있고, 갱신되면 몇 년인가요?",
+      "key_facts": [
+        "만료 6개월 전~2개월 전에 요구",
+        "1회만 행사",
+        "갱신 기간 2년",
+        "차임·보증금 증감은 5% 범위"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_014"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제6조의3 제1항·제2항·제3항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_014",
+          "quote": "임차인은 제1항에 따른 계약갱신요구권을 1회에 한하여 행사할 수 있다. 이 경우 갱신되는 임대차의 존속기간은 2년으로 본다."
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-03",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "묵시적 갱신이 된 상태에서 계약을 해지하면 언제 효력이 생기나요?",
+      "key_facts": [
+        "임차인은 언제든 해지 통지 가능",
+        "임대인이 통지 받은 날부터 3개월 후 효력"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_013"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제6조의2",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_013",
+          "quote": "임대인이 그 통지를 받은 날부터 3개월이 지나면 그 효력이 발생한다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-05",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "전입세대확인서는 무엇이고, 계약하려는 사람도 뗄 수 있나요?",
+      "key_facts": [
+        "세대주·동거인의 성명과 전입일자를 확인하는 서류",
+        "임대차계약자 본인도 열람·교부 신청 가능",
+        "수수료를 냄"
+      ],
+      "allowed_doc_ids": [
+        "LAW_RESIDENT"
+      ],
+      "allowed_row_ids": [
+        "LAW_RESIDENT_본칙_043"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주민등록법 제29조의2 제1항·제2항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_RESIDENT_본칙_043",
+          "quote": "세대주와 주민등록표 상의 동거인(말소 또는 거주불명 등록된 사람을 포함한다)의 성명과 전입일자를 확인할 수 있는 서류"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-07",
+      "split": "test",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "확정일자는 어디서 받나요? 임대차 신고를 하면 따로 받아야 하나요?",
+      "key_facts": [
+        "읍·면사무소, 동 주민센터, 시·군·구 출장소, 지방법원·지원·등기소, 공증인",
+        "임대차 신고 접수 완료 시 확정일자 별도 신청 불필요"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA",
+        "GUIDE_STD_CONTRACT"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_008",
+        "GUIDE_STD_CONTRACT_p001"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제3조의6 제1항 / 주택임대차 표준계약서 1쪽 확정일자 부여란",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_008",
+          "quote": "주택 소재지의 읍ㆍ면사무소, 동 주민센터"
+        },
+        {
+          "row_id": "GUIDE_STD_CONTRACT_p001",
+          "quote": "임대차 신고의 접수를 완료한 경우에는 별도로 확정일자 부여를 신청할 필요가 없습니다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-08",
+      "split": "test",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "서울에서 보증금 중 일정액을 최우선으로 돌려받을 수 있는 소액임차인 기준은 얼마인가요?",
+      "key_facts": [
+        "서울 보증금 1억6,500만 원 이하 임차인",
+        "5,500만 원까지 최우선변제",
+        "주택가액 2분의 1 한도",
+        "경매신청 등기 전 대항요건 필요"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA_DECREE",
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_DECREE_본칙_012",
+        "LAW_HLPA_DECREE_본칙_011",
+        "LAW_HLPA_본칙_017"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 시행령 제11조 제1호 / 주택임대차보호법 시행령 제10조 제1항 제1호 / 주택임대차보호법 제8조 제1항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_DECREE_본칙_012",
+          "quote": "서울특별시: 1억6천500만원"
+        },
+        {
+          "row_id": "LAW_HLPA_DECREE_본칙_011",
+          "quote": "서울특별시: 5천500만원"
+        },
+        {
+          "row_id": "LAW_HLPA_본칙_017",
+          "quote": "임차인은 주택에 대한 경매신청의 등기 전에 제3조제1항의 요건을 갖추어야 한다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-11",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "혹시 집이 경매로 넘어가도 보증금을 먼저 받으려면 입주할 때 뭘 해 둬야 하나요?",
+      "key_facts": [
+        "주택 인도 + 전입신고(대항요건)",
+        "계약서에 확정일자",
+        "경매·공매 때 후순위권리자보다 우선변제"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_004"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제3조의2 제2항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_004",
+          "quote": "후순위권리자(後順位權利者)나 그 밖의 채권자보다 우선하여 보증금을 변제(辨濟)받을 권리가 있다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-12",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "월세를 두 달 밀리면 집주인이 바로 나가라고 할 수 있나요?",
+      "key_facts": [
+        "차임 연체액이 2기 차임액에 이르면 임대인이 해지할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_649"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "민법 제640조",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_649",
+          "quote": "임차인의 차임연체액이 2기의 차임액에 달하는 때에는 임대인은 계약을 해지할 수 있다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-13",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "집주인한테 밀린 세금이 있는지 계약 전에 확인할 수 있나요?",
+      "key_facts": [
+        "임대인은 국세·지방세 납세증명서를 제시해야 함",
+        "계약 전 미납국세·지방세 열람 동의로 대신 가능"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_009"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제3조의7 제2호",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_009",
+          "quote": "「국세징수법」 제108조에 따른 납세증명서 및 「지방세징수법」 제5조제2항에 따른 납세증명서"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-15",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "계약 만료 전에 집주인이 아무 말도 안 하면 계약은 어떻게 되나요?",
+      "key_facts": [
+        "만료 6~2개월 전 갱신 거절·조건 변경 통지가 없으면 같은 조건으로 갱신(묵시적 갱신)",
+        "존속기간 2년",
+        "임차인이 만료 2개월 전까지 통지하지 않은 경우도 같음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_012"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제6조 제1항·제2항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_012",
+          "quote": "그 기간이 끝난 때에 전 임대차와 동일한 조건으로 다시 임대차한 것으로 본다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-18",
+      "split": "test",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "전세사기 피해자로 인정받으면 어떤 지원을 받을 수 있나요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "absence_reason": "'전세사기 피해|피해자 결정|피해주택' 일치 2건은 모두 '일본군위안부 피해자 결정통지서'(영구임대 서류) — 전세사기 피해 지원 내용 없음 (2026-11-25 확인).",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-TEST-20",
+      "split": "test",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "계약한 집의 등기부 내용이 바뀌면 알림을 받을 수 있는 서비스가 있나요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "absence_reason": "'변동 알림|등기 … 알림|부동산 알림|안심전세' 0건 (2026-11-25 확인).",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "no_evidence"
+    }
+  ]
+}
