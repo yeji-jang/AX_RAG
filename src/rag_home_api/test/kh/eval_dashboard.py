@@ -33,6 +33,29 @@ KH_DIR = Path(__file__).resolve().parent
 TEST_ROOT_DIR = KH_DIR.parent  # src/rag_home_api/test/ (팀원별 폴더 탐색 루트)
 KH_RESULTS_DIR = KH_DIR / "results"
 KH_EVAL_DIR = KH_DIR / "eval"
+REPO_DATA_DIR = KH_DIR.parents[3] / "data"
+
+ALL_PRESET_NAMES: list[str] = [
+    "A_vector",
+    "B_rrf_55_45",
+    "B_rrf_70_30",
+    "B_rrf_80_20",
+    "B_rrf_70_30_filter",
+    "C_rrf_70_30_filter_rerank",
+    "B_filter_rewrite",
+    "C_filter_rewrite",
+    "C_filter_rewrite_cache",
+    "C_filter_rewrite_hyde",
+    "B_chunk_v3_pyeong",
+    "B_emb_3large",
+    "B_emb_kure_v1",
+]
+
+SAFE_COLLECTION_PREP_CMDS: dict[str, str] = {
+    "B_chunk_v3_pyeong": "uv run python -m rag_home_api.test.kh.rent_chunker --collection housing_rent_kh_v3_pyeong --include-pyeong --recent-examples 5",
+    "B_emb_3large": "uv run python -m rag_home_api.test.kh.rent_chunker --collection housing_rent_kh_3large --embedding-model text-embedding-3-large",
+    "B_emb_kure_v1": "uv run python -m rag_home_api.test.kh.rent_chunker --collection housing_rent_kh_kure_v1 --embedding-model nlpai-lab/KURE-v1",
+}
 
 # ==================== 유비쿼터스 언어 (영어/전문용어 + 한글 병기) 마스터 사전 ====================
 RAGAS_LABELS: dict[str, str] = {
@@ -60,6 +83,22 @@ RETRIEVAL_LABELS: dict[str, str] = {
     "lat_median": "Latency Median (지연 중앙값, ms)",
     "lat_p95": "Latency p95 (지연 p95, ms)",
     "lat_avg": "Latency Avg (지연 평균, ms)",
+}
+
+# 튜토리얼/코치 모드용 툴팁(?) 사전 — 모든 KPI·컨트롤에 마우스 올리면 즉시 쉬운 풀이 표시
+METRIC_HELP: dict[str, str] = {
+    "recall@12": "도서관 12권 바구니(k=12)에 실제 정답 청크를 안 빠뜨리고 담은 비율 = TP/(TP+FN). 1.0 미만이면 2단계 검색 누락(FN) → B(Hybrid)·Query Rewrite가 우선!",
+    "hit@5": "최종 Top-5 안에 정답 청크가 단 1개라도 포함됐는지. 주의: 복합 2구 비교 문항은 1개만 찾아도 1이 되므로 반드시 Recall@12와 함께 보세요!",
+    "top1": "맨 1등(#1) 청크가 바로 정답인 비율. 3단계 순위 실패(가중치·경량 필터·검색 C) 개선 효과를 가장 정직하게 보여줍니다.",
+    "mrr@5": "평균 역순위 = 1 / 첫 정답 순위 (1등=1.0, 2등=0.5, 4등=0.25, 미발견=0). 단일 정답 문항에서는 RAGAS Context Precision과 사실상 같습니다.",
+    "cp": "RAGAS 근거 정밀도: 정답에 필요한 청크가 Top-5의 맨 위에 올라왔는지(순위 가중). 낮으면 3단계 순위 실패 → 가중치·필터·검색 C!",
+    "cr": "RAGAS 근거 재현율: 모범정답을 쓰는 데 필요한 재료가 Top-5에 빠짐없이 들어있는지. 낮으면 2단계 검색 누락(FN) → B·Query Rewrite!",
+    "f": "RAGAS 충실도(환각 검사): 생성 답변이 검색된 문서 내용에만 근거했는지. 낮으면 4단계 생성 프롬프트 점검!",
+    "ar": "RAGAS 답변 관련성: 답변만 보고 원래 질문을 역추론해 유사도 측정! 첫 문장 주어 생략·TMI·거절(noncommittal=1→0.0) 시 급락합니다.",
+    "citation_rate": "답변 가능(answered) 문항 중 근거 출처 파일명을 빠짐없이 표기한 비율.",
+    "refusal": "Track B (과거 실거래 범위 밖: 현재 공실·옵션·반경 500m) 질문을 환각 없이 정직 거절한 비율 (목표 ≥ 70%, RAGAS에서 분리 채점).",
+    "scope_notice": "거절 답변에서 '체결 완료된 과거 실거래 통계 기준' 한계를 사용자에게 명확히 안내한 비율.",
+    "lat_median": "검색 지연 중앙값(ms). 첫 호출 BM25 로드(~13초) 착시를 제외한 실제 체감 속도입니다.",
 }
 
 DOMAIN_META: dict[str, tuple[str, float]] = {
@@ -350,6 +389,10 @@ def _describe_preset_diff(prev_step: dict | None, cur_step: dict) -> tuple[int, 
         diffs.append(f"HyDE: {'ON' if pp.get('use_hyde') else 'OFF'} → {'ON' if cp.get('use_hyde') else 'OFF'}")
     if pp.get("candidate_k") != cp.get("candidate_k") and pp.get("candidate_k") and cp.get("candidate_k"):
         diffs.append(f"candidate_k: {pp.get('candidate_k')} → {cp.get('candidate_k')}")
+    if pp.get("collection_name") != cp.get("collection_name") and (pp.get("collection_name") or cp.get("collection_name")):
+        diffs.append(f"청킹 컬렉션: {pp.get('collection_name', 'housing_rent_kh')} → {cp.get('collection_name', 'housing_rent_kh')}")
+    if pp.get("embedding_model") != cp.get("embedding_model") and (pp.get("embedding_model") or cp.get("embedding_model")):
+        diffs.append(f"임베딩 모델: {pp.get('embedding_model', 'text-embedding-3-small')} → {cp.get('embedding_model', 'text-embedding-3-small')}")
 
     if not diffs:
         if cur_step.get("run_note"):
@@ -903,32 +946,621 @@ def _render_confusion_matrix_2x2(
         st.info(f"**TN (True Negative · 잘 걸러낸 무관 청크)**\n### `{cm['tn']:,}`\n무관한 청크를 안 뽑음 *(N이 커서 Accuracy 대신 Precision·Recall 사용)*")
 
 
+# ==================== 6단계 수치 기준 의사결정 네비게이터 엔진 ====================
+def _load_manifest_chunk_ids(collection_name: str) -> set[str] | None:
+    """컬렉션에 대응하는 청크 매니페스트(.jsonl)에서 chunk_id 집합을 로드한다."""
+    candidates = [REPO_DATA_DIR / f"chunk_manifest_{collection_name}.jsonl"]
+    if collection_name == "housing_rent_kh":
+        candidates.append(REPO_DATA_DIR / "chunk_manifest_rent.jsonl")
+    for path in candidates:
+        if not path.exists():
+            continue
+        ids: set[str] = set()
+        try:
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                row = json.loads(line)
+                cid = row.get("chunk_id")
+                if cid:
+                    ids.add(str(cid))
+            return ids
+        except Exception:
+            return None
+    return None
+
+
+def _count_top1_mismatch_axes(mode_logs: list[dict]) -> dict[str, list[str]]:
+    """답변 가능 문항의 Top-1 오답 불일치 축(구/동/유형/계약/면적)별 문항 ID를 집계한다."""
+    axes: dict[str, list[str]] = {"구": [], "동": [], "유형": [], "계약": [], "면적": []}
+    for r in mode_logs:
+        if r.get("expected_status") != "answered":
+            continue
+        top5 = r.get("top5_ids") or []
+        if not top5:
+            continue
+        targets = _parse_reference_targets(r)
+        ok, tags = _explain_chunk_mismatch(top5[0], targets)
+        if ok:
+            continue
+        qid = str(r.get("question_id", ""))
+        for tag in tags:
+            for axis in axes:
+                if f"{axis} 불일치" in tag and qid not in axes[axis]:
+                    axes[axis].append(qid)
+    return axes
+
+
+def _evaluate_decision_matrix(
+    after_s: dict | None,
+    before_s: dict | None,
+    target: float,
+) -> list[dict[str, Any]]:
+    """현재 선택 실험(after_s)을 6단계 수치 기준 매트릭스(Trigger → 근거 → Action → 헛수고 금지)로 실시간 판정한다."""
+    mode_logs = after_s["mode_logs"] if after_s else []
+    item_ragas = after_s["item_ragas"] if after_s else {}
+    preset = (after_s.get("preset") or {}) if after_s else {}
+    pmode = preset.get("pipeline_mode") or (("A_vector" if after_s["mode"] == "A_vector" else "B_hybrid") if after_s else "A_vector")
+    bw = float(preset.get("bm25_weight", 0.55) or 0.55)
+    col_name = after_s["collection"] if after_s else "housing_rent_kh"
+
+    # 1단계: 청킹/색인 매니페스트 정합성 검사
+    manifest_ids = _load_manifest_chunk_ids(col_name)
+    missing_manifest_qids: list[str] = []
+    if after_s and manifest_ids is not None:
+        for r in mode_logs:
+            if r.get("expected_status") != "answered":
+                continue
+            for cid in r.get("allowed_chunk_ids") or []:
+                if cid not in manifest_ids:
+                    missing_manifest_qids.append(f"{r.get('question_id')}({cid})")
+                    break
+
+    # 2~4단계 문항 분류 + Top-1 불일치 축 분석
+    s2_qids: list[str] = []
+    s2_partial_qids: list[str] = []
+    s2_zero_qids: list[str] = []
+    s3_qids: list[str] = []
+    s4_ar_qids: list[str] = []
+    s4_f_qids: list[str] = []
+    over_refusal_qids: list[str] = []
+
+    for r in mode_logs:
+        qid = str(r.get("question_id", ""))
+        if r.get("expected_status") != "answered":
+            continue
+        if r.get("actual_status") == "insufficient_evidence":
+            over_refusal_qids.append(qid)
+        rg = item_ragas.get(qid) or {}
+        stg, _ = _classify_funnel_stage(r, rg, target)
+        m12 = r.get("metrics_k12") or {}
+        rec12 = float(m12.get("recall@12", 0.0) or 0.0)
+        if stg == 2:
+            s2_qids.append(qid)
+            if rec12 > 0:
+                s2_partial_qids.append(qid)
+            else:
+                s2_zero_qids.append(qid)
+        elif stg == 3:
+            s3_qids.append(qid)
+        elif stg == 4:
+            if rg.get("answer_relevancy") is not None and float(rg["answer_relevancy"]) < target:
+                s4_ar_qids.append(qid)
+            if rg.get("faithfulness") is not None and float(rg["faithfulness"]) < 0.80:
+                s4_f_qids.append(qid)
+
+    mismatch_axes = _count_top1_mismatch_axes(mode_logs)
+    cond_mismatch_qids = sorted(set(mismatch_axes["면적"] + mismatch_axes["계약"] + mismatch_axes["유형"]))
+    dong_mismatch_qids = mismatch_axes["동"]
+
+    # 1단계 판정
+    if after_s is None:
+        s1_status, s1_reading = "idle", "실행 전 — 먼저 A_vector 기준선 실행 후 확인"
+    elif missing_manifest_qids:
+        s1_status = "triggered"
+        s1_reading = f"매니페스트 누락 {len(missing_manifest_qids)}건: {', '.join(missing_manifest_qids[:3])}"
+    else:
+        cnt_txt = f"{len(manifest_ids):,}청크 확인" if manifest_ids is not None else "매니페스트 파일 미탐지"
+        s1_status = "ok"
+        s1_reading = f"컬렉션 `{col_name}` 정답 ID 누락 0건 ({cnt_txt})"
+
+    # 2단계 판정 (FN(k=12) > 0 or Recall@12 < 0.90 or CR < target)
+    if after_s is None:
+        s2_status, s2_reading, s2_preset, s2_note = "idle", "실행 전 — A_vector 실행 후 k=12 FN 확인", "A_vector", "S1: A_vector 기준선 측정"
+    else:
+        fn12 = int(after_s["cm12"]["fn"])
+        rec12 = float(after_s["recall12"])
+        cr_v = float(after_s["cr"])
+        s2_trig = fn12 > 0 or rec12 < 0.90 or cr_v < target
+        s2_status = "triggered" if s2_trig else "ok"
+        s2_reading = (
+            f"FN(k=12)={fn12}건 · Recall@12={rec12:.3f} (기준 ≥0.90) · CR={cr_v:.3f} (기준 ≥{target:.2f})"
+            + (f" · 누락: {', '.join(s2_qids)}" if s2_qids else " · 누락 0건")
+        )
+        if pmode == "A_vector":
+            s2_preset, s2_note = "B_rrf_55_45", "가설: Vector 단독 FN 해소를 위해 BM25+RRF(55:45) 결합"
+        elif s2_partial_qids or not preset.get("use_rewrite"):
+            s2_preset = "C_filter_rewrite" if pmode == "C_hybrid_rerank" else "B_filter_rewrite"
+            s2_note = f"가설: 2구·구어체 FN({', '.join(s2_qids) or '부분누락'}) 해소를 위해 Query Rewrite ON"
+        else:
+            s2_preset, s2_note = "C_filter_rewrite_hyde", "가설: Rewrite 이후 잔여 의미 불일치 FN을 HyDE(Vector전용)로 보강"
+
+    # 3단계 판정 (FN(k=12)==0인데 Top1 < 0.70 or MRR@5 < 0.65 or CP < target)
+    if after_s is None:
+        s3_status, s3_reading, s3_preset, s3_note = "idle", "실행 전 — 2단계 FN 해소 후 확인", "B_rrf_70_30", "가설: RRF 가중치 70:30 스윕"
+    else:
+        fn12 = int(after_s["cm12"]["fn"])
+        fn5 = int(after_s["cm5"]["fn"])
+        top1_r = float(after_s["top1_rate"])
+        mrr5 = float(after_s["mrr5"])
+        cp_v = float(after_s["cp"])
+        s3_has_issue = top1_r < 0.70 or mrr5 < 0.65 or cp_v < target or len(s3_qids) > 0
+        s3_status = ("triggered" if (s3_has_issue and fn12 == 0) else ("watch" if s3_has_issue else "ok"))
+        axis_summary = []
+        if cond_mismatch_qids:
+            axis_summary.append(f"[면적/계약/유형 불일치 {len(cond_mismatch_qids)}건: {', '.join(cond_mismatch_qids)}]")
+        if dong_mismatch_qids:
+            axis_summary.append(f"[동 불일치 {len(dong_mismatch_qids)}건: {', '.join(dong_mismatch_qids)}]")
+        s3_reading = (
+            f"Top1={after_s['top1_str']}({top1_r*100:.0f}%, 기준 ≥70%) · MRR@5={mrr5:.3f}(≥0.65) · CP={cp_v:.3f}(≥{target:.2f}) · FN(k5)={fn5}"
+            + (f" · {' '.join(axis_summary)}" if axis_summary else "")
+        )
+        if pmode == "A_vector":
+            s3_preset, s3_note = "B_rrf_55_45", "가설: A→B(55:45) 전환으로 검색 순위 기준선 확보"
+        elif bw < 0.68 and not preset.get("use_metadata_filter"):
+            s3_preset, s3_note = "B_rrf_70_30", "가설: BM25 가중치 55:45→70:30 상향으로 지명·조건 Top-1 개선"
+        elif not preset.get("use_metadata_filter"):
+            s3_preset, s3_note = "B_rrf_70_30_filter", "가설: 경량 메타데이터 필터 ON으로 면적/계약/유형 불일치 제거"
+        else:
+            s3_preset, s3_note = "C_rrf_70_30_filter_rerank", f"가설: 검색 C(Re-ranking)로 잔여 동 불일치({', '.join(dong_mismatch_qids) or '순위밀림'}) Top-1 구제"
+
+    # 4단계 판정 (first_rank==1인데 AR < target 또는 F < 0.80)
+    if after_s is None:
+        s4_status, s4_reading = "idle", "실행 전 — 검색 1등 확보 후 생성 지표 점검"
+    else:
+        ar_v, f_v = float(after_s["ar"]), float(after_s["f"])
+        s4_trig = len(s4_ar_qids) > 0 or len(s4_f_qids) > 0 or ar_v < target or f_v < 0.80
+        s4_status = "triggered" if (len(s4_ar_qids) > 0 or len(s4_f_qids) > 0) else ("watch" if s4_trig else "ok")
+        s4_reading = (
+            f"AR={ar_v:.3f}(기준 ≥{target:.2f}) · F={f_v:.3f}(기준 ≥0.80)"
+            + (f" · 1등인데 AR미달: {', '.join(s4_ar_qids)}" if s4_ar_qids else "")
+            + (f" · F<0.80: {', '.join(s4_f_qids)}" if s4_f_qids else "")
+        )
+
+    # Track B 거절 / 과거 데이터 판정
+    if after_s is None:
+        s5_status, s5_reading = "idle", "실행 전 — 거절 전용 트랙 별도 측정"
+    else:
+        ref_r = float(after_s["refusal_rate"])
+        scope_r = _parse_ratio(after_s["scope_notice_str"])
+        scope_ok = True if scope_r is None else (scope_r >= 0.999)
+        s5_trig = ref_r < 0.70 or (not scope_ok) or len(over_refusal_qids) > 0
+        s5_status = "triggered" if s5_trig else "ok"
+        s5_reading = (
+            f"Refusal={after_s['refusal_str']}({ref_r*100:.0f}%, 기준 ≥70%) · 과거 고지={after_s['scope_notice_str']}(기준 100%)"
+            + (f" · 과잉거절: {', '.join(over_refusal_qids)}" if over_refusal_qids else " · 과잉거절 0건")
+        )
+
+    # 운영 · 캐시 / 지연 판정
+    if after_s is None:
+        s6_status, s6_reading = "idle", "실행 전 — 품질 확보 후 Cache ON 검증"
+    else:
+        p95_v = float(after_s["lat_p95"])
+        med_v = float(after_s["lat_median"])
+        use_cache = bool(preset.get("use_cache"))
+        if p95_v > 5000.0:
+            s6_status = "triggered"
+        elif not use_cache:
+            s6_status = "watch"
+        else:
+            s6_status = "ok"
+        s6_reading = f"p95={p95_v:.1f}ms (경고 >5,000ms) · 중앙값={med_v:.1f}ms · Cache={'ON' if use_cache else 'OFF(미검증)'}"
+
+    badge_map = {"triggered": "🔴 발동", "watch": "🟡 점검", "ok": "🟢 양호", "idle": "⚪ 대기"}
+
+    rows: list[dict[str, Any]] = [
+        {
+            "stage_id": "S1_chunk",
+            "priority": 1,
+            "stage_title": "1단계 · 청킹 / 색인 (책 자체의 품질)",
+            "short_title": "1단계 · 청킹/색인",
+            "status": s1_status,
+            "status_badge": badge_map[s1_status],
+            "trigger_rule": (
+                "• 정답 문항 ID가 `chunk_manifest`에 없음\n"
+                "• 구어체·평수 질문에서 원문 청크에 평수/쉬운 표현 단서가 전혀 없어 검색기 교체로도 `FN`이 안 줄음"
+            ),
+            "current_reading": s1_reading,
+            "workbench_evidence": "• **2번 탭** `reference_contexts` 원문 확인\n• `data/chunk_manifest_*.jsonl` 조회",
+            "action_guide": (
+                "• 기존 컬렉션 유지 + **별도 컬렉션 신설 적재** 후 `presets.py`의 `collection_name`만 스위치!\n"
+                "• 예: `B_chunk_v3_pyeong` (`--include-pyeong --recent-examples 5`)"
+            ),
+            "forbidden": "기존 `housing_rent_kh`에 덮어쓰기 (기존 실험 재현 파괴 & `allowed_chunk_ids` 불일치)",
+            "recommended_preset": "B_chunk_v3_pyeong",
+            "candidate_presets": ["B_chunk_v3_pyeong", "B_emb_3large", "B_emb_kure_v1"],
+            "default_note": "가설: 평수·쉬운 별칭 병기 청킹(v3_pyeong) 분리 컬렉션으로 구어체 회수 개선",
+        },
+        {
+            "stage_id": "S2_fn",
+            "priority": 2,
+            "stage_title": "2단계 · 검색 누락 (FN — 후보 12개에 정답 자체가 없음)",
+            "short_title": "2단계 · 검색누락(FN)",
+            "status": s2_status,
+            "status_badge": badge_map[s2_status],
+            "trigger_rule": "• `k=12` 혼동행렬 **`FN > 0`**\n• **`Recall@12 < 0.90`**\n• **`Context Recall < 0.60`**",
+            "current_reading": s2_reading,
+            "workbench_evidence": (
+                "• **1번 탭** `k=12` 2×2 표의 **빨간 `FN` 칸**\n"
+                f"• **1번 탭** 깔때기 2단계 문항 (`{', '.join(s2_qids) or '없음'}`)\n"
+                "• **2번 탭** `first_rank = 0` 또는 `recall@12 = 0.50`"
+            ),
+            "action_guide": (
+                "• **증상 ①** (A 단독 지명·숫자 누락): `A_vector` → **`B_rrf_55_45`** (BM25 결합)\n"
+                "• **증상 ②** (2개 지역 비교 `recall@12=0.5` 또는 구어체/평수 누락): **`use_rewrite=True`** (`B_filter_rewrite` / `C_filter_rewrite`)\n"
+                "• **증상 ③** (추상 표현·의미 불일치 FN): **`use_hyde=True`** 또는 임베딩 분리 컬렉션 (`B_emb_3large` / `B_emb_kure_v1`)\n"
+                "• **증상 ④** (정답이 13~20위권에 걸림): `candidate_k` `12 → 20` 확대"
+            ),
+            "forbidden": "`FN > 0`인데 **검색 C(Re-ranker)**나 **프롬프트** 먼저 수정 (후보 12개에 없는 정답은 C가 못 살림!)",
+            "recommended_preset": s2_preset,
+            "candidate_presets": ["B_rrf_55_45", "B_filter_rewrite", "C_filter_rewrite", "C_filter_rewrite_hyde", "B_emb_3large", "B_emb_kure_v1"],
+            "default_note": s2_note,
+        },
+        {
+            "stage_id": "S3_fp",
+            "priority": 3,
+            "stage_title": "3단계 · 순위 실패 (FP — 후보 12개엔 있는데 Top-1/Top-5 밀림)",
+            "short_title": "3단계 · 순위실패(FP)",
+            "status": s3_status,
+            "status_badge": badge_map[s3_status],
+            "trigger_rule": "• `FN(k=12) == 0`인데 **`Top1 < 0.70`** (예: 8문항 중 5개 이하)\n• **`MRR@5 < 0.65`**\n• **`Context Precision < 0.60`**",
+            "current_reading": s3_reading,
+            "workbench_evidence": (
+                "• **1번 탭** `k=12 FN=0` vs `k=5 FN>0` 또는 `Top1` 낮음\n"
+                "• **2번 탭** 불일치 태그:\n"
+                f"  - `[❌ 면적/계약/유형 불일치]` {len(cond_mismatch_qids)}건 (`{', '.join(cond_mismatch_qids) or '없음'}`)\n"
+                f"  - `[❌ 동 불일치]` {len(dong_mismatch_qids)}건 (`{', '.join(dong_mismatch_qids) or '없음'}`)"
+            ),
+            "action_guide": (
+                "• **① 가중치 스윕**: `55:45 → 70:30 → 80:20` 순서로 **최대점(Peak) 채택** (`80:20`처럼 하락하면 즉시 기각!)\n"
+                "• **② `[❌ 면적/계약/유형 불일치]` 다수**: **`use_metadata_filter=True`** (`B_rrf_70_30_filter`)\n"
+                "• **③ `[❌ 동 불일치]`·미묘한 조건 1등 싸움**: **`C_rrf_70_30_filter_rerank`** (검색 C 12→5 정밀 재정렬)"
+            ),
+            "forbidden": "후보 12개에 이미 정답이 있는데 청킹·임베딩 갈아엎기",
+            "recommended_preset": s3_preset,
+            "candidate_presets": ["B_rrf_70_30", "B_rrf_80_20", "B_rrf_70_30_filter", "C_rrf_70_30_filter_rerank"],
+            "default_note": s3_note,
+        },
+        {
+            "stage_id": "S4_gen",
+            "priority": 4,
+            "stage_title": "4단계 · 생성 / 인용 (검색 1등인데 답변 점수가 낮음)",
+            "short_title": "4단계 · 생성/인용",
+            "status": s4_status,
+            "status_badge": badge_map[s4_status],
+            "trigger_rule": "• `first_rank == #1` (`CP=1.0`, `CR=1.0`)인데\n• **`Answer Relevancy < 0.60`**\n• **`Faithfulness < 0.80`**",
+            "current_reading": s4_reading,
+            "workbench_evidence": (
+                "• **2번 탭** 문항 X-Ray에서 검색은 🟢 1등인데 RAGAS만 🔴\n"
+                "• 생성 답변 첫 문장(주어 생략·TMI 여부)과 원문 수치 직접 대조"
+            ),
+            "action_guide": (
+                "• **`AR < 0.60`**: `ANSWER_PROMPT` 수정 — 첫 문장에 질문 5조건 주어 명시, 묻지 않은 TMI 제거, 3~5문장 압축\n"
+                "• **`Faithfulness < 0.80`**: 실제 환각(없는 숫자 지어냄)이면 '근거 외 수치 생성 금지' 강화 / 원문 일치인데 점수만 튀면 judge 변동(±0.05) 기록"
+            ),
+            "forbidden": "검색 1등인데 BM25 가중치·필터 건드리기",
+            "recommended_preset": after_s["mode"] if (after_s and after_s["mode"] in ALL_PRESET_NAMES) else "B_rrf_70_30_filter",
+            "candidate_presets": [after_s["mode"]] if (after_s and after_s["mode"] in ALL_PRESET_NAMES) else ["B_rrf_70_30_filter", "C_filter_rewrite"],
+            "default_note": "가설: ANSWER_PROMPT 첫 문장 5조건 주어 명시 및 TMI 제거로 AR 개선",
+        },
+        {
+            "stage_id": "S5_refusal",
+            "priority": 5,
+            "stage_title": "Track B · 거절 / 과거 데이터 (현재 공실·옵션 질문)",
+            "short_title": "Track B · 거절",
+            "status": s5_status,
+            "status_badge": badge_map[s5_status],
+            "trigger_rule": "• **`Refusal < 70%`**\n• **`과거 실거래 고지율 < 100%`**\n• 답변 가능 문항 오거절(**과잉 거절 > 0건**)",
+            "current_reading": s5_reading,
+            "workbench_evidence": "• **5번 탭** 거절 트랙 표 (`insufficient_evidence` 전용)\n• 현재 공실/옵션 질문에 과거 통계로 억지 답변했는지 확인",
+            "action_guide": (
+                "• `ANSWER_PROMPT` 거절 규칙 보강 — '최근 1년 체결 완료 실거래 통계이므로 실시간 공실·관리비·옵션은 확인 불가' 고지 후 과거 시세 참고 안내"
+            ),
+            "forbidden": "거절 문항을 RAGAS 평균에 섞어 `AR = 0.0`으로 착각하기",
+            "recommended_preset": after_s["mode"] if (after_s and after_s["mode"] in ALL_PRESET_NAMES) else "B_rrf_70_30_filter",
+            "candidate_presets": [after_s["mode"]] if (after_s and after_s["mode"] in ALL_PRESET_NAMES) else ["B_rrf_70_30_filter", "C_filter_rewrite"],
+            "default_note": "가설: 거절·과거 실거래 범위 고지 프롬프트 보강 (Track B 검증)",
+        },
+        {
+            "stage_id": "S6_ops",
+            "priority": 6,
+            "stage_title": "운영 · 캐시 / 지연 (Latency & 효용 판정)",
+            "short_title": "운영 · 캐시/지연",
+            "status": s6_status,
+            "status_badge": badge_map[s6_status],
+            "trigger_rule": "• 반복 질의 **Cache 적중 `> 100ms`**\n• 버전 변경 후 **무효화 실패 `> 0건`**\n• **`p95` 지연이 허용치(5~10초) 초과**",
+            "current_reading": s6_reading,
+            "workbench_evidence": "• **1번 탭** 지연 KPI (`median` / `p95`)\n• 캐시 히트/무효화 · `status='error'` 미저장 로그",
+            "action_guide": (
+                "• **`C_filter_rewrite_cache`** ON (반복 질의 지연 단축 · 버전 무효화 검증)\n"
+                "• C/HyDE/Rewrite로 품질 이득은 `+0.01` 미만인데 `p95`만 +3초 늘면 **비용·지연 대비 효용 부족으로 기각**"
+            ),
+            "forbidden": "`status='error'` 응답을 캐시에 저장하거나 버전 키(`collection`/`prompt_version`) 누락",
+            "recommended_preset": "C_filter_rewrite_cache",
+            "candidate_presets": ["C_filter_rewrite_cache", "C_filter_rewrite_hyde", "C_filter_rewrite"],
+            "default_note": "가설: 버전 인식 SQLite Cache ON으로 반복 질의 <100ms 및 무효화 검증",
+        },
+    ]
+    return rows
+
+
+def _evaluate_keep_discard_gate(before_s: dict | None, after_s: dict | None, target: float) -> dict[str, Any]:
+    """Step 5 채택(Keep) vs 기각(Discard) 4중 게이트 자동 판정."""
+    if not before_s or not after_s or before_s["order"] == after_s["order"]:
+        return {"verdict": "⚪ 비교 대기 (서로 다른 Before / After 스텝 선택 필요)", "checks": []}
+
+    n_diff, diffs = _describe_preset_diff(before_s, after_s)
+    improved, regressed = _compute_regression_diff(after_s, before_s, target)
+    key_deltas = {
+        "Recall@12": after_s["recall12"] - before_s["recall12"],
+        "MRR@5": after_s["mrr5"] - before_s["mrr5"],
+        "CP": after_s["cp"] - before_s["cp"],
+        "CR": after_s["cr"] - before_s["cr"],
+        "AR": after_s["ar"] - before_s["ar"],
+        "F": after_s["f"] - before_s["f"],
+    }
+    best_gain_name, best_gain_val = max(key_deltas.items(), key=lambda kv: kv[1])
+    d_p95 = after_s["lat_p95"] - before_s["lat_p95"]
+
+    g1 = n_diff == 1
+    g2 = best_gain_val >= 0.02 or (after_s["top1_rate"] - before_s["top1_rate"]) >= 0.05
+    g3 = len(regressed) == 0
+    g4 = after_s["lat_p95"] <= 10000.0 and (d_p95 <= 3000.0 or best_gain_val >= 0.05)
+
+    checks = [
+        ("1. 단일 변인 가드", g1, f"변수 {n_diff}개 변경 (`{diffs[0] if diffs else '-'}`)"),
+        ("2. 핵심 지표 실질 개선", g2, f"최대 개선 `{best_gain_name} {best_gain_val:+.3f}` (Top1 {(after_s['top1_rate']-before_s['top1_rate'])*100:+.1f}%p)"),
+        ("3. 회귀 감시 (악화 0건)", g3, f"개선 {len(improved)}건 · 악화 {len(regressed)}건"),
+        ("4. 지연·효용 합리성", g4, f"p95 {after_s['lat_p95']:.1f}ms ({d_p95:+.1f}ms)"),
+    ]
+    if g1 and g2 and g3 and g4:
+        verdict = "✅ 채택(Keep) 권장 — 4중 게이트 전원 통과! 현재 스텝을 새 기준선으로 승격하세요."
+    elif g2 and g3 and not g1:
+        verdict = "🟡 조건부 검토 — 지표는 개선됐으나 변수가 2개 이상 동시에 바뀌어 원인 분리 재실행을 권장합니다."
+    elif not g2:
+        verdict = "❌ 기각(Discard) 권장 — 핵심 지표 개선이 노이즈(±0.02) 이하입니다. 기각 사유를 실험기록.md에 남기세요."
+    else:
+        verdict = "🟡 조건부 검토 — 일부 회귀(악화) 또는 지연 증가가 관찰됩니다. 4번 탭 Regression Watch를 확인하세요."
+    return {"verdict": verdict, "checks": checks}
+
+
+# ==================== 7단계 SOP 코치 & 인터랙티브 의사결정 네비게이터 ====================
+def _render_sop_coach_panel(
+    scoped_steps: list[dict],
+    before_s: dict | None,
+    after_s: dict | None,
+    target: float,
+    sel_eval_ver: str,
+    matrix_rows: list[dict[str, Any]],
+) -> None:
+    """현재 실험 진행 상태 + 6단계 수치 기준 매트릭스를 인터랙티브 네비게이터로 가이드한다."""
+    primary_row = next((r for r in matrix_rows if r["status"] == "triggered"), None)
+    if primary_row is None:
+        primary_row = next((r for r in matrix_rows if r["status"] == "watch"), matrix_rows[1])
+
+    if not scoped_steps or after_s is None:
+        cur_step_num = 1
+        status_msg = "👉 **현재 위치: Step 0 → Step 1 (A 단독 기준선 실행 전)** — 시험지(`dev_v1` 또는 `dev_v2`) 확정 후 `A_vector` 1개만 먼저 실행하세요!"
+    elif len(scoped_steps) == 1:
+        cur_step_num = 2
+        status_msg = (
+            f"👉 **현재 위치: Step 2 → Step 3 (기준선 `{after_s['mode']}` 병목 판별)** — "
+            f"최우선 발동 단계: **{primary_row['status_badge']} {primary_row['short_title']}** → 추천 손잡이: **`{primary_row['recommended_preset']}`**"
+        )
+    elif after_s["pass_4of4"] and after_s["fail_cnt"] == 0:
+        cur_step_num = 7
+        status_msg = (
+            f"🏆 **현재 위치: Step 6~7 (전 문항 목표 달성!)** — 다음 점검: **{primary_row['status_badge']} {primary_row['short_title']}** "
+            "확인 후 `실험기록.md` 기록 및 봉인 `test` 20문항 최종 1회 평가 준비!"
+        )
+    else:
+        cur_step_num = 5
+        status_msg = (
+            f"👉 **현재 위치: Step 5 → 다음 루프 (누적 {len(scoped_steps)}스텝 · 미달 {after_s['fail_cnt']}건)** — "
+            f"최우선 발동 단계: **{primary_row['status_badge']} {primary_row['short_title']}** → 추천 손잡이: **`{primary_row['recommended_preset']}`**"
+        )
+
+    step_badges = [
+        ("S0 시험지 동결", 0),
+        ("S1 A 단독 실행", 1),
+        ("S2 5분 병목 판별", 2),
+        ("S3 손잡이 1개 선택", 3),
+        ("S4 1변수 재실행", 4),
+        ("S5 채택/기각 판정", 5),
+        ("S6~7 기록·test봉인", 6),
+    ]
+    bar_parts = [
+        f"**[▶ {lbl}]**" if num == cur_step_num else (f"~~{lbl}~~ ✅" if num < cur_step_num else lbl)
+        for lbl, num in step_badges
+    ]
+    st.info(f"**🎓 7단계 직접 튜닝 코치 & 의사결정 네비게이터** &nbsp;|&nbsp; {' → '.join(bar_parts)}\n\n{status_msg}")
+
+    with st.expander(
+        "🧭 인터랙티브 의사결정 네비게이터 — 단계별 수치 기준(Trigger) · 근거(Workbench) · 손잡이 선택 · 실행 명령어",
+        expanded=(len(scoped_steps) <= 1),
+    ):
+        nav_t1, nav_t2, nav_t3 = st.tabs(
+            [
+                "🎯 1. 실시간 단계별 진단 & 손잡이 선택",
+                "📊 2. 전체 6단계 수치 기준표 & 채택/기각(Keep·Discard) 게이트",
+                "📖 3. A부터 직접 1변수씩 7단계 루틴(SOP)",
+            ]
+        )
+
+        # ---- Nav Sub-tab 1: Interactive Stage Picker + Live Evidence + Auto Command Builder ----
+        with nav_t1:
+            stage_labels = [f"{r['status_badge']} {r['short_title']}" for r in matrix_rows]
+            default_idx = matrix_rows.index(primary_row)
+            after_key = f"{after_s['timestamp']}_{after_s['mode']}" if after_s else "none"
+            picked_lbl = st.radio(
+                "🔍 진단·수정할 병목 단계를 선택하세요 (위→아래 우선순위 · 자동 선택 = 현재 최우선 발동 단계)",
+                stage_labels,
+                index=default_idx,
+                horizontal=True,
+                key=f"nav_stage_radio_{after_key}",
+            )
+            sel_row = matrix_rows[stage_labels.index(picked_lbl)]
+
+            # 4분면 진단·처방 카드
+            q1, q2 = st.columns(2)
+            with q1:
+                st.markdown(f"##### 🔴 언제 문제인가? (수치 기준) — {sel_row['status_badge']}")
+                st.markdown(sel_row["trigger_rule"])
+                if sel_row["status"] == "triggered":
+                    st.error(f"**📌 현재 내 실측치 (기준 발동!)**\n\n{sel_row['current_reading']}")
+                elif sel_row["status"] == "watch":
+                    st.warning(f"**📌 현재 내 실측치 (점검 권장)**\n\n{sel_row['current_reading']}")
+                else:
+                    st.success(f"**📌 현재 내 실측치**\n\n{sel_row['current_reading']}")
+
+                st.markdown("##### 🔍 대시보드에서 확인할 근거 (Workbench)")
+                st.info(sel_row["workbench_evidence"])
+            with q2:
+                st.markdown("##### 🔧 정확히 어떤 손잡이(1개)를 어떻게 수정할 것인가?")
+                st.success(sel_row["action_guide"])
+                st.markdown("##### ❌ 절대 하면 안 되는 헛수고")
+                st.error(sel_row["forbidden"])
+
+            # 선택 단계와 자동 연동되는 실행 명령어 조립기
+            st.divider()
+            st.markdown(f"**⚡ `{sel_row['short_title']}` 추천 손잡이 실행 명령어 자동 조립기 (복사 후 터미널 실행)**")
+            eval_files = [p.name for p in sorted(KH_EVAL_DIR.glob("*.json")) if "test" not in p.name.lower()] if KH_EVAL_DIR.exists() else []
+            if not eval_files:
+                eval_files = ["kh_rent_dev.json", "kh_rent_dev_v2.json"]
+
+            cg1, cg2, cg3 = st.columns([1.05, 0.95, 1.6])
+            with cg1:
+                rec_p = sel_row["recommended_preset"] if sel_row["recommended_preset"] in ALL_PRESET_NAMES else "A_vector"
+                cmd_preset = st.selectbox(
+                    "실행할 프리셋 1개 (단계 맞춤 자동 선택)",
+                    ALL_PRESET_NAMES,
+                    index=ALL_PRESET_NAMES.index(rec_p),
+                    key=f"nav_cmd_preset_{sel_row['stage_id']}_{after_key}",
+                    help=f"이 단계 추천 프리셋 후보: {', '.join(sel_row['candidate_presets'])}",
+                )
+            with cg2:
+                default_eval_idx = 0
+                for idx_e, ef in enumerate(eval_files):
+                    if sel_eval_ver and sel_eval_ver in ef:
+                        default_eval_idx = idx_e
+                        break
+                cmd_eval = st.selectbox(
+                    "시험지 파일 (`dev`만 허용)",
+                    eval_files,
+                    index=default_eval_idx,
+                    key=f"nav_cmd_eval_{sel_row['stage_id']}_{after_key}",
+                )
+            with cg3:
+                cmd_note = st.text_input(
+                    "내 가설 1줄 메모 (`--note`)",
+                    value=sel_row["default_note"],
+                    key=f"nav_cmd_note_{sel_row['stage_id']}_{after_key}",
+                )
+
+            if cmd_preset in SAFE_COLLECTION_PREP_CMDS:
+                st.warning(
+                    f"📦 **`{cmd_preset}`는 별도 컬렉션 안전 비교 프리셋입니다!** "
+                    "기존 `housing_rent_kh`를 덮어쓰지 않도록 최초 1회 아래 분리 색인을 먼저 실행한 뒤 평가를 돌리세요:"
+                )
+                st.code(SAFE_COLLECTION_PREP_CMDS[cmd_preset], language="powershell")
+
+            safe_note = cmd_note.replace('"', "'")
+            st.code(
+                f'uv run python -m rag_home_api.test.kh.exp_03_rent_eval {cmd_preset} --eval {cmd_eval} --note "{safe_note}"',
+                language="powershell",
+            )
+
+        # ---- Nav Sub-tab 2: Full 6-Row Trigger->Evidence->Action Matrix + Keep/Discard Gate ----
+        with nav_t2:
+            st.markdown("**A. 단계별 수치 기준(Trigger) → 근거(Workbench) → 수정 결정(Action) 전체 매트릭스**")
+            matrix_df = pd.DataFrame(
+                [
+                    {
+                        "우선순위 & 병목 단계": r["stage_title"],
+                        "현재 판정": r["status_badge"],
+                        "🔴 언제 문제인가? (수치 기준)": r["trigger_rule"].replace("\n", " / "),
+                        "📌 내 실측치": r["current_reading"],
+                        "🔍 대시보드 근거": r["workbench_evidence"].replace("\n", " / "),
+                        "🔧 바꿀 손잡이 (딱 1개)": r["action_guide"].replace("\n", " / "),
+                        "❌ 절대 금지 헛수고": r["forbidden"],
+                    }
+                    for r in matrix_rows
+                ]
+            )
+            st.dataframe(matrix_df, use_container_width=True, hide_index=True)
+
+            st.divider()
+            st.markdown("**B. Step 5 채택(Keep) vs 기각(Discard) 4중 게이트 자동 점검 (`Before → After`)**")
+            gate = _evaluate_keep_discard_gate(before_s, after_s, target)
+            if gate["verdict"].startswith("✅"):
+                st.success(gate["verdict"])
+            elif gate["verdict"].startswith("❌"):
+                st.error(gate["verdict"])
+            else:
+                st.info(gate["verdict"])
+            if gate["checks"]:
+                gc = st.columns(4)
+                for col, (gname, gok, gdetail) in zip(gc, gate["checks"]):
+                    (col.success if gok else col.warning)(f"**{'✅' if gok else '⚠️'} {gname}**\n\n{gdetail}")
+
+        # ---- Nav Sub-tab 3: 7-Step SOP Reference ----
+        with nav_t3:
+            st.markdown(
+                """
+**🧭 A부터 직접 1변수씩 진행하는 7단계 표준 실험 루틴 (SOP)**
+1. **Step 0 (시험지 동결)**: `dev_v1` 유지 또는 어휘 누수를 없앤 현실 구어체·평수 `dev_v2` 확정 *(질문 수정 시에만 `_v{n}` 신설, 시스템 튜닝 중엔 시험지 고정!)*
+2. **Step 1 (A 단독 실행)**: `A_vector` 딱 1개만 먼저 돌려 바닥 기준선 확보
+3. **Step 2 (워크벤치 5분 판별)**: 좌측 **실시간 병목 네비게이터** + **1번 탭(`TP/FP/FN/TN` + 4단계 깔때기)** → **2번 탭(불일치 태그 X-Ray)**에서 **가장 윗단계(1→2→3→4순)** 병목 확인
+4. **Step 3 (손잡이 딱 1개 선택)**: 위 **`1. 실시간 단계별 진단 & 손잡이 선택`** 탭에서 발동된 단계의 추천 변수 **딱 1개**만 선택 *(2단계 FN이 남았는데 C·프롬프트 먼저 건드리지 않기!)*
+5. **Step 4 (1개만 바꿔 실행)**: `--note "가설: ~"` 적고 자동 조립된 PowerShell 명령어로 프리셋 1개만 실행
+6. **Step 5 (Before/After 판정)**: 좌측 **단일 변인 가드(✅)** + **`2. Keep/Discard 4중 게이트`** + **4번 탭 Regression Watch(악화 0건)** 확인 후 **채택(Keep) / 기각(Discard)** 결정
+7. **Step 6~7 (기록 & 봉인 개봉)**: 4번 탭 리포트 → `실험기록.md` 누적 → dev 완성 후 봉인 `test` 20문항 1회 성적표 + **6번 탭 팀 120문항 통합**!
+                """
+            )
+
+
 # ==================== TAB 1: 의사결정 홈 ====================
-def render_decision_tab(before_s: dict, after_s: dict, target: float) -> None:
+def render_decision_tab(before_s: dict, after_s: dict, target: float, coach_mode: bool = True) -> None:
     st.subheader(f"🧭 의사결정 홈 — `{before_s['step_label']}` → `{after_s['step_label']}`")
+    if coach_mode:
+        st.caption(
+            "💡 **Step 2·3 코치 팁**: 각 지표 이름 옆 **`?` 툴팁**에 마우스를 올리면 쉬운 비유가 뜹니다! "
+            "① `k=12` 혼동행렬의 **`FN`(놓친 정답)**부터 확인 → ② 4단계 깔때기 중 **가장 윗단계(2→3→4순)** 공략 → ③ 맨 아래 추천 변수 1개만 실행!"
+        )
 
     # 1) 3구역 분리 KPI: 검색 지표 / 생성 지표 / 거절·운영 지표
     st.markdown("#### 1) 🔎 검색 지표 (Retrieval — `metrics_k12` · `metrics_k5` · RAGAS 검색 2지표)")
     r1, r2, r3, r4, r5, r6 = st.columns(6)
-    r1.metric(RETRIEVAL_LABELS["recall@12"], f"{after_s['recall12']:.3f}", f"{after_s['recall12'] - before_s['recall12']:+.3f}")
-    r2.metric(RETRIEVAL_LABELS["hit@5"], after_s["hit5_str"], f"{(after_s['hit5_rate'] - before_s['hit5_rate'])*100:+.1f}%p")
-    r3.metric(RETRIEVAL_LABELS["top1"], after_s["top1_str"], f"{(after_s['top1_rate'] - before_s['top1_rate'])*100:+.1f}%p")
-    r4.metric(RETRIEVAL_LABELS["mrr@5"], f"{after_s['mrr5']:.3f}", f"{after_s['mrr5'] - before_s['mrr5']:+.3f}")
-    r5.metric(RAGAS_LABELS["llm_context_precision_with_reference"], f"{after_s['cp']:.3f}", f"{after_s['cp'] - before_s['cp']:+.3f}")
-    r6.metric(RAGAS_LABELS["context_recall"], f"{after_s['cr']:.3f}", f"{after_s['cr'] - before_s['cr']:+.3f}")
+    r1.metric(RETRIEVAL_LABELS["recall@12"], f"{after_s['recall12']:.3f}", f"{after_s['recall12'] - before_s['recall12']:+.3f}", help=METRIC_HELP["recall@12"])
+    r2.metric(RETRIEVAL_LABELS["hit@5"], after_s["hit5_str"], f"{(after_s['hit5_rate'] - before_s['hit5_rate'])*100:+.1f}%p", help=METRIC_HELP["hit@5"])
+    r3.metric(RETRIEVAL_LABELS["top1"], after_s["top1_str"], f"{(after_s['top1_rate'] - before_s['top1_rate'])*100:+.1f}%p", help=METRIC_HELP["top1"])
+    r4.metric(RETRIEVAL_LABELS["mrr@5"], f"{after_s['mrr5']:.3f}", f"{after_s['mrr5'] - before_s['mrr5']:+.3f}", help=METRIC_HELP["mrr@5"])
+    r5.metric(RAGAS_LABELS["llm_context_precision_with_reference"], f"{after_s['cp']:.3f}", f"{after_s['cp'] - before_s['cp']:+.3f}", help=METRIC_HELP["cp"])
+    r6.metric(RAGAS_LABELS["context_recall"], f"{after_s['cr']:.3f}", f"{after_s['cr'] - before_s['cr']:+.3f}", help=METRIC_HELP["cr"])
 
     st.markdown("#### 2) ✍️ 생성 지표 (Generation) & 🛡️ 거절·운영 트랙 (Track B 분리)")
     g1, g2, g3, g4, g5, g6 = st.columns(6)
-    g1.metric(RAGAS_LABELS["faithfulness"], f"{after_s['f']:.3f}", f"{after_s['f'] - before_s['f']:+.3f}")
-    g2.metric(RAGAS_LABELS["answer_relevancy"], f"{after_s['ar']:.3f}", f"{after_s['ar'] - before_s['ar']:+.3f}")
-    g3.metric(RETRIEVAL_LABELS["citation_rate"], after_s["citation_str"])
-    g4.metric(RETRIEVAL_LABELS["refusal"], after_s["refusal_str"])
-    g5.metric(RETRIEVAL_LABELS["scope_notice"], after_s["scope_notice_str"])
+    g1.metric(RAGAS_LABELS["faithfulness"], f"{after_s['f']:.3f}", f"{after_s['f'] - before_s['f']:+.3f}", help=METRIC_HELP["f"])
+    g2.metric(RAGAS_LABELS["answer_relevancy"], f"{after_s['ar']:.3f}", f"{after_s['ar'] - before_s['ar']:+.3f}", help=METRIC_HELP["ar"])
+    g3.metric(RETRIEVAL_LABELS["citation_rate"], after_s["citation_str"], help=METRIC_HELP["citation_rate"])
+    g4.metric(RETRIEVAL_LABELS["refusal"], after_s["refusal_str"], help=METRIC_HELP["refusal"])
+    g5.metric(RETRIEVAL_LABELS["scope_notice"], after_s["scope_notice_str"], help=METRIC_HELP["scope_notice"])
     g6.metric(
         RETRIEVAL_LABELS["lat_median"],
         f"{after_s['lat_median']:.1f} ms",
         f"{after_s['lat_median'] - before_s['lat_median']:+.1f} ms",
         delta_color="inverse",
+        help=METRIC_HELP["lat_median"],
     )
 
     # 2) TP / FP / FN / TN 2×2 혼동행렬
@@ -947,7 +1579,7 @@ def render_decision_tab(before_s: dict, after_s: dict, target: float) -> None:
     else:
         st.info("연동된 `.jsonl` 상세 로그가 없어 혼동행렬을 산출할 수 없습니다.")
 
-    # 3) 4단계 깔때기 병목 레이더
+    # 3) 4단계 깔때기 병목 레이더 + 6단계 수치 기준 연동
     st.divider()
     st.markdown(f"#### 4) 🔻 4단계 깔때기 병목 레이더 (`{after_s['step_label']}` 기준 · 목표 `{target:.2f}`)")
     buckets: dict[int, list[str]] = {0: [], 2: [], 3: [], 4: []}
@@ -958,22 +1590,54 @@ def render_decision_tab(before_s: dict, after_s: dict, target: float) -> None:
         stg, _ = _classify_funnel_stage(r, after_s["item_ragas"].get(qid), target)
         buckets.setdefault(stg, []).append(qid)
 
+    mat = {r["stage_id"]: r for r in _evaluate_decision_matrix(after_s, before_s, target)}
     b1, b2, b3, b4 = st.columns(4)
-    b1.success(f"**1단계 · 색인/청킹 누락**\n\n**0건** ✅\n\n정답 청크 매니페스트 존재 확인")
-    b2.error(f"**2단계 · 검색 누락 (FN)**\n\n**{len(buckets[2])}건**: `{', '.join(buckets[2]) or '없음'}`\n\n처방: B(Hybrid) · `candidate_k` · Query Rewrite")
-    b3.warning(f"**3단계 · 순위 실패 (FP)**\n\n**{len(buckets[3])}건**: `{', '.join(buckets[3]) or '없음'}`\n\n처방: 가중치 · 경량 필터 · 검색 C(Re-ranking)")
-    b4.info(f"**4단계 · 생성/주어/인용**\n\n**{len(buckets[4])}건**: `{', '.join(buckets[4]) or '없음'}`\n\n처방: `ANSWER_PROMPT` 주어·간결화 점검")
+    (b1.error if mat["S1_chunk"]["status"] == "triggered" else b1.success)(
+        f"**1단계 · 청킹/색인** {mat['S1_chunk']['status_badge']}\n\n"
+        f"{mat['S1_chunk']['current_reading']}\n\n"
+        "처방: 별도 컬렉션 분리 적재 (`B_chunk_v3_pyeong`) · ❌ 기존 DB 덮어쓰기 금지"
+    )
+    (b2.error if mat["S2_fn"]["status"] == "triggered" else b2.success)(
+        f"**2단계 · 검색 누락 (FN)** {mat['S2_fn']['status_badge']}\n\n"
+        f"**{len(buckets[2])}건**: `{', '.join(buckets[2]) or '없음'}`\n\n"
+        "기준: `FN(k=12)>0` · `Recall@12<0.90` · `CR<목표`\n\n"
+        "처방: `B` · `Rewrite` · `HyDE/임베딩` · ❌ C·프롬프트 먼저 금지"
+    )
+    (b3.warning if mat["S3_fp"]["status"] in ("triggered", "watch") else b3.success)(
+        f"**3단계 · 순위 실패 (FP)** {mat['S3_fp']['status_badge']}\n\n"
+        f"**{len(buckets[3])}건**: `{', '.join(buckets[3]) or '없음'}`\n\n"
+        "기준: `FN(k=12)=0`인데 `Top1<70%` · `MRR<0.65` · `CP<목표`\n\n"
+        "처방: `가중치(70:30)` · `Filter` · `검색 C(Rerank)`"
+    )
+    (b4.info if mat["S4_gen"]["status"] in ("triggered", "watch") else b4.success)(
+        f"**4단계 · 생성 / 인용** {mat['S4_gen']['status_badge']}\n\n"
+        f"**{len(buckets[4])}건**: `{', '.join(buckets[4]) or '없음'}`\n\n"
+        "기준: `1등`인데 `AR<목표` · `F<0.80`\n\n"
+        "처방: `ANSWER_PROMPT` 5조건 주어·TMI 제거 · ❌ 검색기 수정 금지"
+    )
 
-    # 4) 다음 단일 변수 추천 카드
+    # 4) 다음 단일 변수 추천 카드 + Track B / 운영 상태 1줄 요약
     st.divider()
     rec_title, rec_why, rec_knob, rec_watch = _recommend_next_variable(after_s, target)
     st.markdown(f"#### 5) 🎯 다음에 딱 1개만 바꿀 변수 추천 (통과 문항: `{len(buckets[0])}/{max(1, sum(len(v) for v in buckets.values()))}`)")
     st.success(f"**추천 액션: {rec_title}**\n\n- **판단 근거**: {rec_why}\n- **바꿀 변수 (딱 1개)**: `{rec_knob}`\n- **함께 감시할 부작용**: {rec_watch}")
+    tb1, tb2 = st.columns(2)
+    (tb1.error if mat["S5_refusal"]["status"] == "triggered" else tb1.info)(
+        f"**Track B · 거절/과거 데이터** {mat['S5_refusal']['status_badge']} — {mat['S5_refusal']['current_reading']}"
+    )
+    (tb2.warning if mat["S6_ops"]["status"] in ("triggered", "watch") else tb2.info)(
+        f"**운영 · 캐시/지연** {mat['S6_ops']['status_badge']} — {mat['S6_ops']['current_reading']}"
+    )
 
 
 # ==================== TAB 2: 문항별 X-Ray 해부 ====================
-def render_xray_tab(before_s: dict, after_s: dict, target: float) -> None:
+def render_xray_tab(before_s: dict, after_s: dict, target: float, coach_mode: bool = True) -> None:
     st.subheader(f"🔬 문항별 X-Ray 해부 — `{before_s['step_label']}` vs `{after_s['step_label']}`")
+    if coach_mode:
+        st.caption(
+            "💡 **Step 2 코치 팁**: 미달 문항을 선택해 1등 청크의 **빨간 불일치 태그(`❌ 동/면적/계약/유형 불일치`)**를 보면 "
+            "가중치·필터·검색 C·Query Rewrite 중 정확히 무엇을 고쳐야 할지 10초 만에 판별됩니다!"
+        )
     if not after_s["mode_logs"]:
         st.info("연결된 `.jsonl` 상세 로그가 없습니다.")
         return
@@ -1161,8 +1825,13 @@ def render_xray_tab(before_s: dict, after_s: dict, target: float) -> None:
 
 
 # ==================== TAB 3: 회차별 랩노트 & 추이 선그래프 ====================
-def render_lab_history_tab(steps: list[dict], target: float, selected_eval_ver: str) -> None:
+def render_lab_history_tab(steps: list[dict], target: float, selected_eval_ver: str, coach_mode: bool = True) -> None:
     st.subheader("📈 회차별 실험 랩노트 & 수치 변화 추이 (연결 선 그래프)")
+    if coach_mode:
+        st.caption(
+            "💡 **Step 5 코치 팁**: 같은 시험지(`eval_version`) 1개만 격리한 상태에서 선그래프가 우상향하는지 확인하세요. "
+            "수치가 꺾인 스텝(예: `80:20` 과중)은 **기각(Discard)**하고 직전 최적점으로 복귀합니다!"
+        )
     if not steps:
         st.info("표시할 실험 스텝이 없습니다.")
         return
@@ -1271,8 +1940,13 @@ def render_lab_history_tab(steps: list[dict], target: float, selected_eval_ver: 
 
 
 # ==================== TAB 4: 회차별 평가 분석 리포트 ====================
-def render_per_test_report_tab(steps: list[dict], target: float) -> None:
+def render_per_test_report_tab(steps: list[dict], target: float, coach_mode: bool = True) -> None:
     st.subheader("📝 테스트 회차별 평가 분석 리포트 (1회 실행 = 1개 독립 리포트)")
+    if coach_mode:
+        st.caption(
+            "💡 **Step 5·6 코치 팁**: 아래 `4. 개선된 문항 vs 악화된 문항(Regression Watch)`에서 **악화 0건**을 확인한 뒤, "
+            "Markdown 리포트를 복사해 `실험기록.md`에 누적하세요 (기각한 실패 실험도 솔직히 기록!)."
+        )
     if not steps:
         st.info("리포트를 생성할 실행 기록이 없습니다.")
         return
@@ -1652,12 +2326,22 @@ def main() -> None:
     # ==================== SIDEBAR ====================
     with st.sidebar:
         st.header("🎛️ 워크벤치 통제 패널")
+        coach_mode = st.toggle(
+            "🎓 튜토리얼 · 7단계 코치 모드",
+            value=True,
+            help="켜 두면 상단 7단계 SOP 진행 바, 손잡이 결정표, 실행 명령어 자동 조립기, 각 탭 30초 코치 팁이 표시됩니다.",
+        )
 
         # 1) 시험지 버전(eval_version) 격리 필터
         eval_versions = sorted({s["eval_version"] for s in all_steps})
         ver_options = ["전체 시험지 (주의: 버전 혼합)", *eval_versions]
         default_ver_idx = len(ver_options) - 1 if eval_versions else 0
-        sel_eval_ver = st.selectbox("1. 시험지 버전 격리 (`eval_version`)", ver_options, index=default_ver_idx)
+        sel_eval_ver = st.selectbox(
+            "1. 시험지 버전 격리 (`eval_version`)",
+            ver_options,
+            index=default_ver_idx,
+            help="Step 0 철칙: 같은 시험지(_v{n})로 실행한 실험끼리만 비교해야 시스템 변경 효과가 공정하게 보입니다!",
+        )
 
         if sel_eval_ver.startswith("전체 시험지"):
             scoped_steps = all_steps
@@ -1674,8 +2358,8 @@ def main() -> None:
             st.markdown("**2. Before vs After 비교 쌍 선택**")
             default_b = max(0, len(step_labels) - 2)
             default_a = len(step_labels) - 1
-            b_lbl = st.selectbox("기준선 (Before)", step_labels, index=default_b)
-            a_lbl = st.selectbox("실험군 (After)", step_labels, index=default_a)
+            b_lbl = st.selectbox("기준선 (Before)", step_labels, index=default_b, help="직전에 확정한 기준 실험을 고르세요.")
+            a_lbl = st.selectbox("실험군 (After)", step_labels, index=default_a, help="변수 1개를 바꿔 새로 돌린 실험을 고르세요.")
             before_s = scoped_steps[step_labels.index(b_lbl)]
             after_s = scoped_steps[step_labels.index(a_lbl)]
 
@@ -1695,9 +2379,22 @@ def main() -> None:
             max_value=0.95,
             value=default_target,
             step=0.05,
+            help="problem.md 공식 목표치: 전월세 0.60 이상, 공공임대·법령 0.70 이상.",
         )
 
-        # 4) 빠른 Export (선택 After 스텝 기준)
+        # 4) 사이드바 실시간 6단계 병목 네비게이터 (어느 탭에서나 상시 신호등 확인)
+        matrix_rows = _evaluate_decision_matrix(after_s, before_s, target)
+        st.divider()
+        st.markdown("**4. 🚦 실시간 병목 네비게이터 (1→6순)**")
+        nav_lines = [f"- {r['status_badge']} **{r['short_title']}**" for r in matrix_rows]
+        st.markdown("\n".join(nav_lines))
+        top_nav = next((r for r in matrix_rows if r["status"] == "triggered"), None) or next(
+            (r for r in matrix_rows if r["status"] == "watch"), matrix_rows[0]
+        )
+        if after_s is not None:
+            st.caption(f"🎯 최우선 공략: **{top_nav['short_title']}** → `{top_nav['recommended_preset']}`")
+
+        # 5) 빠른 Export (선택 After 스텝 기준)
         if after_s is not None:
             st.divider()
             st.markdown("**📤 리포트 내보내기 (Export)**")
@@ -1724,6 +2421,10 @@ def main() -> None:
                 use_container_width=True,
             )
 
+    # 7단계 SOP 코치 & 인터랙티브 의사결정 네비게이터 (코치 모드 ON일 때 상단 표시)
+    if coach_mode:
+        _render_sop_coach_panel(scoped_steps, before_s, after_s, target, sel_eval_ver, matrix_rows)
+
     # ==================== MAIN 6 TABS ====================
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
         [
@@ -1742,13 +2443,13 @@ def main() -> None:
                 st.info("`test/kh/results/summary_*.json` 파일이 아직 없습니다. 평가 스크립트를 먼저 1회 실행하세요.")
     else:
         with tab1:
-            render_decision_tab(before_s, after_s, target)
+            render_decision_tab(before_s, after_s, target, coach_mode=coach_mode)
         with tab2:
-            render_xray_tab(before_s, after_s, target)
+            render_xray_tab(before_s, after_s, target, coach_mode=coach_mode)
         with tab3:
-            render_lab_history_tab(scoped_steps, target, sel_eval_ver)
+            render_lab_history_tab(scoped_steps, target, sel_eval_ver, coach_mode=coach_mode)
         with tab4:
-            render_per_test_report_tab(scoped_steps, target)
+            render_per_test_report_tab(scoped_steps, target, coach_mode=coach_mode)
 
     with tab5:
         render_evalset_tab()
