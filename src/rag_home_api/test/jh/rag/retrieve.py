@@ -20,6 +20,7 @@ from langchain_classic.retrievers.document_compressors import DocumentCompressor
 from langchain_community.document_transformers import EmbeddingsRedundantFilter
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.runnables import RunnableBranch
+from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_postgres import PGVector
 
@@ -76,16 +77,23 @@ def route(question: str) -> str:
 
 
 class Retriever:
-    def __init__(self, collection: str):
+    def __init__(self, collection: str, law_only: bool = False):
         self.collection = collection
+        self.law_only = law_only
         self.chunks = load_chunks(collection)
+        if law_only:
+            self.chunks = [d for d in self.chunks if d.metadata["category"] == "일반 전월세 법령"
+                           and d.metadata["doc_id"].startswith("LAW_")]
         self.by_id = {c.metadata["chunk_id"]: c for c in self.chunks}
         self.embeddings = OpenAIEmbeddings(model=MODELS["embedding"])
         self.vectorstore = PGVector(embeddings=self.embeddings, connection=DB_URL,
                                     collection_name=collection, use_jsonb=True)  # 연결만 — pre_delete_collection 쓰지 않음
         law_chunks = [c for c in self.chunks if c.metadata["category"] in CONFIG["law_categories"]]
         # 범위(all / law)마다 검색기를 하나씩 만듦. BM25Retriever에는 거르기 기능이 없어서 법령·가이드 청크로 따로 만듦
-        self.bm25 = {"all": self._bm25(self.chunks), "law": self._bm25(law_chunks) if CONFIG["route"] else None}
+        self.bm25 = {"all": self._bm25(self.chunks),
+                     "law": self._bm25(law_chunks) if CONFIG["route"] and not law_only else None}
+        if law_only:
+            self.bm25["law_statutes"] = self.bm25["all"]
         self.retrievers = {}  # 방식(A/B)별 최종 검색기
 
     @staticmethod
@@ -98,7 +106,16 @@ class Retriever:
         search_kwargs = {"k": k}
         if scope == "law":
             search_kwargs["filter"] = {"category": {"$in": CONFIG["law_categories"]}}
+        elif scope == "law_statutes":
+            search_kwargs["filter"] = {"$and": [
+                {"category": {"$eq": "일반 전월세 법령"}},
+                {"doc_id": {"$in": sorted({d.metadata["doc_id"] for d in self.chunks})}},
+            ]}
         return self.vectorstore.as_retriever(search_kwargs=search_kwargs)
+
+    def search_scope(self, question: str) -> str:
+        """법령 DEV는 질문 분류 없이 법령 원문 범위로 고정함."""
+        return "law_statutes" if self.law_only else route(question)
 
     def hybrid_retriever(self, scope: str) -> EnsembleRetriever:
         return EnsembleRetriever(retrievers=[self.bm25[scope], self.vector_retriever(CONFIG["candidates"], scope)],
@@ -123,7 +140,9 @@ class Retriever:
     def retriever(self, mode: str):
         """최종 검색기. 개선 2면 RunnableBranch로 질문에 따라 전체 / 법령·가이드 검색기를 고름."""
         if mode not in self.retrievers:
-            if CONFIG["route"]:
+            if self.law_only:
+                self.retrievers[mode] = self.scoped_retriever(mode, "law_statutes")
+            elif CONFIG["route"]:
                 self.retrievers[mode] = RunnableBranch(
                     (lambda q: route(q) == "all", self.scoped_retriever(mode, "all")),
                     self.scoped_retriever(mode, "law"),
@@ -132,13 +151,30 @@ class Retriever:
                 self.retrievers[mode] = self.scoped_retriever(mode, "all")
         return self.retrievers[mode]
 
+    def documents(self, mode: str, query: str) -> list[Document]:
+        docs = self.retriever(mode).invoke(query)[:CONFIG["k"]]
+        return self.verify_documents(docs)
+
+    def verify_documents(self, docs: list[Document]) -> list[Document]:
+        """A/B 검색 또는 C 재정렬 결과를 같은 원문으로 확인함."""
+        if not self.law_only:
+            return docs
+        # 기존 색인의 URL 메타데이터도 같은 ID·본문의 로컬 원문으로 복원함.
+        verified = []
+        for doc in docs:
+            original = self.by_id.get(doc.metadata.get("chunk_id"))
+            if original is None or original.page_content != doc.page_content:
+                raise ValueError("법령 원문과 검색 청크가 일치하지 않습니다.")
+            verified.append(Document(page_content=original.page_content, metadata=dict(original.metadata)))
+        return verified
+
     def search(self, mode: str, query: str) -> list[dict]:
         """상위 k개를 로그용 dict로. 실패 원인을 보려고 BM25·벡터 각자의 순위도 함께 적음."""
-        docs = self.retriever(mode).invoke(query)[:CONFIG["k"]]
+        docs = self.documents(mode, query)
         hits = [{"chunk_id": d.metadata["chunk_id"], "row_id": d.metadata["row_id"], "doc_id": d.metadata["doc_id"],
                  "rank": i + 1} for i, d in enumerate(docs)]
         if mode == "B":  # 기록용: 두 검색기 각자의 순위(합치기 전)
-            scope = route(query)
+            scope = self.search_scope(query)
             b_rank = {d.metadata["chunk_id"]: i + 1 for i, d in enumerate(self.bm25[scope].invoke(query))}
             v_rank = {d.metadata["chunk_id"]: i + 1
                       for i, d in enumerate(self.vector_retriever(CONFIG["candidates"], scope).invoke(query))}

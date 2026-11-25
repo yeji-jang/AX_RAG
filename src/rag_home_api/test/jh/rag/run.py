@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 
 from common import MODELS, RESULTS, eval_sha, load_eval, require_dev_api_scope  # noqa: E402
-from retrieve import CONFIG, PRESETS, Retriever, apply_preset, route  # noqa: E402
+from retrieve import CONFIG, PRESETS, Retriever, apply_preset  # noqa: E402
 from score import evidence_rank  # noqa: E402
 
 
@@ -36,13 +36,14 @@ def main():
 
     apply_preset(args.preset)
     ev = load_eval(args.split)
-    ret = Retriever(args.collection)
+    ret = Retriever(args.collection, law_only=args.split == "dev")
     RESULTS.mkdir(exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out = RESULTS / f"{args.split}_원본로그.jsonl"
     meta = {"tag": args.tag, "split": args.split, "eval_version": ev["version"], "eval_sha": eval_sha(),
             "collection": args.collection, "chunks": len(ret.chunks), "modes": args.modes, "models": MODELS,
-            "code": "LangChain(BM25Retriever + EnsembleRetriever + EmbeddingsRedundantFilter + RunnableBranch)", "preset": args.preset,
+            "code": "LangChain(BM25Retriever + EnsembleRetriever + EmbeddingsRedundantFilter)", "preset": args.preset,
+            "scope": "law_statutes" if args.split == "dev" else "legacy",
             "retrieval_config": CONFIG, "started": stamp}
     print(json.dumps(meta, ensure_ascii=False))
     with open(out, "a", encoding="utf-8") as f:
@@ -62,8 +63,8 @@ def run_one(ret: Retriever, mode: str, q: dict, args) -> dict:
            "query_used": q["question"], "status": "retrieval_only"}
     t0 = time.time()
     try:
-        row["route"] = route(q["question"])  # law = 법령·가이드만, all = 전체
-        hits = ret.search(mode, q["question"])  # 나누기는 검색기 안의 RunnableBranch가 함
+        row["route"] = ret.search_scope(q["question"])
+        hits = ret.search(mode, q["question"])
         row["retrieved"] = hits
         row["evidence_unit"] = "chunk" if q.get("allowed_chunk_ids") else "row"
         if q["expected_status"] == "answered":

@@ -48,7 +48,8 @@ def load_documents() -> list[Document]:
                     page_content=row["text"].replace("\x00", ""),
                     metadata={"row_id": row["id"], "doc_id": row["doc_id"], "title": row["title"],
                               "source": row["source"], "category": row["category"],
-                              "page": row.get("page"), "article": row.get("article")},
+                              "page": row.get("page"), "article": row.get("article"),
+                              "source_url": row.get("source_url")},
                 ))
     return docs
 
