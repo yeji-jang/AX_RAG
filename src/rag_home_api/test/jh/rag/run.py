@@ -1,6 +1,7 @@
 """A/B 검색 평가 실행기: 평가셋 × 검색 방식 → 원본 로그.
 
-예) uv run python src/rag_home_api/test/jh/rag/run.py --split dev --modes A B --collection jh_1000 --tag dev-r0-1000
+예) uv run python src/rag_home_api/test/jh/rag/run.py --split dev --modes A B --preset tok --tag dev-t-tok
+    --preset: r0(기본) / dedupe(개선 1) / route(개선 2) / tok(개선 3) — retrieve.PRESETS
 
 결과는 지우지 않는다(실패·악화 포함). results/<split>_원본로그.jsonl 한 파일에 실행마다 이어 쓴다
 (실행 하나 = {"meta": 설정} 한 줄 + 문항별 결과 줄들).
@@ -17,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 
 from common import MODELS, RESULTS, eval_sha, load_eval  # noqa: E402
-from retrieve import CONFIG, Retriever, route  # noqa: E402
+from retrieve import CONFIG, PRESETS, Retriever, apply_preset, route  # noqa: E402
 
 
 def main():
@@ -26,8 +27,10 @@ def main():
     ap.add_argument("--modes", nargs="+", default=["A", "B"])
     ap.add_argument("--collection", default="jh_1000")
     ap.add_argument("--tag", required=True)
+    ap.add_argument("--preset", default="tok", choices=list(PRESETS))
     args = ap.parse_args()
 
+    apply_preset(args.preset)
     ev = load_eval(args.split)
     ret = Retriever(args.collection)
     RESULTS.mkdir(exist_ok=True)
@@ -35,6 +38,7 @@ def main():
     out = RESULTS / f"{args.split}_원본로그.jsonl"
     meta = {"tag": args.tag, "split": args.split, "eval_version": ev["version"], "eval_sha": eval_sha(),
             "collection": args.collection, "chunks": len(ret.chunks), "modes": args.modes, "models": MODELS,
+            "code": "튜터 방식(BM25Retriever + EnsembleRetriever)", "preset": args.preset,
             "retrieval_config": CONFIG, "started": stamp}
     print(json.dumps(meta, ensure_ascii=False))
     with open(out, "a", encoding="utf-8") as f:

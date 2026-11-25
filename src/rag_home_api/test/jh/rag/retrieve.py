@@ -1,62 +1,72 @@
-"""검색 A / B.
+"""검색 A / B — 튜터 12_rag(chapter05) 방식.
 
-A: 벡터 검색만 (PGVector 코사인 거리, 상위 5)
-B: BM25(kiwipiepy 형태소) + 벡터 → RRF로 합쳐 상위 5
+A: 벡터 검색기  vectorstore.as_retriever(search_kwargs={"k": n})
+B: BM25Retriever.from_documents(..., preprocess_func=토크나이저) + 벡터 검색기
+   → EnsembleRetriever(retrievers=[bm25, vector], weights=[0.5, 0.5])   (안에서 RRF로 합침)
+
+튜터 코드에 없는 것은 '거의 같은 글 합치기'(near_dedupe) 하나뿐.
+단계별 설정은 PRESETS에 모아 두고 --preset으로 골라 같은 코드로 r0 → 개선 3을 다시 돌릴 수 있게 함.
 """
 
-import hashlib
-import json
-import pickle
 import re
 from difflib import SequenceMatcher
 
 from kiwipiepy import Kiwi
+from langchain_classic.retrievers import EnsembleRetriever
+from langchain_community.retrievers import BM25Retriever
 from langchain_openai import OpenAIEmbeddings
 from langchain_postgres import PGVector
-from rank_bm25 import BM25Okapi
 
-from common import CACHE, DB_URL, MODELS, load_chunks
+from common import DB_URL, MODELS, load_chunks
 
-# 설정값 (실험 기록에 그대로 남김)
 CONFIG = {
     "k": 5,  # 최종 상위 k (Hit@5)
-    "vector_candidates": 20,  # RRF에 넣을 벡터 후보 수
-    "bm25_candidates": 20,  # RRF에 넣을 BM25 후보 수
-    "rrf_k": 60,  # RRF 상수: 점수 = Σ 1/(rrf_k + 순위)
-    # BM25에 쓰는 품사. r1-route까지는 동사·형용사(VV·VA)도 썼음
-    # r1-tok: 하다·되다·있다 같은 일반 동사·형용사를 빼고 명사·숫자·외국어·한자·어근만 + 흔한 일반 명사 제외
-    "bm25_pos": ["NNG", "NNP", "NR", "SN", "SL", "SH", "XR"],
-    "bm25_stopwords": ["때", "경우", "얼마", "몇", "사항", "해당", "등", "것", "수", "후"],
-    "dedupe": "chunk_id",  # 중복 제거 기준
-    # r1: 여러 공고에 거의 같은 안내문이 반복돼 상위를 독차지 → 공백 뺀 글자 유사도 0.9 이상이면 먼저 나온 하나만 남김
-    "near_dup_ratio": 0.9,
-    # r1-route: 문서 종류 나눠 찾기. 공고·단지를 가리키는 말이 없으면 '일반 전월세' 질문 → 법령·가이드에서만 찾음.
-    # 공고 말이 있거나 애매하면 전체에서 찾음(잘못 좁혀서 놓치는 것을 막기 위해).
-    "route": True,
+    "candidates": 20,  # B에서 BM25·벡터 검색기가 각각 가져올 후보 수 (A도 거의 같은 글 합치기를 할 때 20에서 고름)
+    "weights": [0.5, 0.5],  # EnsembleRetriever 가중치 [BM25, 벡터] — 같으면 순수 RRF와 순서가 같음
+    "rrf_c": 60,  # EnsembleRetriever의 RRF 상수(기본값): 점수 = Σ 가중치 / (순위 + c)
+    "bm25_pos": ["NNG", "NNP", "NR", "SN", "SL", "SH", "XR", "VV", "VA"],  # BM25에 쓰는 품사
+    "bm25_stopwords": [],
+    "near_dup_ratio": None,  # 거의 같은 글 합치기 기준(공백 뺀 글자 유사도). None이면 안 함
+    "route": False,  # 문서 종류 나눠 찾기
     "notice_words": ["공고", "모집", "행복주택", "청년안심", "국민임대", "영구임대", "매입임대", "통합공공임대", "공공임대",
                      "장기전세", "LH", "SH", "단지", "입주자격", "예비입주자"],
     "notice_patterns": [r"\d{2,3}[A-Z]형?", r"[가-힣]{2,}역(?![가-힣])"],  # 주택형(14A·36B), 역 이름(신독산역 등)
     "law_categories": ["일반 전월세 법령", "일반 전월세 가이드"],
 }
 
+# 단계별 설정 (실험기록 6절 순서)
+PRESETS = {
+    "r0": {},  # 기본 A/B
+    "dedupe": {"near_dup_ratio": 0.9},  # 개선 1: 여러 공고에 반복되는 거의 같은 안내문을 하나로
+    "route": {"near_dup_ratio": 0.9, "route": True},  # 개선 2: 공고·단지 말이 없으면 법령·가이드에서만
+    "tok": {"near_dup_ratio": 0.9, "route": True,  # 개선 3: BM25에서 일반 동사·흔한 명사 제외
+            "bm25_pos": ["NNG", "NNP", "NR", "SN", "SL", "SH", "XR"],
+            "bm25_stopwords": ["때", "경우", "얼마", "몇", "사항", "해당", "등", "것", "수", "후"]},
+}
 
-def route(question: str) -> str:
-    """'law' = 법령·가이드만, 'all' = 전체."""
-    if not CONFIG.get("route"):
-        return "all"
-    if any(w in question for w in CONFIG["notice_words"]) or any(re.search(p, question) for p in CONFIG["notice_patterns"]):
-        return "all"
-    return "law"
+
+def apply_preset(name: str) -> None:
+    base = {"bm25_pos": ["NNG", "NNP", "NR", "SN", "SL", "SH", "XR", "VV", "VA"], "bm25_stopwords": [],
+            "near_dup_ratio": None, "route": False}
+    CONFIG.update(base | PRESETS[name])
+
 
 _kiwi = Kiwi()
 
 
-def _keep(tok) -> bool:
-    return tok.tag in CONFIG["bm25_pos"] and tok.form not in CONFIG.get("bm25_stopwords", [])
+def kiwi_tokenizer(text: str) -> list[str]:
+    """BM25 토크나이저(튜터 custom_tokenizer 자리). 공백 분리 대신 kiwipiepy 형태소 — 팀 결정."""
+    return [t.form for t in _kiwi.tokenize(text)
+            if t.tag in CONFIG["bm25_pos"] and t.form not in CONFIG["bm25_stopwords"]]
 
 
-def tokenize(text: str) -> list[str]:
-    return [t.form for t in _kiwi.tokenize(text) if _keep(t)]
+def route(question: str) -> str:
+    """'law' = 법령·가이드만, 'all' = 전체. 공고·단지를 가리키는 말이 있거나 애매하면 전체."""
+    if not CONFIG["route"]:
+        return "all"
+    if any(w in question for w in CONFIG["notice_words"]) or any(re.search(p, question) for p in CONFIG["notice_patterns"]):
+        return "all"
+    return "law"
 
 
 class Retriever:
@@ -64,78 +74,64 @@ class Retriever:
         self.collection = collection
         self.chunks = load_chunks(collection)
         self.by_id = {c.metadata["chunk_id"]: c for c in self.chunks}
-        self.store = PGVector(embeddings=OpenAIEmbeddings(model=MODELS["embedding"]), connection=DB_URL,
-                              collection_name=collection, use_jsonb=True)  # 연결만 — pre_delete_collection 쓰지 않음
-        self.bm25 = BM25Okapi(self._tokens())
-        self.law_idx = [i for i, c in enumerate(self.chunks) if c.metadata["category"] in CONFIG["law_categories"]]
+        self.vectorstore = PGVector(embeddings=OpenAIEmbeddings(model=MODELS["embedding"]), connection=DB_URL,
+                                    collection_name=collection, use_jsonb=True)  # 연결만 — pre_delete_collection 쓰지 않음
+        law_chunks = [c for c in self.chunks if c.metadata["category"] in CONFIG["law_categories"]]
+        # 범위(all / law)마다 검색기를 하나씩 만듦. BM25Retriever에는 거르기 기능이 없어서 법령·가이드 청크로 따로 만듦
+        self.bm25 = {"all": self._bm25(self.chunks), "law": self._bm25(law_chunks) if CONFIG["route"] else None}
 
-    def _tokens(self) -> list[list[str]]:
-        CACHE.mkdir(exist_ok=True)
-        rule = hashlib.sha256(json.dumps([CONFIG["bm25_pos"], CONFIG.get("bm25_stopwords", [])]).encode()).hexdigest()[:8]
-        path = CACHE / f"bm25_tokens_{self.collection}_{len(self.chunks)}_{rule}.pkl"  # 단어 규칙이 바뀌면 캐시도 따로
-        if path.exists():
-            return pickle.loads(path.read_bytes())
-        toks = [[t.form for t in sent if _keep(t)] for sent in _kiwi.tokenize([c.page_content for c in self.chunks])]
-        path.write_bytes(pickle.dumps(toks))
-        return toks
+    @staticmethod
+    def _bm25(docs) -> BM25Retriever:
+        bm25 = BM25Retriever.from_documents(documents=docs, preprocess_func=kiwi_tokenizer)
+        bm25.k = CONFIG["candidates"]
+        return bm25
 
-    def near_dedupe(self, hits: list[dict], n: int) -> list[dict]:
-        """순서대로 보며, 이미 고른 것과 거의 같은 글(유사도 ≥ near_dup_ratio)은 건너뜀. 건너뛴 것은 dup_of_me로 기록."""
-        ratio = CONFIG.get("near_dup_ratio")
+    def vector_retriever(self, k: int, scope: str):
+        search_kwargs = {"k": k}
+        if scope == "law":
+            search_kwargs["filter"] = {"category": {"$in": CONFIG["law_categories"]}}
+        return self.vectorstore.as_retriever(search_kwargs=search_kwargs)
+
+    def hybrid_retriever(self, scope: str) -> EnsembleRetriever:
+        return EnsembleRetriever(retrievers=[self.bm25[scope], self.vector_retriever(CONFIG["candidates"], scope)],
+                                 weights=CONFIG["weights"], c=CONFIG["rrf_c"])
+
+    def near_dedupe(self, docs: list, n: int) -> list:
+        """순서대로 보며, 이미 고른 것과 거의 같은 글은 건너뜀(튜터 코드에 없는 후처리)."""
+        ratio = CONFIG["near_dup_ratio"]
         if not ratio:
-            return hits[:n]
-        kept, norm = [], {}
-        for h in hits:
-            t = re.sub(r"\s+", "", self.by_id[h["chunk_id"]].page_content)
-            dup = next((k for k in kept if SequenceMatcher(None, norm[k["chunk_id"]], t).quick_ratio() >= ratio
-                        and SequenceMatcher(None, norm[k["chunk_id"]], t).ratio() >= ratio), None)
-            if dup:
-                dup.setdefault("dup_of_me", []).append(h["chunk_id"])
+            return docs[:n]
+        kept, norm = [], []
+        for d in docs:
+            t = re.sub(r"\s+", "", d.page_content)
+            if any(SequenceMatcher(None, s, t).quick_ratio() >= ratio and SequenceMatcher(None, s, t).ratio() >= ratio
+                   for s in norm):
                 continue
-            norm[h["chunk_id"]] = t
-            kept.append(h)
+            norm.append(t)
+            kept.append(d)
             if len(kept) == n:
                 break
         return kept
 
-    # --- A ---
-    def vector(self, query: str, n: int, scope: str = "all") -> list[dict]:
-        flt = {"category": {"$in": CONFIG["law_categories"]}} if scope == "law" else None
-        hits = self.store.similarity_search_with_score(query, k=n, filter=flt)
-        return [{"chunk_id": d.metadata["chunk_id"], "row_id": d.metadata["row_id"], "doc_id": d.metadata["doc_id"],
-                 "vector_rank": i + 1, "distance": round(float(s), 4)} for i, (d, s) in enumerate(hits)]
-
-    # --- BM25 ---
-    def bm25_search(self, query: str, n: int, scope: str = "all") -> list[dict]:
-        scores = self.bm25.get_scores(tokenize(query))
-        pool = self.law_idx if scope == "law" else range(len(scores))
-        top = sorted(pool, key=lambda i: -scores[i])[:n]
-        return [{"chunk_id": self.chunks[i].metadata["chunk_id"], "row_id": self.chunks[i].metadata["row_id"],
-                 "doc_id": self.chunks[i].metadata["doc_id"], "bm25_rank": r + 1, "bm25": round(float(scores[i]), 3)}
-                for r, i in enumerate(top) if scores[i] > 0]
-
-    # --- B ---
-    def hybrid(self, query: str, n: int, scope: str = "all") -> list[dict]:
-        merged: dict[str, dict] = {}
-        for lst, key in [(self.vector(query, CONFIG["vector_candidates"], scope), "vector_rank"),
-                         (self.bm25_search(query, CONFIG["bm25_candidates"], scope), "bm25_rank")]:
-            for h in lst:
-                m = merged.setdefault(h["chunk_id"], {k: h[k] for k in ("chunk_id", "row_id", "doc_id")} | {"rrf": 0.0})
-                m.update({k: v for k, v in h.items() if k not in m})
-                m["rrf"] += 1 / (CONFIG["rrf_k"] + h[key])
-        out = self.near_dedupe(sorted(merged.values(), key=lambda m: -m["rrf"]), n)
-        for i, m in enumerate(out):
-            m["rrf"] = round(m["rrf"], 5)
-            m["rrf_rank"] = i + 1
-        return out
-
     def search(self, mode: str, query: str, scope: str = "all") -> list[dict]:
+        """상위 k개를 로그용 dict로. 실패 원인을 보려고 BM25·벡터 각자의 순위도 함께 적음."""
         k = CONFIG["k"]
-        if mode == "A":  # 거의 같은 글 합치기를 A에도 똑같이 적용 — 비교 대상은 검색 방식만
-            return self.near_dedupe(self.vector(query, CONFIG["vector_candidates"], scope), k)
-        if mode == "B":
-            return self.hybrid(query, k, scope)
-        raise ValueError(f"지원하지 않는 검색 방식: {mode}")
+        if mode == "A":
+            n = CONFIG["candidates"] if CONFIG["near_dup_ratio"] else k
+            docs = self.near_dedupe(self.vector_retriever(n, scope).invoke(query), k)
+        elif mode == "B":
+            docs = self.near_dedupe(self.hybrid_retriever(scope).invoke(query), k)
+        else:
+            raise ValueError(f"지원하지 않는 검색 방식: {mode}")
+        hits = [{"chunk_id": d.metadata["chunk_id"], "row_id": d.metadata["row_id"], "doc_id": d.metadata["doc_id"],
+                 "rank": i + 1} for i, d in enumerate(docs)]
+        if mode == "B":  # 기록용: 두 검색기 각자의 순위(합치기 전)
+            b_rank = {d.metadata["chunk_id"]: i + 1 for i, d in enumerate(self.bm25[scope].invoke(query))}
+            v_rank = {d.metadata["chunk_id"]: i + 1
+                      for i, d in enumerate(self.vector_retriever(CONFIG["candidates"], scope).invoke(query))}
+            for h in hits:
+                h["bm25_rank"], h["vector_rank"] = b_rank.get(h["chunk_id"]), v_rank.get(h["chunk_id"])
+        return hits
 
     def text(self, chunk_id: str) -> str:
         return self.by_id[chunk_id].page_content
