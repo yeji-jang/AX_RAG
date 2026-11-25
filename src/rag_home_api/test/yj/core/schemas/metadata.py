@@ -22,7 +22,7 @@ class PublicRentalNoticeMetadata(BaseModel):
     #     description="표 포함 여부")
     
     house_type : str = Field(
-        description="주택 유형 (예: 매입임대주택, 장기전세주택)")
+        description="주택 유형 (예: 매입임대, 장기전세주택)")
     
     id : str = Field(
         description="원본 행/페이지 고유 ID (예: SH_308944_p024)")
@@ -53,8 +53,11 @@ class PublicRentalNoticeMetadata(BaseModel):
 class PublicRentalChunkMetadata(PublicRentalNoticeMetadata) :
     """
     - 청킹 후 PGVector에 저장할 metadata 스키마
-    - PublicRentalNoticeMetadata의 12개 필드 + 청크 정보
+    - PublicRentalNoticeMetadata의 10개 필드 + 청크 정보
     """
+    chunk_id : str = Field(
+        description="청크 고유 ID, {페이지ID}_c{순번 2자리}")
+
     chunk_index : int = Field(
         description="문서 내 청크 순번")
     
