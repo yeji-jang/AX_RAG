@@ -12,6 +12,7 @@ def search_hybrid_rrf(
     vector_weight: float | None = None,
     rrf_k: int | None = None,
     collection_name: str | None = None,
+    embedding_model: str | None = None,
 ) -> list[dict]:
     """[검색 B: Hybrid RRF] BM25 순위와 PGVector 순위를 가중 RRF로 결합·중복 제거한다.
 
@@ -26,7 +27,13 @@ def search_hybrid_rrf(
     pool = max(top_k * 2, 20)
 
     bm25_hits = search_bm25(keyword_query, top_k=pool, filters=filters, collection_name=collection_name)
-    vec_hits = search_vector(semantic_query, top_k=pool, filters=filters, collection_name=collection_name)
+    vec_hits = search_vector(
+        semantic_query,
+        top_k=pool,
+        filters=filters,
+        collection_name=collection_name,
+        embedding_model=embedding_model,
+    )
 
     registry: dict[str, dict] = {}
 

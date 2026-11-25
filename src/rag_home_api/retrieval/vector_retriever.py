@@ -37,13 +37,17 @@ def search_vector(
     top_k: int = 5,
     filters: dict | None = None,
     collection_name: str | None = None,
+    embedding_model: str | None = None,
 ) -> list[dict]:
     """[검색 A: Vector Baseline] PGVector 코사인 유사도 검색.
 
     나중에 검색 B(Hybrid RRF)·C(Re-ranking)와 같은 형식으로 비교할 수 있게
     표준 딕셔너리 리스트로 반환한다.
     """
-    store = get_vector_store(collection_name or settings.collection_name)
+    store = get_vector_store(
+        collection_name=collection_name or settings.collection_name,
+        embedding_model=embedding_model,
+    )
     hits: list[tuple[Document, float]] = store.similarity_search_with_relevance_scores(
         query,
         k=top_k,
