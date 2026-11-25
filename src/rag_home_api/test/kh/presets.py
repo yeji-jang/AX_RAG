@@ -22,12 +22,58 @@ class ExperimentPreset:
     vector_weight: float = 0.45
     rrf_k: int = 60
     # 최적화 스위치 (STEP 5에서 1개씩 독립적으로 ON -> 효과 분리 측정 보장!)
+    use_metadata_filter: bool = False
     use_rewrite: bool = False
     use_cache: bool = False
     use_hyde: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+# ============================================================
+# [전월세 AB 심화 비교] A vs B 가중치 3종 vs B + 경량 메타데이터 필터
+# ============================================================
+RENT_AB_PRESETS: list[ExperimentPreset] = [
+    ExperimentPreset(name="A_vector", pipeline_mode="A_vector", top_k=5, candidate_k=12),
+    ExperimentPreset(
+        name="B_rrf_55_45",
+        pipeline_mode="B_hybrid",
+        top_k=5,
+        candidate_k=12,
+        bm25_weight=0.55,
+        vector_weight=0.45,
+        rrf_k=60,
+    ),
+    ExperimentPreset(
+        name="B_rrf_70_30",
+        pipeline_mode="B_hybrid",
+        top_k=5,
+        candidate_k=12,
+        bm25_weight=0.70,
+        vector_weight=0.30,
+        rrf_k=60,
+    ),
+    ExperimentPreset(
+        name="B_rrf_80_20",
+        pipeline_mode="B_hybrid",
+        top_k=5,
+        candidate_k=12,
+        bm25_weight=0.80,
+        vector_weight=0.20,
+        rrf_k=60,
+    ),
+    ExperimentPreset(
+        name="B_rrf_70_30_filter",
+        pipeline_mode="B_hybrid",
+        top_k=5,
+        candidate_k=12,
+        bm25_weight=0.70,
+        vector_weight=0.30,
+        rrf_k=60,
+        use_metadata_filter=True,
+    ),
+]
 
 
 # ============================================================
