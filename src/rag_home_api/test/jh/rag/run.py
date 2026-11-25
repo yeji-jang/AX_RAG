@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 
-from common import MODELS, RESULTS, eval_sha, load_eval, require_dev_api_scope  # noqa: E402
+from common import MODELS, RESULTS, eval_sha, load_eval, require_eval_api_scope  # noqa: E402
 from retrieve import CONFIG, PRESETS, Retriever, apply_preset  # noqa: E402
 from score import evidence_rank  # noqa: E402
 
@@ -31,19 +31,18 @@ def main():
     ap.add_argument("--preset", default="tok", choices=list(PRESETS))
     args = ap.parse_args()
 
-    if args.split == "dev":
-        require_dev_api_scope()
+    require_eval_api_scope()
 
     apply_preset(args.preset)
     ev = load_eval(args.split)
-    ret = Retriever(args.collection, law_only=args.split == "dev")
+    ret = Retriever(args.collection, law_only=True)
     RESULTS.mkdir(exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out = RESULTS / f"{args.split}_원본로그.jsonl"
     meta = {"tag": args.tag, "split": args.split, "eval_version": ev["version"], "eval_sha": eval_sha(),
             "collection": args.collection, "chunks": len(ret.chunks), "modes": args.modes, "models": MODELS,
             "code": "LangChain(BM25Retriever + EnsembleRetriever + EmbeddingsRedundantFilter)", "preset": args.preset,
-            "scope": "law_statutes" if args.split == "dev" else "legacy",
+            "scope": "law_statutes",
             "retrieval_config": CONFIG, "started": stamp}
     print(json.dumps(meta, ensure_ascii=False))
     with open(out, "a", encoding="utf-8") as f:

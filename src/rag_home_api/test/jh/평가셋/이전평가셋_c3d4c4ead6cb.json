@@ -1,0 +1,1021 @@
+{
+  "version": "inactive-c3d4c4ead6cb",
+  "active": false,
+  "eval_sha": "c3d4c4ead6cb",
+  "source_commit": "8c38f0759474e36db5a5374723b0e7f95b08417c",
+  "items": [
+    {
+      "question_id": "JH-DEV-01",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "주민등록법 제16조에 따라 새 임차주택으로 이사한 경우 전입신고는 언제까지 해야 하나요?",
+      "key_facts": [
+        "새 거주지에 전입한 날부터 14일 이내"
+      ],
+      "allowed_doc_ids": [
+        "LAW_RESIDENT"
+      ],
+      "allowed_row_ids": [
+        "LAW_RESIDENT_본칙_023"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_RESIDENT_본칙_023_s500_c01",
+        "LAW_RESIDENT_본칙_023_s1000_c01"
+      ],
+      "source_location": "주민등록법 제16조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%EB%AF%BC%EB%93%B1%EB%A1%9D%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_RESIDENT_본칙_023",
+          "quote": "제16조(거주지의 이동) ①하나의 세대에 속하는 자의 전원 또는 그 일부가 거주지를 이동하면 제11조나 제12조에 따른 신고의무자가 신거주지에 전입한 날부터 14일 이내에 신거주지의 시장ㆍ군수 또는 구청장에게 전입신고(轉入申告)를 하여야 한다."
+        }
+      ],
+      "application_conditions": [
+        "새 거주지로 거주지를 이동하는 경우. 기한만 물으므로 신고 기관은 필수 정답에서 제외함"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "유지·필수 사실 축소 / 수집 조문 기준",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-02",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "서울에서 주택 임대차 계약의 신고 대상이 되는 보증금·월세 기준은 무엇이고, 금액 변동 없이 기간만 연장한 갱신도 포함되나요?",
+      "key_facts": [
+        "보증금 6천만원 초과 또는 월 차임 30만원 초과",
+        "보증금과 차임의 증감 없이 기간만 연장하는 갱신은 신고 대상에서 제외"
+      ],
+      "allowed_doc_ids": [
+        "LAW_REPORT_DECREE"
+      ],
+      "allowed_row_ids": [
+        "LAW_REPORT_DECREE_본칙_006"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_REPORT_DECREE_본칙_006_s500_c01",
+        "LAW_REPORT_DECREE_본칙_006_s1000_c01"
+      ],
+      "source_location": "부동산 거래신고 등에 관한 법률 시행령 제4조의3 제1항·제2항",
+      "source_url": "https://www.law.go.kr/법령/%EB%B6%80%EB%8F%99%EC%82%B0%20%EA%B1%B0%EB%9E%98%EC%8B%A0%EA%B3%A0%20%EB%93%B1%EC%97%90%20%EA%B4%80%ED%95%9C%20%EB%B2%95%EB%A5%A0%20%EC%8B%9C%ED%96%89%EB%A0%B9",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_REPORT_DECREE_본칙_006",
+          "quote": "제4조의3(주택 임대차 계약의 신고) ① 법 제6조의2제1항 본문에서 “대통령령으로 정하는 금액을 초과하는 임대차 계약”이란 보증금이 6천만원을 초과하거나 월 차임이 30만원을 초과하는 주택 임대차 계약(계약을 갱신하는 경우로서 보증금 및 차임의 증감 없이 임대차 기간만 연장하는 계약은 제외한다)을 말한다."
+        }
+      ],
+      "application_conditions": [
+        "신고 대상 지역에 속하는 서울의 주택 임대차 계약. 경계는 초과이고 두 금액은 또는 관계임. 신고 기한과 신고 방식은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "유지·질문 범위 명확화 / 수집 조문 기준",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-03",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "민법상 임대인은 주택을 인도한 뒤 계약이 존속하는 동안 어떤 상태를 유지해야 하나요?",
+      "key_facts": [
+        "계약 존속 중 임차인이 사용·수익하는 데 필요한 상태를 유지해야 함"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_632"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_632_s500_c01",
+        "LAW_CIVIL_본칙_632_s1000_c01"
+      ],
+      "source_location": "민법 제623조",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_632",
+          "quote": "제623조(임대인의 의무) 임대인은 목적물을 임차인에게 인도하고 계약존속중 그 사용, 수익에 필요한 상태를 유지하게 할 의무를 부담한다."
+        }
+      ],
+      "application_conditions": [
+        "임대차가 존속하는 동안의 임대인 의무. 구체적 수리비·배상액은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·임대인 유지 의무 / 수집 조문 기준",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-04",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임차인이 임차물의 보존에 필요한 비용을 지출했다면 민법상 임대인에게 상환을 청구할 수 있나요?",
+      "key_facts": [
+        "임차물 보존에 관한 필요비를 지출한 임차인은 임대인에게 상환을 청구할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_635"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_635_s500_c01",
+        "LAW_CIVIL_본칙_635_s1000_c01"
+      ],
+      "source_location": "민법 제626조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_635",
+          "quote": "제626조(임차인의 상환청구권) ①임차인이 임차물의 보존에 관한 필요비를 지출한 때에는 임대인에 대하여 그 상환을 청구할 수 있다."
+        }
+      ],
+      "application_conditions": [
+        "임차물 보존에 관한 필요비를 지출한 경우. 제2항의 유익비 상환 조건은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·필요비 상환 / 수집 조문 기준",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-05",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임차인 과실 없이 주택 일부가 멸실되어 그 부분을 사용·수익할 수 없다면, 민법상 차임 감액을 청구할 수 있고 감액 기준은 무엇인가요?",
+      "key_facts": [
+        "사용·수익할 수 없는 부분의 비율에 따른 차임 감액을 청구할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_636"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_636_s500_c01",
+        "LAW_CIVIL_본칙_636_s1000_c01"
+      ],
+      "source_location": "민법 제627조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_636",
+          "quote": "제627조(일부멸실 등과 감액청구, 해지권) ①임차물의 일부가 임차인의 과실없이 멸실 기타 사유로 인하여 사용, 수익할 수 없는 때에는 임차인은 그 부분의 비율에 의한 차임의 감액을 청구할 수 있다."
+        }
+      ],
+      "application_conditions": [
+        "임차인의 과실 없는 일부 멸실 등으로 그 부분을 사용·수익할 수 없는 경우. 제2항의 계약 해지는 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·무과실 일부 사용불능 감액 / 수집 조문 기준",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-06",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "주택임대차보호법 제7조에 따른 월세 증액청구의 법정 상한은 기존 월세의 몇 퍼센트인가요?",
+      "key_facts": [
+        "기존 월세의 20분의 1인 5%를 초과할 수 없음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_015"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_015_s500_c01",
+        "LAW_HLPA_본칙_015_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제7조 제2항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_015",
+          "quote": "② 제1항에 따른 증액청구는 약정한 차임이나 보증금의 20분의 1의 금액을 초과하지 못한다. 다만, 특별시ㆍ광역시ㆍ특별자치시ㆍ도 및 특별자치도는 관할 구역 내의 지역별 임대차 시장 여건 등을 고려하여 본문의 범위에서 증액청구의 상한을 조례로 달리 정할 수 있다. <신설 2020. 7. 31.>"
+        }
+      ],
+      "application_conditions": [
+        "제7조 제1항의 증액청구 요건이 있는 주택 임대차. 지방자치단체는 법정 상한 범위 안에서 조례로 달리 정할 수 있어 항상 5% 인상이 허용된다고 답하지 않음. 재증액 금지 기간은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "유지·증액 상한 조문 범위 명확화 / 수집 조문 기준",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-07",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임차권등기명령 신청과 그 임차권등기에 든 비용을 임대인에게 청구할 수 있나요?",
+      "key_facts": [
+        "임차권등기명령 신청과 관련 임차권등기에 든 비용을 임대인에게 청구할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_005"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_005_s500_c04",
+        "LAW_HLPA_본칙_005_s1000_c02"
+      ],
+      "source_location": "주택임대차보호법 제3조의3 제8항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_005",
+          "quote": "⑧ 임차인은 제1항에 따른 임차권등기명령의 신청과 그에 따른 임차권등기와 관련하여 든 비용을 임대인에게 청구할 수 있다."
+        }
+      ],
+      "application_conditions": [
+        "제1항의 임차권등기명령 신청 및 그에 따른 등기 관련 비용. 신청 관할·대항력·우선변제권 취득 요건은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·임차권등기 비용 청구 / 수집 조문 기준",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-08",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "주거용으로 임대한 주택의 일부가 주거 외 목적으로 사용되는 경우에도 주택임대차보호법이 적용되나요?",
+      "key_facts": [
+        "주거용 건물의 일부가 주거 외 목적으로 사용되는 경우에도 주택임대차보호법이 적용됨"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_002"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_002_s500_c01",
+        "LAW_HLPA_본칙_002_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제2조",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_002",
+          "quote": "제2조(적용 범위) 이 법은 주거용 건물(이하 “주택”이라 한다)의 전부 또는 일부의 임대차에 관하여 적용한다. 그 임차주택(賃借住宅)의 일부가 주거 외의 목적으로 사용되는 경우에도 또한 같다."
+        }
+      ],
+      "application_conditions": [
+        "주거용 건물의 임대차이며 그 일부만 주거 외 목적으로 사용하는 경우. 전체가 주거 외 용도인 경우까지 확대하지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·법 적용 범위 / 수집 조문 기준",
+      "eval_category": "answerable"
+    },
+    {
+      "question_id": "JH-DEV-09",
+      "split": "dev",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "민법에 정해진 임대주택 벽지 훼손의 제곱미터당 법정 배상액은 얼마인가요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "application_conditions": [
+        "수집 법령 원문으로 필요한 법정 수치를 확정할 수 없는 경우"
+      ],
+      "absence_reason": "수집 민법과 공유 JSONL에는 벽지 훼손의 제곱미터당 법정 단가표가 없음. 벽지와 제곱미터·㎡·단가, 제곱미터·㎡와 배상 조합을 공백 제거 후 3개 공유 JSONL 전체에서 대조해 0건임. 개별 상담사례의 비용을 법정 단가로 일반화하지 않음.",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·수집본 기준 근거 부족",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-DEV-10",
+      "split": "dev",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "부동산 거래신고 등에 관한 법률 시행령 별표 3의 주택 임대차 계약 지연신고 기간별 과태료 세부금액표를 알려주세요.",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "application_conditions": [
+        "수집 법령 원문으로 필요한 법정 수치를 확정할 수 없는 경우"
+      ],
+      "absence_reason": "수집 시행령은 제4조의3과 제20조 두 조문뿐이며 별표 3 본문을 포함하지 않음. 제20조의 별표 참조나 과태료 상한으로 지연기간별 표를 복원할 수 없음. 3개 공유 JSONL에서 지연기간과 신고 지연 과태료 조합을 공백 제거 후 대조해 세부표 부재를 확인함.",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·수집본 기준 근거 부족",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-TEST-01",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임대차 기간을 2년 미만으로 정하면 그 기간은 어떻게 되나요?",
+      "key_facts": [
+        "2년 미만으로 정한 임대차는 2년으로 봄",
+        "임차인은 2년 미만 기간이 유효하다고 주장할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_010",
+        "GUIDE_HLPA_COMMENTARY_p010",
+        "GUIDE_HLPA_COMMENTARY_p027",
+        "GUIDE_HLPA_COMMENTARY_p060",
+        "GUIDE_SEOUL_HLPA_2020_p019",
+        "GUIDE_SEOUL_HLPA_2020_p020",
+        "GUIDE_SEOUL_HLPA_2020_p052",
+        "GUIDE_SEOUL_HLPA_2020_p077"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제4조 제1항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_010",
+          "quote": "기간을 정하지 아니하거나 2년 미만으로 정한 임대차는 그 기간을 2년으로 본다. 다만, 임차인은 2년 미만으로 정한 기간이 유효함을 주장할 수 있다."
+        }
+      ],
+      "absence_reason": "",
+      "stage": "① 이사 결정",
+      "axis": "일반 전월세",
+      "note": "팀장 DEV-03(제3조 대항력)과 근거가 겹쳐 교체, 직접 검색 10개를 맞추려고 법 용어로 물음",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-02",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "계약갱신요구권은 몇 번 쓸 수 있고, 갱신되면 몇 년인가요?",
+      "key_facts": [
+        "1회만 행사",
+        "갱신 기간 2년"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA",
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_014",
+        "GUIDE_STD_CONTRACT_p004",
+        "GUIDE_HLPA_COMMENTARY_p017",
+        "GUIDE_HLPA_COMMENTARY_p018",
+        "GUIDE_HLPA_COMMENTARY_p022",
+        "GUIDE_HLPA_COMMENTARY_p025",
+        "GUIDE_HLPA_COMMENTARY_p061",
+        "GUIDE_SEOUL_HLPA_2020_p012",
+        "GUIDE_SEOUL_HLPA_2020_p018",
+        "GUIDE_SEOUL_HLPA_2020_p060"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제6조의3 제1항·제2항·제3항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_014",
+          "quote": "임차인은 제1항에 따른 계약갱신요구권을 1회에 한하여 행사할 수 있다. 이 경우 갱신되는 임대차의 존속기간은 2년으로 본다."
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-03",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "묵시적 갱신이 된 상태에서 계약을 해지하면 언제 효력이 생기나요?",
+      "key_facts": [
+        "임차인은 언제든 해지 통지 가능",
+        "임대인이 통지 받은 날부터 3개월 후 효력"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_013",
+        "GUIDE_HLPA_COMMENTARY_p027",
+        "GUIDE_HLPA_COMMENTARY_p060",
+        "GUIDE_SEOUL_HLPA_2020_p021",
+        "GUIDE_SEOUL_HLPA_2020_p022",
+        "GUIDE_SEOUL_HLPA_2020_p105"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제6조의2",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_013",
+          "quote": "임대인이 그 통지를 받은 날부터 3개월이 지나면 그 효력이 발생한다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-04",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "2026.11.19 공고 기준 LH수서1 행복주택 14A형에서 소득이 있는 청년의 임대보증금과 월 임대료는 얼마인가요?",
+      "key_facts": [
+        "임대보증금 52,200천 원(5,220만 원)",
+        "월 임대료 182,700원"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p003"
+      ],
+      "allowed_chunk_ids": [
+        "LH_2015122300021098_p003_s500_c09",
+        "LH_2015122300021098_p003_s500_c10",
+        "LH_2015122300021098_p003_s1000_c05",
+        "LH_2015122300021098_p003_s1000_c06"
+      ],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 3쪽 임대조건표(원본 대조 완료 쪽)",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p003",
+          "quote": "| LH 수서1 | 14A | 청년 | 420 | 10 | 100 | 14.69 | 8.3190 | 10.3948 | 33.4038 | 52,200 | 2,610 | 49,590 | 182,700 |"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "② 예산",
+      "axis": "공공임대",
+      "note": "근거 청크는 공고 표의 해당 단지·유형·소득 조건 또는 전환 규칙 발췌를 포함하는 500/100·1000/200 청크로 매핑함. 공고일 금액이며 계약 시 금액은 달라질 수 있음.",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-05",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "전입세대확인서는 무엇이고, 임대차계약을 체결한 본인도 뗄 수 있나요?",
+      "key_facts": [
+        "세대주·동거인의 성명과 전입일자를 확인하는 서류",
+        "임대차계약자 본인도 열람·교부 신청 가능"
+      ],
+      "allowed_doc_ids": [
+        "LAW_RESIDENT"
+      ],
+      "allowed_row_ids": [
+        "LAW_RESIDENT_본칙_043"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주민등록법 제29조의2 제1항·제2항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_RESIDENT_본칙_043",
+          "quote": "세대주와 주민등록표 상의 동거인(말소 또는 거주불명 등록된 사람을 포함한다)의 성명과 전입일자를 확인할 수 있는 서류"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-06",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "영등포구청역 포레나당산 청년안심주택 추가모집에서 공급 유형에 공통으로 적용되는 신청 자격은 무엇인가요?",
+      "key_facts": [
+        "모집공고일 기준 만 19~39세",
+        "신청자·입주 예정 세대원 전원 무주택",
+        "자동차 기준가액 4,542만 원 이내",
+        "청약자·계약자·입주자 동일인"
+      ],
+      "allowed_doc_ids": [
+        "YOUTH_6711"
+      ],
+      "allowed_row_ids": [
+        "YOUTH_6711_p003"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "[민간임대] 영등포구청역 포레나당산 추가모집공고 3쪽 / 같은 쪽",
+      "evidence_quotes": [
+        {
+          "row_id": "YOUTH_6711_p003",
+          "quote": "임차인 모집공고일 기준 만 19세 이상 39세 이하여야 합니다"
+        },
+        {
+          "row_id": "YOUTH_6711_p003",
+          "quote": "모든 계층의 신청자 및 입주 예정 세대원 전부는 무주택 요건을 충족해야 합니다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "④ 자격 확인",
+      "axis": "공공임대",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-07",
+      "split": "test",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "확정일자는 어디서 받나요? 임대차 신고를 하면 따로 받아야 하나요?",
+      "key_facts": [
+        "읍·면사무소, 동 주민센터, 시·군·구 출장소, 지방법원·지원·등기소, 공증인",
+        "임대차계약서를 제출하여 임대차 신고 접수를 완료하면 확정일자가 부여된 것으로 보므로 별도 신청 불필요"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA",
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020",
+        "LAW_REPORT"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_008",
+        "GUIDE_STD_CONTRACT_p001",
+        "GUIDE_HLPA_COMMENTARY_p060",
+        "GUIDE_SEOUL_HLPA_2020_p104",
+        "LAW_REPORT_본칙_011"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제3조의6 제1항 / 주택임대차 표준계약서 1쪽 확정일자 부여란 / 부동산 거래신고 등에 관한 법률 제6조의5 제3항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_008",
+          "quote": "주택 소재지의 읍ㆍ면사무소, 동 주민센터"
+        },
+        {
+          "row_id": "GUIDE_STD_CONTRACT_p001",
+          "quote": "임대차 신고의 접수를 완료한 경우에는 별도로 확정일자 부여를 신청할 필요가 없습니다"
+        },
+        {
+          "row_id": "LAW_REPORT_본칙_011",
+          "quote": "확정일자를 부여한 것으로 본다(임대차계약서가 제출된 경우로 한정한다)"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-08",
+      "split": "test",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "서울에서 보증금 중 일정액을 최우선으로 돌려받을 수 있는 소액임차인 기준은 얼마인가요?",
+      "key_facts": [
+        "서울 보증금 1억6,500만 원 이하 임차인",
+        "5,500만 원까지 최우선변제",
+        "주택가액 2분의 1 한도",
+        "경매신청 등기 전 대항요건 필요"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA_DECREE",
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_DECREE_본칙_012",
+        "LAW_HLPA_DECREE_본칙_011",
+        "LAW_HLPA_본칙_017"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 시행령 제11조 제1호 / 주택임대차보호법 시행령 제10조 제1항 제1호 / 주택임대차보호법 제8조 제1항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_DECREE_본칙_012",
+          "quote": "서울특별시: 1억6천500만원"
+        },
+        {
+          "row_id": "LAW_HLPA_DECREE_본칙_011",
+          "quote": "서울특별시: 5천500만원"
+        },
+        {
+          "row_id": "LAW_HLPA_본칙_017",
+          "quote": "임차인은 주택에 대한 경매신청의 등기 전에 제3조제1항의 요건을 갖추어야 한다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-09",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "LH 서울삼전·강동천호·수서 행복주택 예비입주자 모집은 어떻게 신청하나요? 현장 접수도 되나요?",
+      "key_facts": [
+        "LH청약플러스 홈페이지 또는 모바일로 신청",
+        "일반 신청자는 현장 접수 불가",
+        "주거약자에 한해 현장 접수 가능(2026.11.30 10:00~16:00)"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p002",
+        "LH_2015122300021098_p015"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 2쪽",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p002",
+          "quote": "LH청약플러스 홈페이지(https://apply.lh.or.kr) 또는 모바일(LH청약 플러스)로 받습니다"
+        },
+        {
+          "row_id": "LH_2015122300021098_p015",
+          "quote": "주거약자에 한해 현장접수"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "④ 자격 확인",
+      "axis": "공공임대",
+      "note": "",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-10",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "대흥역 리마크빌 마포 청년안심주택 단지 안에는 어떤 편의시설이 있나요?",
+      "key_facts": [
+        "지상 1·2층 입주민 편의시설: 입주민 회의실, 북카페, 체력단련실, 멀티룸, 코인세탁실",
+        "지상 1층 근린생활시설"
+      ],
+      "allowed_doc_ids": [
+        "YOUTH_6678"
+      ],
+      "allowed_row_ids": [
+        "YOUTH_6678_p015"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "[민간임대] 대흥역 리마크빌 마포 최초모집공고(2026.09.22) 15쪽",
+      "evidence_quotes": [
+        {
+          "row_id": "YOUTH_6678_p015",
+          "quote": "지상1층, 2층에는 입주민 편의시설(입주민 회의실, 북카페, 체력단련실, 멀티룸, 코인세탁실) 등이 계획되며"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "③ 선택지 비교",
+      "axis": "공공임대",
+      "note": "사용자 질문(인프라)에서 나온 단지 안 시설 문항",
+      "eval_category": "direct"
+    },
+    {
+      "question_id": "JH-TEST-11",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "혹시 집이 경매로 넘어가도 보증금을 먼저 받으려면 입주할 때 뭘 해 둬야 하나요?",
+      "key_facts": [
+        "주택 인도 + 전입신고(대항요건)",
+        "계약서에 확정일자",
+        "경매·공매 때 후순위권리자보다 우선변제"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA",
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_SEOUL_CASES"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_004",
+        "GUIDE_STD_CONTRACT_p004",
+        "GUIDE_SEOUL_CASES_p053",
+        "GUIDE_SEOUL_CASES_p062",
+        "GUIDE_SEOUL_CASES_p063"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제3조의2 제2항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_004",
+          "quote": "후순위권리자(後順位權利者)나 그 밖의 채권자보다 우선하여 보증금을 변제(辨濟)받을 권리가 있다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-12",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "월세를 두 달 밀리면 집주인이 바로 나가라고 할 수 있나요?",
+      "key_facts": [
+        "차임 연체액이 2기 차임액에 이르면 임대인이 해지할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL",
+        "GUIDE_STD_CONTRACT"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_649",
+        "GUIDE_STD_CONTRACT_p002"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "민법 제640조",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_649",
+          "quote": "임차인의 차임연체액이 2기의 차임액에 달하는 때에는 임대인은 계약을 해지할 수 있다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-13",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "집주인한테 밀린 세금이 있는지 계약 전에 확인할 수 있나요?",
+      "key_facts": [
+        "임대인은 국세·지방세 납세증명서를 제시해야 함",
+        "계약 전 미납국세·지방세 열람 동의로 대신 가능"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA",
+        "GUIDE_STD_CONTRACT"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_009",
+        "GUIDE_STD_CONTRACT_p004"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제3조의7 제2호",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_009",
+          "quote": "「국세징수법」 제108조에 따른 납세증명서 및 「지방세징수법」 제5조제2항에 따른 납세증명서"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-14",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "2026.11.19 공고 기준 직장 다니는 청년이 강동천호 행복주택 36B형에 들어가면 보증금이랑 월세가 얼마예요?",
+      "key_facts": [
+        "청년(소득有) 임대보증금 108,360천 원(1억836만 원)",
+        "월 임대료 406,350원"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p003"
+      ],
+      "allowed_chunk_ids": [
+        "LH_2015122300021098_p003_s500_c06",
+        "LH_2015122300021098_p003_s500_c07",
+        "LH_2015122300021098_p003_s1000_c04"
+      ],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 3쪽 임대조건표(원본 대조 완료 쪽)",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p003",
+          "quote": "| 강동 천호 | 36B | 청년 (소득有) | 7 | 0 | 10 | 36.33 | 29.8705 | 33.5441 | 99.7446 | 108,360 | 5,418 | 102,942 | 406,350 |"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "② 예산",
+      "axis": "공공임대",
+      "note": "사용자 질문(월세·보증금)을 단지·조건 기준으로 바꿈 — 지역 평균 시세는 실거래가 데이터 영역이라 문서 평가에서 제외 / 근거 청크는 공고 표의 해당 단지·유형·소득 조건 또는 전환 규칙 발췌를 포함하는 500/100·1000/200 청크로 매핑함. 공고일 금액이며 계약 시 금액은 달라질 수 있음.",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-15",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "계약 만료 전에 집주인이 아무 말도 안 하면 계약은 어떻게 되나요?",
+      "key_facts": [
+        "만료 6~2개월 전 갱신 거절·조건 변경 통지가 없으면 같은 조건으로 갱신(묵시적 갱신)",
+        "존속기간 2년",
+        "임차인이 만료 2개월 전까지 통지하지 않은 경우도 같음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA",
+        "GUIDE_STD_CONTRACT",
+        "GUIDE_HLPA_COMMENTARY",
+        "GUIDE_SEOUL_HLPA_2020"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_012",
+        "GUIDE_STD_CONTRACT_p004",
+        "GUIDE_HLPA_COMMENTARY_p060",
+        "GUIDE_SEOUL_HLPA_2020_p105"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "주택임대차보호법 제6조 제1항·제2항",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_012",
+          "quote": "그 기간이 끝난 때에 전 임대차와 동일한 조건으로 다시 임대차한 것으로 본다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "⑦ 이직·퇴거",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-16",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "LH 서울삼전 행복주택은 구축이에요, 신축이에요?",
+      "key_facts": [
+        "최초 입주 2015년 8월"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p001"
+      ],
+      "allowed_chunk_ids": [],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 1쪽 건설위치 표",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p001",
+          "quote": "| 서울삼전 | 서울특별시 송파구 백제고분로 32길 40-5(삼전동 170-27) | 40호 | '15.08 |"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "③ 선택지 비교",
+      "axis": "공공임대",
+      "note": "사용자 질문(구축/신축). 정답은 '최초 입주 시기' 사실로 채점 — 구축·신축 판단 표현은 보조",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-17",
+      "split": "test",
+      "question_type": "multi_hop_reasoning",
+      "expected_status": "answered",
+      "question": "2026.11.19 공고 기준 소득이 있는 청년이 행복주택 수서1 14A형에서 보증금을 더 내고 월세를 줄일 수 있나요?",
+      "key_facts": [
+        "보증금↔월 임대료 전환은 임차인 선택",
+        "보증금 100만 원 단위",
+        "최대 21,000천 원 증액 시 보증금 73,200천 원·월 77,700원"
+      ],
+      "allowed_doc_ids": [
+        "LH_2015122300021098"
+      ],
+      "allowed_row_ids": [
+        "LH_2015122300021098_p005",
+        "LH_2015122300021098_p003",
+        "LH_2015122300021098_p004"
+      ],
+      "allowed_chunk_ids": [
+        "LH_2015122300021098_p005_s500_c01",
+        "LH_2015122300021098_p003_s500_c09",
+        "LH_2015122300021098_p004_s500_c13",
+        "LH_2015122300021098_p005_s1000_c01",
+        "LH_2015122300021098_p003_s1000_c05",
+        "LH_2015122300021098_p004_s1000_c07"
+      ],
+      "source_location": "행복주택 예비입주자 모집공고(2026.11.19) 5쪽 / 같은 공고 3쪽 임대조건표(원본 대조 완료 쪽)",
+      "evidence_quotes": [
+        {
+          "row_id": "LH_2015122300021098_p005",
+          "quote": "임차인의 선택사항으로서 임대보증금 100만원 단위로 전환 가능합니다"
+        },
+        {
+          "row_id": "LH_2015122300021098_p003",
+          "quote": "| LH 수서1 | 14A | 청년 | 420 | 10 | 100 | 14.69 | 8.3190 | 10.3948 | 33.4038 | 52,200 | 2,610 | 49,590 | 182,700 | (+)21,000 | 73,200 | 77,700 |"
+        },
+        {
+          "row_id": "LH_2015122300021098_p004",
+          "quote": "임차인의 선택사항으로서 임대보증금 100만원 단위로 전환 가능합니다"
+        }
+      ],
+      "absence_reason": "",
+      "stage": "② 예산",
+      "axis": "공공임대",
+      "note": "근거 청크는 공고 표의 해당 단지·유형·소득 조건 또는 전환 규칙 발췌를 포함하는 500/100·1000/200 청크로 매핑함. 공고일 금액이며 계약 시 금액은 달라질 수 있음.",
+      "eval_category": "paraphrase"
+    },
+    {
+      "question_id": "JH-TEST-18",
+      "split": "test",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "전세사기 피해자로 인정받으면 어떤 지원을 받을 수 있나요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "absence_reason": "'전세사기 피해|피해자 결정|피해주택' 일치 2건은 모두 '일본군위안부 피해자 결정통지서'(영구임대 서류) — 전세사기 피해 지원 내용 없음 (2026-11-25 확인).",
+      "stage": "⑤ 매물 점검",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-TEST-19",
+      "split": "test",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "2027년 상반기 SH 행복주택 모집 공고는 언제 나오나요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "absence_reason": "'2027 … 행복주택|모집 공고' 0건 — 수집 범위(공고일 2025-11~2026-11)에 앞으로의 공고 일정 없음 (2026-11-25 확인).",
+      "stage": "③ 선택지 비교",
+      "axis": "공공임대",
+      "note": "",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-TEST-20",
+      "split": "test",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "계약한 집의 등기부 내용이 바뀌면 알림을 받을 수 있는 서비스가 있나요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "absence_reason": "'변동 알림|등기 … 알림|부동산 알림|안심전세' 0건 (2026-11-25 확인).",
+      "stage": "⑥ 계약·입주",
+      "axis": "일반 전월세",
+      "note": "",
+      "eval_category": "no_evidence"
+    }
+  ],
+  "performance": {
+    "law_dev": "not_run",
+    "mixed_test": "이전 ce06a5d5ac03의 TEST와 같은 문항이며 기존 커밋·로컬 로그의 당시 판정을 보존함"
+  },
+  "previous_scores": "이전DEV_ce06a5d5ac03.json 및 실험기록.md 9~17절",
+  "raw_logs": "개인 로컬 results/dev_원본로그.jsonl에 보존함"
+}
