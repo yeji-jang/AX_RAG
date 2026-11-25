@@ -1,0 +1,653 @@
+{
+  "timestamp": "20261125_145306",
+  "eval_path": "C:\\Users\\417no\\Documents\\ax_project\\rag\\src\\rag_home_api\\test\\kh\\eval\\kh_rent_dev.json",
+  "collection_name": "housing_rent_kh",
+  "ragas_target": 0.6,
+  "modes": {
+    "A_vector": {
+      "preset": {
+        "name": "A_vector",
+        "pipeline_mode": "A_vector",
+        "top_k": 5,
+        "candidate_k": 12,
+        "bm25_weight": 0.55,
+        "vector_weight": 0.45,
+        "rrf_k": 60,
+        "use_metadata_filter": false,
+        "use_rewrite": false,
+        "use_cache": false,
+        "use_hyde": false
+      },
+      "retrieval": {
+        "answerable_count": 8,
+        "recall@12": 0.625,
+        "hit@5": "5/8",
+        "top1": "0/8",
+        "mrr@5": 0.2708,
+        "filter_applied": "0/10 (fallback=0)"
+      },
+      "latency_ms": {
+        "avg": 361.9,
+        "median": 241.8,
+        "p95": 421.0
+      },
+      "refusal": "2/2",
+      "ragas_avg": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.3621,
+        "llm_context_precision_with_reference": 0.2708,
+        "context_recall": 0.5
+      },
+      "underperforming_items": [
+        {
+          "question_id": "RENT-KH-DEV-01",
+          "user_input": "최근 1년간 서울 용산구 한남동의 단독다가구 주택 중 전세 계약이고 전용면적 33~60㎡인 실거래에서 보증금 중앙값과 거래 건수는 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.794,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 순위 실패.** 정답 컨텍스트가 Top-k에 포함되어 있고 생성답변도 정답과 일치합니다. 다만 조건에 맞지 않는 ‘33㎡ 이하’ 컨텍스트가 먼저 검색되어 검색 정밀도가 낮아졌습니다(RAGAS context precision 0.5).\n\n1. **검색 코드 개선:** 면적대·주택 유형·계약 유형을 메타데이터로 필터링해 `33~60㎡`, `단독다가구`, `전세`가 일치하는 문서만 우선 검색하세요.\n2. **청킹·프롬프트 개선:** 요약 청크에 면적 구간과 거래 건수를 명확한 필드로 저장하고, 프롬프트에 “질문의 면적 구간과 정확히 일치하는 컨텍스트를 우선 사용”하도록 지정하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-02",
+          "user_input": "최근 1년간 서울 강북구 번동의 연립다세대 중 월세 계약, 전용면적 33㎡ 이하(원룸급) 거래에서 보증금과 월세 중앙값은 각각 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.333
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.634,
+            "llm_context_precision_with_reference": 0.333,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락** — Top-k에는 중대형 연립다세대와 소형 단독다가구만 있고, 질문에 맞는 **번동·연립다세대·월세·33㎡ 이하** 컨텍스트가 없습니다. 생성 답변은 정답과 일치하지만 검색 근거로 뒷받침되지는 않습니다.\n\n1. **검색 코드·질의 처리:** 질문에서 지역·주택유형·계약형태·면적·기간을 추출해 메타데이터 필터로 적용하고, 핵심 조건이 일치하지 않으면 재검색하도록 하세요.\n2. **청킹·프롬프트:** 거래 요약을 조건별로 분리해 각 청크에 필터 메타데이터를 붙이세요. 답변 프롬프트에는 검색 컨텍스트가 질문 조건과 맞지 않거나 근거가 없으면 수치를 추정하지 말고 “근거 부족”으로 응답하도록 명시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-03",
+          "user_input": "최근 1년간 서울 성북구 석관동의 연립다세대 중 전세 계약이고 전용면적 33㎡ 이하인 거래는 총 몇 건이며, 보증금 중앙값은 얼마인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락** — 정답 컨텍스트인 ‘석관동·연립다세대·전세·33㎡ 이하’ 자료가 Top-k에 없습니다. 검색 결과는 같은 동·면적의 **월세** 자료뿐이며, 생성답변은 검색된 내용에 근거해 “확인할 수 없음”이라고 답했으므로 주원인은 생성·인용 오류가 아닙니다.\n\n**개선안**\n1. **검색 코드:** 동·주택유형·임대유형(전세/월세)·면적 조건을 메타데이터 필터로 적용하고, 전세/월세를 명시적으로 일치시키세요. 필터를 적용할 수 없다면 검색 후에도 조건이 맞는지 검증해 잘못된 유형의 결과를 제외하세요.\n2. **청킹·프롬프트:** 거래 요약을 청킹할 때 동·주택유형·임대유형·면적·기간을 한 덩어리에 함께 보존하세요. 프롬프트에는 조건이 다른 자료만 검색된 경우 이를 정답 근거로 삼지 말고, 검색을 재시도하거나 “자료 부족”으로 답하도록 명시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-04",
+          "user_input": "최근 1년간 서울 서대문구 남가좌동의 아파트 월세 거래 중 면적 33~60㎡ 소형의 보증금 중앙값과 거래 건수는 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.333
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.626,
+            "llm_context_precision_with_reference": 0.333,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: [청킹·검색 누락]** — Top-k에는 현저동·미근동 자료만 있고, 정답에 필요한 남가좌동 통계 컨텍스트가 없습니다. 생성 답변은 정답과 일치하지만, 검색된 근거로 뒷받침되지 않아 인용도 검증할 수 없습니다.\n\n1. **코드·청킹 개선:** 지역·주택유형·거래유형·면적대를 메타데이터로 분리하고, `구=서대문구, 동=남가좌동, 유형=아파트, 거래=월세, 면적=33~60㎡` 필터를 검색에 적용하세요. 통계 요약은 이 조건 조합별로 한 청크에 담습니다.\n2. **프롬프트 개선:** 답변의 수치와 출처는 검색 컨텍스트에서 확인되는 경우에만 제시하고, 해당 동의 근거가 없거나 다른 동 자료뿐이면 추정하지 말고 “근거를 찾지 못했다”고 응답하게 하세요.\n\n※ `context_recall: 1.0`과 달리 실제 Top-k에는 정답 컨텍스트가 보이지 않아, 평가 대상 컨텍스트와 검색 결과가 일치하는지도 점검할 필요가 있습니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-05",
+          "user_input": "최근 1년간 동대문구 이문동의 단독다가구 전세 33~60㎡와 종로구 혜화동의 연립다세대 전세 33~60㎡ 실거래를 비교해 주세요. 두 지역의 보증금 중앙값은 얼마나 차이 나며, 건축연도 중앙값은 어느 쪽이 몇 년 더 최근인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락.** 정답 컨텍스트인 이문동 단독다가구 **전세**와 혜화동 연립다세대 전세 자료가 Top-k에 없습니다. 이문동의 다른 주택유형 전세와 단독다가구 월세가 검색됐으므로, 생성답변이 비교를 거부한 것은 컨텍스트에 근거한 결과입니다.\n\n**개선안 2가지**\n1. **코드·검색:** 질문에서 지역·주택유형·계약유형·면적을 추출해 메타데이터 필터로 검색을 제한하세요. 예: `dong=이문동 AND type=단독다가구 AND contract=전세 AND area=33~60㎡`. 두 지역별 조건을 각각 검색하고 결과가 부족하면 Top-k를 늘리거나 재검색합니다.\n2. **청킹·프롬프트:** 지역·주택유형·계약유형·면적 조합별 요약을 하나의 청크로 만들고, 해당 조건을 청크 본문과 메타데이터에 함께 넣으세요. 프롬프트에는 요청 조건과 불일치하는 자료를 비교 근거로 사용하지 않도록 명시합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-06",
+          "user_input": "최근 1년간 노원구 공릉동의 아파트 월세 중 전용면적 60㎡ 초과 거래와 구로구 궁동의 연립다세대 월세 중 전용면적 33㎡ 이하 거래를 비교해 주세요. 두 조건별 보증금 중앙값과 월세 중앙값은 각각 얼마이며, 어느 쪽이 얼마나 높은가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**원인: 청킹·검색 누락.** Top-k에 공릉동 자료는 포함됐지만, 비교에 필요한 **구로구 궁동 연립다세대 자료가 검색되지 않았습니다.** 따라서 생성답변은 검색된 자료에 근거해 비교를 보류한 것으로, 주된 실패는 생성·인용보다 검색 단계에 있습니다. `context_recall=0.0`, `context_precision=0.5`도 이를 뒷받침합니다.\n\n1. **검색 코드 개선:** 비교 질문을 두 조건으로 분해해 각각 검색하고, `지역·동·건물유형·거래유형·면적` 메타데이터 필터를 적용하세요. 각 조건의 결과를 합쳐 생성 모델에 전달합니다.\n2. **청킹·프롬프트 개선:** 조건별 통계 요약을 한 청크에 완결되게 저장하고 해당 메타데이터를 붙이세요. 프롬프트에는 두 조건의 근거가 모두 있는지 확인한 뒤 비교하도록 지시하고, 하나라도 없으면 검색을 재시도하게 하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-07",
+          "user_input": "서울 영등포구 신길동에서 단독주택이나 다가구처럼 한 건물에 여러 세대가 사는 집 중, 월세 없이 보증금만 내는 전세이고 원룸급 작은 면적(33㎡ 이하)인 매물의 최근 1년 실거래를 보면 보증금은 보통 얼마였나요? 건물은 대체로 몇 년쯤 지어진 편인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**원인: 청킹·검색 누락.** Top-k에 정답 컨텍스트가 없고, 지역(은평구·성동구), 주택 유형, 계약 유형도 질문과 다릅니다. 따라서 생성 모델의 인용 오류가 아니라 검색 단계의 실패입니다. 제공된 검색 결과만으로 답할 수 없다고 한 생성답변은 타당합니다.\n\n1. **코드·검색 개선:** 질문에서 `영등포구·신길동·단독다가구·전세·33㎡ 이하`를 조건으로 추출해 메타데이터 필터에 적용하세요. 필터 결과가 없으면 검색 조건을 점검하거나 재검색하도록 하고, 다른 지역의 결과를 근거로 반환하지 않게 합니다.\n2. **청킹 개선:** CSV 원문을 행 단위로만 청킹하지 말고, 지역·주택 유형·계약 유형·면적 조건별 집계 요약을 별도 검색 문서로 만들어 인덱싱하세요. 질문의 조건과 요약 문서의 메타데이터가 정확히 일치하도록 구성합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-08",
+          "user_input": "최근 1년간 강동구 길동에서 원룸급 작은 오피스텔 중 매달 월세 없이 보증금만 내는 전세의 보증금 중앙값은 얼마였나요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.843,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 순위 실패**\n\n정답 컨텍스트가 Top-k에 포함되어 있어 검색 누락은 아닙니다. 다만 질문의 지역은 **길동**인데 무관한 **암사동** 컨텍스트도 함께 검색되어, `llm_context_precision_with_reference`가 0.5로 낮아진 것으로 보입니다. 생성 답변은 정답과 일치해 생성·인용 오류는 아닙니다.\n\n**개선안 2가지**\n1. **검색 코드:** 구·동, 주택 유형, 거래 유형, 면적 조건을 메타데이터 필터로 적용하거나, 해당 조건의 일치도를 재랭킹에 반영해 길동 컨텍스트를 우선 노출합니다.\n2. **청킹·프롬프트:** 요약 청크에 `구/동·유형·계약·면적` 메타데이터를 명확히 넣고, 답변 프롬프트에서 질문과 지역·조건이 다른 컨텍스트는 근거로 사용하지 않도록 지시합니다."
+        }
+      ]
+    },
+    "B_rrf_55_45": {
+      "preset": {
+        "name": "B_rrf_55_45",
+        "pipeline_mode": "B_hybrid",
+        "top_k": 5,
+        "candidate_k": 12,
+        "bm25_weight": 0.55,
+        "vector_weight": 0.45,
+        "rrf_k": 60,
+        "use_metadata_filter": false,
+        "use_rewrite": false,
+        "use_cache": false,
+        "use_hyde": false
+      },
+      "retrieval": {
+        "answerable_count": 8,
+        "recall@12": 0.875,
+        "hit@5": "8/8",
+        "top1": "2/8",
+        "mrr@5": 0.5417,
+        "filter_applied": "0/10 (fallback=0)"
+      },
+      "latency_ms": {
+        "avg": 1571.9,
+        "median": 273.7,
+        "p95": 302.4
+      },
+      "refusal": "2/2",
+      "ragas_avg": {
+        "faithfulness": 0.8839,
+        "answer_relevancy": 0.5444,
+        "llm_context_precision_with_reference": 0.5417,
+        "context_recall": 0.8125
+      },
+      "underperforming_items": [
+        {
+          "question_id": "RENT-KH-DEV-01",
+          "user_input": "최근 1년간 서울 용산구 한남동의 단독다가구 주택 중 전세 계약이고 전용면적 33~60㎡인 실거래에서 보증금 중앙값과 거래 건수는 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.658,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 순위 실패.** 정답 컨텍스트가 Top-k에 포함되어 있고 생성답변도 정답과 일치합니다. 다만 면적 조건이 다른 ‘33㎡ 이하’ 컨텍스트가 먼저 검색되어, 관련 없는 결과가 검색 정밀도를 낮췄습니다.\n\n1. **검색 코드:** 동네·주택 유형·계약 유형·면적 구간을 메타데이터 필터로 적용하고, 조건이 일치하는 문서를 우선 검색하거나 재순위화하세요.\n2. **청킹·인덱싱:** 요약 청크에 면적 구간을 정규화된 메타데이터(예: `area_min`, `area_max`)로 저장하고, 검색 쿼리의 `33~60㎡` 조건과 구간 일치도를 재순위 점수에 반영하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-02",
+          "user_input": "최근 1년간 서울 강북구 번동의 연립다세대 중 월세 계약, 전용면적 33㎡ 이하(원룸급) 거래에서 보증금과 월세 중앙값은 각각 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.25
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.836,
+            "llm_context_precision_with_reference": 0.25,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락**\n\nTop-k에는 대상인 **번동·연립다세대·월세·33㎡ 이하** 요약이 없습니다. 대신 연립다세대 **전세**와 단독다가구 **월세**가 검색됐습니다. 생성답변은 정답과 일치하지만, 제공된 검색 컨텍스트로는 뒷받침되지 않습니다.\n\n1. **코드·검색:** 주택 유형·계약 유형·면적·지역을 메타데이터로 분리하고, 검색 시 `연립다세대 + 월세 + 번동 + 33㎡ 이하` 조건을 필터로 적용하세요. 검색 결과가 조건과 맞지 않으면 재검색하거나 답변을 보류하게 합니다.\n2. **청킹·프롬프트:** 요약 청크마다 지역·주택 유형·계약 유형·면적·기간을 함께 넣고, 답변 및 출처는 검색된 청크에 근거할 때만 생성하도록 하세요. 근거가 없으면 추정하지 않고 “검색 근거 부족”이라고 응답하게 합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-03",
+          "user_input": "최근 1년간 서울 성북구 석관동의 연립다세대 중 전세 계약이고 전용면적 33㎡ 이하인 거래는 총 몇 건이며, 보증금 중앙값은 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.25
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.761,
+            "llm_context_precision_with_reference": 0.25,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락**\n\nTop-k에는 `33~60㎡ 전세`와 `33㎡ 이하 월세`만 있고, 정답에 필요한 `33㎡ 이하 전세` 컨텍스트가 없습니다. 생성답변은 정답과 일치하지만, 검색 결과로 뒷받침되지는 않습니다.\n\n1. **검색 코드 개선:** 동네·주택 유형·계약 유형·면적 조건을 구조화해 메타데이터 필터로 적용하세요. 특히 면적 조건은 `≤33㎡`로 처리하고, 필터 적용 후 검색·재정렬해 인접 조건의 문서가 상위에 섞이지 않게 합니다.\n2. **청킹·프롬프트 개선:** `동네×주택 유형×계약 유형×면적 구간`별 통계 요약을 하나의 청크로 만들고 각 조건을 메타데이터에 보존하세요. 프롬프트에는 검색된 근거에 답이 없으면 추측하지 말고 근거 부족으로 응답하도록 명시합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-05",
+          "user_input": "최근 1년간 동대문구 이문동의 단독다가구 전세 33~60㎡와 종로구 혜화동의 연립다세대 전세 33~60㎡ 실거래를 비교해 주세요. 두 지역의 보증금 중앙값은 얼마나 차이 나며, 건축연도 중앙값은 어느 쪽이 몇 년 더 최근인가요?",
+          "failed_metrics": {
+            "faithfulness": 0.5,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 0.5,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 0.5
+          },
+          "llm_diagnosis": "**원인: 청킹·검색 누락** — 정답에 필요한 혜화동 연립다세대 컨텍스트가 Top-k에 없고, 대신 조건이 다른 이문동 연립다세대 자료가 검색됐습니다. 생성답변은 누락된 정보를 임의로 만들지 않았습니다.\n\n1. **검색 코드·메타데이터:** 질문에서 구·동·주택유형·계약유형·면적을 추출해 필터로 적용하고, 두 지역 조건을 각각 검색한 뒤 결과를 합치세요. 혜화동 컨텍스트 누락 여부도 검증해 재검색하도록 합니다.\n2. **청킹·검색:** 요약 통계를 한 청크에 유지하고 `구/동/주택유형/전세/면적구간`을 메타데이터로 저장하세요. BM25와 벡터 검색을 결합해 고유명사 기반 검색을 보완하고, 각 비교 대상에서 최소 한 청크씩 확보하도록 설정합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-06",
+          "user_input": "최근 1년간 노원구 공릉동의 아파트 월세 중 전용면적 60㎡ 초과 거래와 구로구 궁동의 연립다세대 월세 중 전용면적 33㎡ 이하 거래를 비교해 주세요. 두 조건별 보증금 중앙값과 월세 중앙값은 각각 얼마이며, 어느 쪽이 얼마나 높은가요?",
+          "failed_metrics": {
+            "faithfulness": 0.571,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.333,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 0.571,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.333,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락**\n\nTop-k에 정답인 **공릉동 아파트 60㎡ 초과**와 **궁동 연립다세대 33㎡ 이하** 컨텍스트가 모두 없습니다. 검색 결과는 공릉동의 다른 주택유형·면적 조건뿐이므로, 궁동 값을 찾지 못해 비교 답변이 불완전해진 것이 주원인입니다.\n\n1. **검색 코드:** 질문을 두 조건으로 분리하고, `자치구·동·주택유형·월세·전용면적` 메타데이터 필터를 각각 적용해 검색하세요. 필터 결과가 부족하면 유사도 검색을 보완적으로 실행합니다.\n2. **청킹·프롬프트:** 통계 요약은 조건별 한 청크로 유지하고 해당 필드를 메타데이터로 색인하세요. 프롬프트에는 두 조건의 정답 근거가 모두 회수되지 않으면 비교를 완료하지 말고 누락된 조건을 재검색하도록 지시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-07",
+          "user_input": "서울 영등포구 신길동에서 단독주택이나 다가구처럼 한 건물에 여러 세대가 사는 집 중, 월세 없이 보증금만 내는 전세이고 원룸급 작은 면적(33㎡ 이하)인 매물의 최근 1년 실거래를 보면 보증금은 보통 얼마였나요? 건물은 대체로 몇 년쯤 지어진 편인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.518,
+            "llm_context_precision_with_reference": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.518,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 순위 실패.** 정답 컨텍스트가 Top-k에 포함되어 생성답변도 정답과 일치합니다. 다만 무관한 강남구 월세 컨텍스트가 함께 검색돼 컨텍스트 정밀도와 답변 관련성 점수를 낮춘 것으로 보입니다. 생성·인용 오류는 아닙니다.\n\n1. **검색 코드:** 지역·동, 주택 유형, 계약 유형, 면적 조건을 메타데이터 필터로 적용하고, 검색 후 교차 인코더 재순위화로 조건 일치도가 높은 문서를 우선 배치하세요.\n2. **청킹·프롬프트:** 요약 청크에 지역·유형·계약·면적을 명시적 메타데이터로 붙이고, 프롬프트에 “질문의 조건과 일치하는 컨텍스트만 사용”하도록 지시하세요."
+        }
+      ]
+    },
+    "B_rrf_70_30": {
+      "preset": {
+        "name": "B_rrf_70_30",
+        "pipeline_mode": "B_hybrid",
+        "top_k": 5,
+        "candidate_k": 12,
+        "bm25_weight": 0.7,
+        "vector_weight": 0.3,
+        "rrf_k": 60,
+        "use_metadata_filter": false,
+        "use_rewrite": false,
+        "use_cache": false,
+        "use_hyde": false
+      },
+      "retrieval": {
+        "answerable_count": 8,
+        "recall@12": 0.875,
+        "hit@5": "8/8",
+        "top1": "3/8",
+        "mrr@5": 0.6042,
+        "filter_applied": "0/10 (fallback=0)"
+      },
+      "latency_ms": {
+        "avg": 327.4,
+        "median": 277.1,
+        "p95": 341.6
+      },
+      "refusal": "2/2",
+      "ragas_avg": {
+        "faithfulness": 0.8839,
+        "answer_relevancy": 0.5363,
+        "llm_context_precision_with_reference": 0.6042,
+        "context_recall": 0.8125
+      },
+      "underperforming_items": [
+        {
+          "question_id": "RENT-KH-DEV-01",
+          "user_input": "최근 1년간 서울 용산구 한남동의 단독다가구 주택 중 전세 계약이고 전용면적 33~60㎡인 실거래에서 보증금 중앙값과 거래 건수는 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 0.667,
+            "answer_relevancy": 0.81,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 순위 실패** — 정답 컨텍스트가 Top-k에 포함됐지만, 면적 조건이 다른 33㎡ 이하 컨텍스트가 먼저 검색됐습니다. 생성답변은 정답 컨텍스트의 수치와 일치합니다.\n\n**개선안**\n1. **검색 코드:** 동네·주택유형·계약유형·면적 구간을 메타데이터 필터로 적용하고, 조건 일치도를 재순위화에 반영하세요.\n2. **청킹·프롬프트:** 면적 구간을 청크 제목과 메타데이터에 명시하고, 답변 전 질문의 면적 조건과 일치하는 컨텍스트만 사용하도록 지시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-02",
+          "user_input": "최근 1년간 서울 강북구 번동의 연립다세대 중 월세 계약, 전용면적 33㎡ 이하(원룸급) 거래에서 보증금과 월세 중앙값은 각각 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.25
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.641,
+            "llm_context_precision_with_reference": 0.25,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: [청킹·검색 누락]**  \nTop-k에는 번동·연립다세대·33㎡ 이하 조건은 맞지만 **전세** 자료만 있고, 질문에 필요한 **월세** 정답 컨텍스트가 없습니다. 생성답변은 정답과 일치하지만 검색 근거로 뒷받침되지 않아 출처 인용도 검증할 수 없습니다.\n\n**개선안 2가지**\n1. **청킹·검색 코드:** 문서를 거래 유형·동·면적 구간별로 분리하고 메타데이터를 부여하세요. 검색 시 `거래유형=월세`, `동=번동`, `면적≤33㎡`를 필수 필터로 적용하고, 해당 결과가 없을 때만 검색 범위를 완화하세요.\n2. **생성 프롬프트:** 검색 컨텍스트에 중앙값이 없거나 조건이 맞지 않으면 추정하지 말고 “근거를 찾지 못함”으로 답하도록 하세요. 답변과 인용은 실제 검색된 근거에 한정하게 합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-03",
+          "user_input": "최근 1년간 서울 성북구 석관동의 연립다세대 중 전세 계약이고 전용면적 33㎡ 이하인 거래는 총 몇 건이며, 보증금 중앙값은 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.25
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.728,
+            "llm_context_precision_with_reference": 0.25,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락**\n\nTop-k에 정답 컨텍스트인 **전세·33㎡ 이하** 요약이 없고, 조건이 다른 **전세·33~60㎡** 및 **월세·33㎡ 이하** 컨텍스트만 검색됐습니다. 생성 답변은 정답과 일치하지만, 검색된 근거로 뒷받침되지는 않습니다.\n\n**개선안 2가지**\n1. **청킹·메타데이터:** 거래 요약을 동·주택유형·계약유형·면적 구간별로 분리하고, 각 청크에 해당 필드를 명시적으로 저장하세요.\n2. **검색 코드·프롬프트:** 질문에서 `석관동 / 연립다세대 / 전세 / 33㎡ 이하` 조건을 추출해 메타데이터 필터를 적용하고, 답변은 검색된 근거에서 확인되지 않으면 수치나 출처를 단정하지 않도록 하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-05",
+          "user_input": "최근 1년간 동대문구 이문동의 단독다가구 전세 33~60㎡와 종로구 혜화동의 연립다세대 전세 33~60㎡ 실거래를 비교해 주세요. 두 지역의 보증금 중앙값은 얼마나 차이 나며, 건축연도 중앙값은 어느 쪽이 몇 년 더 최근인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "context_recall": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 0.833,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 0.5
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락** — 정답 컨텍스트의 혜화동 연립다세대 전세 요약이 Top-k에 없고, 동대문구 자료만 검색됐습니다. 생성답변은 누락된 자료를 확인할 수 없다고 밝혔으므로 생성·인용 오류가 주원인은 아닙니다.\n\n1. **검색 코드 개선:** 질문을 두 지역별 조건으로 분해하고, 구·동·주택 유형·전세·면적 범위를 메타데이터 필터에 반영해 각각 검색한 뒤 결과를 합치세요.\n2. **청킹·인덱싱 개선:** 지역별 요약을 한 청크로 유지하고, `종로구·혜화동·연립다세대·전세·33~60㎡` 같은 검색 키워드를 메타데이터나 청크 앞부분에 포함해 해당 요약이 검색되도록 하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-06",
+          "user_input": "최근 1년간 노원구 공릉동의 아파트 월세 중 전용면적 60㎡ 초과 거래와 구로구 궁동의 연립다세대 월세 중 전용면적 33㎡ 이하 거래를 비교해 주세요. 두 조건별 보증금 중앙값과 월세 중앙값은 각각 얼마이며, 어느 쪽이 얼마나 높은가요?",
+          "failed_metrics": {
+            "faithfulness": 0.571,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.333,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 0.571,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.333,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**원인 분류: 청킹·검색 누락.** Top-k에는 공릉동의 다른 주택 유형·면적대만 있고, 정답인 공릉동 아파트 60㎡ 초과 요약과 궁동 연립다세대 33㎡ 이하 요약이 모두 없습니다. 생성 답변이 궁동 자료를 찾지 못했다고 한 것도 검색 누락의 결과입니다.\n\n1. **검색 코드 개선:** 질문을 두 조건으로 분리해 `지역·동·주택유형·월세·면적` 메타데이터 필터를 각각 적용하고, 조건별 결과를 확보하세요. 키워드 검색과 벡터 검색을 결합해 지역명·유형·면적 조건의 회수율도 높이세요.\n2. **청킹·프롬프트 개선:** 거래 요약을 조건별 독립 청크로 만들고, 각 청크에 지역·주택유형·면적대·기간을 메타데이터로 저장하세요. 프롬프트에는 비교 대상별 근거가 모두 검색된 경우에만 비교하고, 누락 시 재검색하도록 명시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-07",
+          "user_input": "서울 영등포구 신길동에서 단독주택이나 다가구처럼 한 건물에 여러 세대가 사는 집 중, 월세 없이 보증금만 내는 전세이고 원룸급 작은 면적(33㎡ 이하)인 매물의 최근 1년 실거래를 보면 보증금은 보통 얼마였나요? 건물은 대체로 몇 년쯤 지어진 편인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.541,
+            "llm_context_precision_with_reference": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.541,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: [순위 실패]** — 정답 컨텍스트가 Top-k에 포함되어 있어 검색 누락은 아닙니다. 다만 무관한 강남구 월세 자료가 먼저 노출됐습니다. 생성답변은 정답 컨텍스트와 일치합니다.\n\n1. **검색 코드:** 질의에서 지역·동·주택유형·계약유형·면적을 추출해 메타데이터 필터를 적용하세요. 예: `구=영등포구, 동=신길동, 유형=단독다가구, 계약=전세, 면적≤33㎡`로 후보를 먼저 좁힌 뒤 유사도 검색을 수행합니다.\n2. **청킹·재순위화:** 지역·유형·계약·면적 조건과 통계가 함께 들어 있는 요약을 한 청크로 유지하고, 검색 후 조건 일치도를 반영해 재순위화하세요. 그러면 강남구 월세처럼 조건이 다른 문서가 상위에 오를 가능성을 낮출 수 있습니다."
+        }
+      ]
+    },
+    "B_rrf_80_20": {
+      "preset": {
+        "name": "B_rrf_80_20",
+        "pipeline_mode": "B_hybrid",
+        "top_k": 5,
+        "candidate_k": 12,
+        "bm25_weight": 0.8,
+        "vector_weight": 0.2,
+        "rrf_k": 60,
+        "use_metadata_filter": false,
+        "use_rewrite": false,
+        "use_cache": false,
+        "use_hyde": false
+      },
+      "retrieval": {
+        "answerable_count": 8,
+        "recall@12": 0.875,
+        "hit@5": "8/8",
+        "top1": "3/8",
+        "mrr@5": 0.5979,
+        "filter_applied": "0/10 (fallback=0)"
+      },
+      "latency_ms": {
+        "avg": 326.9,
+        "median": 301.9,
+        "p95": 470.6
+      },
+      "refusal": "2/2",
+      "ragas_avg": {
+        "faithfulness": 0.8958,
+        "answer_relevancy": 0.5315,
+        "llm_context_precision_with_reference": 0.5979,
+        "context_recall": 0.8125
+      },
+      "underperforming_items": [
+        {
+          "question_id": "RENT-KH-DEV-01",
+          "user_input": "최근 1년간 서울 용산구 한남동의 단독다가구 주택 중 전세 계약이고 전용면적 33~60㎡인 실거래에서 보증금 중앙값과 거래 건수는 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.645,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 순위 실패** — 정답 컨텍스트가 검색 결과에 포함되어 `context_recall`은 1.0이지만, 면적 조건이 다른 `33㎡ 이하` 컨텍스트도 함께 검색되어 정밀도가 0.5입니다. 생성답변은 정답과 일치합니다.\n\n1. **검색·청킹 개선:** 청크마다 동네·주택유형·계약유형·면적 구간을 메타데이터로 저장하고, 검색 시 질문의 조건을 필터로 적용하세요. 필터가 어렵다면 조건 일치도를 반영하는 리랭커로 관련 청크를 상위에 배치하세요.\n2. **프롬프트 개선:** 답변 전에 검색 컨텍스트의 면적·계약·지역 조건이 질문과 일치하는지 확인하고, 조건이 맞는 컨텍스트만 근거로 사용하도록 지시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-02",
+          "user_input": "최근 1년간 서울 강북구 번동의 연립다세대 중 월세 계약, 전용면적 33㎡ 이하(원룸급) 거래에서 보증금과 월세 중앙값은 각각 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.2
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.646,
+            "llm_context_precision_with_reference": 0.2,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락**\n\n생성된 금액은 정답과 일치하지만, Top-k에는 정답 컨텍스트가 없습니다. 첫 결과는 번동·면적 조건은 맞지만 **전세**이고, 두 번째는 **수유동 전세**입니다. 따라서 답변과 출처 표기는 검색 결과로 뒷받침되지 않습니다.\n\n1. **검색 코드 개선:** 동명, 계약 유형(월세), 주택 유형, 면적, 기간을 메타데이터 필터로 적용해 조건이 맞는 컨텍스트를 먼저 검색하세요. 조건이 불일치하면 임의로 답하지 말고 재검색하도록 합니다.\n2. **청킹·프롬프트 개선:** 지역·주택 유형·계약 유형·면적 구간별 요약을 하나의 청크로 분리하고 해당 조건을 메타데이터에 저장하세요. 프롬프트에는 검색 컨텍스트가 질문 조건과 맞을 때만 답하고 출처를 인용하도록 명시합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-03",
+          "user_input": "최근 1년간 서울 성북구 석관동의 연립다세대 중 전세 계약이고 전용면적 33㎡ 이하인 거래는 총 몇 건이며, 보증금 중앙값은 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.25
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.761,
+            "llm_context_precision_with_reference": 0.25,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락**\n\n정답 컨텍스트가 Top-k에 없고, 대신 면적대나 계약 유형이 다른 요약이 검색됐습니다. 생성 답변은 정답과 일치하지만, 검색 컨텍스트로 뒷받침되지는 않습니다. 따라서 순위 실패보다는 정답 청크의 검색 누락으로 보는 것이 적절합니다.\n\n**개선안 2가지**\n1. **청킹·검색 코드:** 거래 요약을 구·동·주택유형·계약유형·면적대별로 분리하고 해당 필드를 메타데이터 필터로 사용하세요. 질문의 `전세`, `33㎡ 이하` 조건을 검색 시 정확히 적용해 인접 조건 청크가 섞이지 않도록 합니다.\n2. **생성 프롬프트:** “검색된 컨텍스트에 건수와 중앙값이 명시된 경우에만 답하고, 근거가 없으면 알 수 없다고 답하라”고 지시하세요. 출처도 실제 검색된 청크에 한해 인용하게 합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-05",
+          "user_input": "최근 1년간 동대문구 이문동의 단독다가구 전세 33~60㎡와 종로구 혜화동의 연립다세대 전세 33~60㎡ 실거래를 비교해 주세요. 두 지역의 보증금 중앙값은 얼마나 차이 나며, 건축연도 중앙값은 어느 쪽이 몇 년 더 최근인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "context_recall": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 0.5
+          },
+          "llm_diagnosis": "**원인 분류: 청킹·검색 누락** — 정답에 필요한 혜화동 연립다세대 전세 컨텍스트가 Top-k에 없고, 대신 이문동 월세 자료가 검색됐습니다. 생성답변은 검색 자료에 없는 비교를 단정하지 않았으므로 생성·인용 오류는 아닙니다.\n\n1. **검색 코드·쿼리 분해:** 질문을 이문동과 혜화동의 조건별 검색 두 건으로 나누고, 각 검색에 구·동·주택유형·전세·면적 범위를 메타데이터 필터로 적용하세요. 두 지역 결과가 모두 확보됐는지 검증한 뒤 비교하도록 합니다.\n2. **청킹·프롬프트 개선:** 지역·주택유형·거래유형별 통계 요약을 한 청크에 온전히 담고 해당 필드를 메타데이터로 저장하세요. 프롬프트에는 비교 질문의 각 대상 자료가 모두 검색됐는지 먼저 확인하고, 하나라도 누락되면 재검색하도록 지시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-06",
+          "user_input": "최근 1년간 노원구 공릉동의 아파트 월세 중 전용면적 60㎡ 초과 거래와 구로구 궁동의 연립다세대 월세 중 전용면적 33㎡ 이하 거래를 비교해 주세요. 두 조건별 보증금 중앙값과 월세 중앙값은 각각 얼마이며, 어느 쪽이 얼마나 높은가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.333,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 0.667,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.333,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락.** Top-k에 두 조건과 정확히 일치하는 컨텍스트가 모두 없고, 다른 주택 유형·면적의 노원구 자료만 검색됐습니다. 따라서 비교 불가 답변은 생성·인용 오류라기보다 검색 결과 부족에 따른 것으로 보입니다.\n\n1. **검색 코드 개선:** 질문을 `지역·동·주택유형·월세·전용면적·기간` 조건으로 분해해 두 조건을 각각 별도 검색하고, 메타데이터 필터로 정확히 일치하는 결과를 우선 검색하세요. 두 조건 중 하나라도 결과가 없으면 질의를 확장하거나 재검색하도록 합니다.\n2. **청킹·프롬프트 개선:** 요약 청크마다 위 조건과 중앙값·기준 기간을 메타데이터와 본문에 함께 넣으세요. 프롬프트에는 두 조건의 근거가 모두 확보됐을 때만 비교하고, 누락 시 재검색을 요청하도록 명시합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-07",
+          "user_input": "서울 영등포구 신길동에서 단독주택이나 다가구처럼 한 건물에 여러 세대가 사는 집 중, 월세 없이 보증금만 내는 전세이고 원룸급 작은 면적(33㎡ 이하)인 매물의 최근 1년 실거래를 보면 보증금은 보통 얼마였나요? 건물은 대체로 몇 년쯤 지어진 편인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.626,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 순위 실패.** 정답 컨텍스트가 Top-k에 포함되어 `context_recall=1.0`이지만, 무관한 강남구 자료가 먼저 검색되어 `context_precision=0.5`입니다. 생성 답변은 정답 컨텍스트와 일치하므로 생성·인용 오류는 아닙니다.\n\n**개선안 2가지**\n1. **검색 코드:** 구·동, 건물 유형, 계약 유형, 면적을 메타데이터 필터로 적용하고, 조건 일치도를 재랭킹에 반영해 해당 자료를 상위에 올립니다.\n2. **청킹·프롬프트:** 청크 제목에 `[영등포구 신길동 | 단독다가구 | 전세 | 33㎡ 이하]` 같은 검색 조건을 포함하고, 검색 지시문에서 모든 조건을 만족하는 자료를 우선하도록 명시합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV-08",
+          "user_input": "최근 1년간 강동구 길동에서 원룸급 작은 오피스텔 중 매달 월세 없이 보증금만 내는 전세의 보증금 중앙값은 얼마였나요?",
+          "failed_metrics": {
+            "faithfulness": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 0.5,
+            "answer_relevancy": 0.801,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "- **분류: [생성·인용 오류]** — Top-k에 정답 통계가 그대로 포함되어 있어 청킹·검색 누락이나 순위 실패는 아닙니다. 생성된 금액과 기간도 정답과 일치하므로, 실제 답변 오류보다는 **출처 표기를 해당 통계에 직접 연결하지 못해 faithfulness 평가가 낮게 나온 경우**로 보입니다.\n- **개선안 1 — 프롬프트·청킹:** 답변에 핵심 수치와 그 근거 필드(예: `보증금 통계: 중앙값`)를 함께 인용하도록 지시하세요. 청킹 시에도 지역·계약유형·면적 조건과 통계가 한 청크에 유지되도록 합니다.\n- **개선안 2 — 검증 코드:** 검색 컨텍스트에서 중앙값·기간을 추출해 생성 답변의 수치와 자동 대조하고, 일치하면 faithfulness 평가의 인용 형식 차이를 점검하도록 보완하세요."
+        }
+      ]
+    },
+    "B_rrf_70_30_filter": {
+      "preset": {
+        "name": "B_rrf_70_30_filter",
+        "pipeline_mode": "B_hybrid",
+        "top_k": 5,
+        "candidate_k": 12,
+        "bm25_weight": 0.7,
+        "vector_weight": 0.3,
+        "rrf_k": 60,
+        "use_metadata_filter": true,
+        "use_rewrite": false,
+        "use_cache": false,
+        "use_hyde": false
+      },
+      "retrieval": {
+        "answerable_count": 8,
+        "recall@12": 0.875,
+        "hit@5": "8/8",
+        "top1": "6/8",
+        "mrr@5": 0.8229,
+        "filter_applied": "10/10 (fallback=0)"
+      },
+      "latency_ms": {
+        "avg": 284.2,
+        "median": 264.4,
+        "p95": 278.7
+      },
+      "refusal": "2/2",
+      "ragas_avg": {
+        "faithfulness": 0.975,
+        "answer_relevancy": 0.4857,
+        "llm_context_precision_with_reference": 0.8229,
+        "context_recall": 0.8125
+      },
+      "underperforming_items": [
+        {
+          "question_id": "RENT-KH-DEV-02",
+          "user_input": "최근 1년간 서울 강북구 번동의 연립다세대 중 월세 계약, 전용면적 33㎡ 이하(원룸급) 거래에서 보증금과 월세 중앙값은 각각 얼마인가요?",
+          "failed_metrics": {
+            "llm_context_precision_with_reference": 0.25
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.634,
+            "llm_context_precision_with_reference": 0.25,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락**\n\nTop-k에 번동 자료가 없고 우이동·미아동 자료만 검색됐습니다. 생성 답변은 정답 수치와 우연히 일치하지만, 검색 컨텍스트로 뒷받침되지 않으며 번동 출처 인용도 확인할 수 없습니다.\n\n1. **청킹·검색 코드 개선:** 요약을 동별·주택유형별·임대유형별로 분리해 `자치구/동/유형/면적대/기간` 메타데이터를 붙이고, 검색 시 강북구·번동·연립다세대·월세 조건을 우선 필터링하세요.\n2. **프롬프트 개선:** 답변 수치와 인용은 검색 컨텍스트에 실제로 있는 경우에만 제시하고, 요청한 동의 자료가 없으면 추정하지 말고 “근거 자료를 찾지 못했다”고 답하도록 하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-05",
+          "user_input": "최근 1년간 동대문구 이문동의 단독다가구 전세 33~60㎡와 종로구 혜화동의 연립다세대 전세 33~60㎡ 실거래를 비교해 주세요. 두 지역의 보증금 중앙값은 얼마나 차이 나며, 건축연도 중앙값은 어느 쪽이 몇 년 더 최근인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "context_recall": 0.5
+          },
+          "all_scores": {
+            "faithfulness": 0.8,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 0.5
+          },
+          "llm_diagnosis": "**원인: 청킹·검색 누락.** 정답 컨텍스트에는 혜화동 연립다세대 요약이 있지만 Top-k에는 없고, 대신 이문동의 다른 주택 유형이 검색됐습니다. `context_recall=0.5`도 한쪽 지역 정보가 누락됐음을 보여줍니다.\n\n**개선안**\n1. **검색 코드:** 비교 질문을 이문동과 혜화동의 하위 질의로 분리하고, 지역·주택 유형·거래 유형·면적 조건을 메타데이터 필터로 각각 검색한 뒤 결과를 합치세요.\n2. **청킹·프롬프트:** 지역·주택 유형별 요약을 한 청크에 완결되게 저장하고, 답변 프롬프트에 “비교 대상 하나라도 컨텍스트에 없으면 누락으로 처리하고, 있으면 양쪽 수치를 비교”하도록 명시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-06",
+          "user_input": "최근 1년간 노원구 공릉동의 아파트 월세 중 전용면적 60㎡ 초과 거래와 구로구 궁동의 연립다세대 월세 중 전용면적 33㎡ 이하 거래를 비교해 주세요. 두 조건별 보증금 중앙값과 월세 중앙값은 각각 얼마이며, 어느 쪽이 얼마나 높은가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.333,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.333,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**원인: 청킹·검색 누락.** 정답에 필요한 두 통계 컨텍스트가 Top-k에 없고, 대신 공릉동의 다른 주택 유형·면적대 문서가 검색됐습니다. 생성답변은 제공된 근거만으로 비교를 보류한 것이므로 생성·인용 오류라기보다 검색 재현율 문제입니다.\n\n1. **검색 코드·쿼리 개선:** 질문을 두 조건으로 분리해 각각 검색하고, 구·동·주택유형·월세·면적 범위 메타데이터를 필터링하세요. 두 결과를 합쳐 재랭킹하면 다른 유형·면적대의 문서가 섞이는 일을 줄일 수 있습니다.\n2. **청킹·프롬프트 개선:** 통계 요약을 조건별로 한 청크에 보존하고 해당 메타데이터를 청크에 부착하세요. 프롬프트에는 두 조건의 근거가 모두 확보됐을 때만 비교·차액을 답하고, 한쪽이라도 없으면 재검색하도록 지시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV-07",
+          "user_input": "서울 영등포구 신길동에서 단독주택이나 다가구처럼 한 건물에 여러 세대가 사는 집 중, 월세 없이 보증금만 내는 전세이고 원룸급 작은 면적(33㎡ 이하)인 매물의 최근 1년 실거래를 보면 보증금은 보통 얼마였나요? 건물은 대체로 몇 년쯤 지어진 편인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.512
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.512,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 생성·인용 오류(답변의 맥락 명시 부족)**  \n정답 컨텍스트가 Top-k에 정확히 포함되어 있고, 보증금·건축 연도 수치도 정답과 일치하므로 청킹·검색 누락이나 순위 실패는 아닙니다. 다만 답변이 신길동·단독다가구·전세·33㎡ 이하라는 조건과 기준 기간을 다시 밝혀주지 않아 관련성이 낮게 평가됐을 수 있습니다.\n\n**개선안 2가지**\n1. **프롬프트:** 답변에 질문의 지역·주택 유형·계약/면적 조건과 기준 기간을 짧게 재진술하고, 각 통계가 중앙값임을 명시하도록 지시합니다.\n2. **코드:** 응답 생성 후 검색 컨텍스트의 기준 기간·보증금 중앙값·건축 연도 중앙값이 답변에 반영됐는지 검증하고, 누락 시 해당 정보를 보충하도록 합니다."
+        }
+      ]
+    }
+  }
+}
