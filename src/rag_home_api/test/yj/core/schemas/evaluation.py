@@ -54,4 +54,5 @@ class SampleEvaluationResult(BaseModel):
     context_recall: float | None = None
     faithfulness: float | None = None
     answer_relevancy: float | None = None
+    failure_type: str = Field(description="PASS / RETRIEVAL_FAILURE / HALLUCINATION_FAILURE / IRRELEVANT_ANSWER / METRIC_MISSING / ERROR")
     prescription: str = Field(description="자동 진단된 개선 처방")
