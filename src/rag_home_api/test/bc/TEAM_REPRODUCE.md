@@ -122,15 +122,10 @@ PY
 - `index_version`: 직접 적재한 DB이므로 임의의 고정 문자열을 쓴다. 데이터를 다시 적재하면 값을 바꾼다 (캐시 키에 포함됨).
 - 질문 임베딩도 반드시 `text-embedding-3-small`이어야 한다. 다른 1536차원 모델을 쓰면 오류 없이 검색 품질만 망가진다.
 
-## 실행하지 말 것
+## 테스트·평가 스크립트
 
-아래 파일은 GitHub에 남아 있지만 현재 코드와 맞지 않아 **import 오류로 실행되지 않는다** (`metadata_filters.py`에서 `MANUAL_DEV_FILTERS`가 제거됨). 정리 예정이다.
-
-- `test_filtered_pipeline.py`, `test_query_filters.py`, `test_score_dev_results.py`
-- `run_filtered_dev.py`, `run_query_dev.py`, `score_dev_results.py`, `check_metadata_filter.py`
-
-`run_course.py`(RAGAS 평가)는 import는 되지만 실행 검증을 하지 않았고 API 비용이 크므로 이 절차에서 제외한다.
-`embedding_small.py`, `embedding_large.py`는 예전 실험용이다. 4단계의 `run_course_index.py`를 사용한다.
+예전 테스트·평가 스크립트(`test_*.py`, `run_filtered_dev.py`, `run_query_dev.py`, `score_dev_results.py`, `run_course.py` 등)와 초기 청킹 실험 파일은 현재 코드와 맞지 않아 삭제했다. 현재 브랜치에는 자동 테스트가 없으며, 이 절차는 3~5단계의 성공 기준으로 동작을 확인한다.
+`structural_chunk_v1.py`는 비교용 청킹 구현으로 남겨 두었고 실행 경로는 V0를 사용한다.
 
 ## 검증 상태
 
