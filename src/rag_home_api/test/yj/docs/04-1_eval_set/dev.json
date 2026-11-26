@@ -14,7 +14,8 @@
       "LH_2015122300019142"
     ],
     "allowed_chunk_ids": [
-      "LH_2015122300019142_p001_ckV1_c01"
+      "LH_2015122300019142_p001_ckV1_c01",
+      "LH_2015122300019142_p001_ckV2_c01"
     ],
     "source_location": "LH_2015122300019142 p.1",
     "unanswerable_reason": null
@@ -34,7 +35,8 @@
       "SH_310041"
     ],
     "allowed_chunk_ids": [
-      "SH_310041_p030_ckV1_c03"
+      "SH_310041_p030_ckV1_c03",
+      "SH_310041_p030_ckV2_c02"
     ],
     "source_location": "SH_310041 p.30",
     "unanswerable_reason": null
@@ -53,7 +55,8 @@
       "SH_302646"
     ],
     "allowed_chunk_ids": [
-      "SH_302646_p024_ckV1_c00"
+      "SH_302646_p024_ckV1_c00",
+      "SH_302646_p024_ckV2_c01"
     ],
     "source_location": "SH_302646 p.24",
     "unanswerable_reason": null
@@ -73,7 +76,8 @@
       "SH_304864"
     ],
     "allowed_chunk_ids": [
-      "SH_304864_p012_ckV1_c01"
+      "SH_304864_p012_ckV1_c01",
+      "SH_304864_p012_ckV2_c00"
     ],
     "source_location": "SH_304864 p.12",
     "unanswerable_reason": null
@@ -93,7 +97,8 @@
       "SH_297335"
     ],
     "allowed_chunk_ids": [
-      "SH_297335_p020_ckV1_c00"
+      "SH_297335_p020_ckV1_c00",
+      "SH_297335_p020_ckV2_c00"
     ],
     "source_location": "SH_297335 p.20",
     "unanswerable_reason": null
@@ -113,7 +118,8 @@
       "SH_299476"
     ],
     "allowed_chunk_ids": [
-      "SH_299476_p012_ckV1_c00"
+      "SH_299476_p012_ckV1_c00",
+      "SH_299476_p012_ckV2_c00"
     ],
     "source_location": "SH_299476 p.12",
     "unanswerable_reason": null
@@ -133,7 +139,9 @@
       "SH_303557"
     ],
     "allowed_chunk_ids": [
-      "SH_303557_p013_ckV1_c02"
+      "SH_303557_p013_ckV1_c01",
+      "SH_303557_p013_ckV1_c02",
+      "SH_303557_p013_ckV2_c02"
     ],
     "source_location": "SH_303557 p.13",
     "unanswerable_reason": null
@@ -152,7 +160,8 @@
       "SH_313610"
     ],
     "allowed_chunk_ids": [
-      "SH_313610_p017_ckV1_c01"
+      "SH_313610_p017_ckV1_c01",
+      "SH_313610_p017_ckV2_c01"
     ],
     "source_location": "SH_313610 p.17",
     "unanswerable_reason": null

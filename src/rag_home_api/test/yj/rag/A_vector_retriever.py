@@ -12,15 +12,18 @@ from functools import lru_cache
 from langchain_core.documents import Document
 
 from rag_home_api.test.yj.core.logger import get_logger
-from rag_home_api.test.yj.core.vector_store import get_vector_store
+from rag_home_api.test.yj.core.vector_store import get_raw_db_connection, get_vector_store
 
 logger = get_logger(__name__)
 
 #===================================================================
 # 1. 기본 설정
 #===================================================================
-DEFAULT_COLLECTION = "yj_preV2_chunkV1_cs800_ov100"
 TOP_K = 5
+
+DEFAULT_COLLECTION = "yj_public_rental"   # 단일 컬렉션
+DEFAULT_CHUNK_VERSION = "V2"              # 기본 검색 청킹 버전 ("V1" / "V2")
+
 
 #===================================================================
 # 2. 의미 검색 (A 구성 : PGVector)
@@ -61,6 +64,34 @@ def search_vector(
     return scored_docs
 
 
+def get_chunk_by_id(
+    chunk_id : str,
+    collection : str = DEFAULT_COLLECTION,
+) -> Document | None :
+    """메타데이터의 chunk_id로 DB에서 해당 청크 1건을 바로 조회"""
+    query = """
+        SELECT e.id, e.document, e.cmetadata
+        FROM langchain_pg_embedding e
+        JOIN langchain_pg_collection c ON e.collection_id = c.uuid
+        WHERE c.name = %s
+          AND e.cmetadata->>'chunk_id' = %s
+        LIMIT 1
+    """
+    conn = get_raw_db_connection()
+    try :
+        cur = conn.cursor()
+        cur.execute(query, (collection, chunk_id))
+        row = cur.fetchone()
+    finally :
+        conn.close()
+
+    if row is None :
+        return None
+
+    db_id, content, metadata = row
+    return Document(id=db_id, page_content=content, metadata=metadata or {})
+
+
 #===================================================================
 # 3. 단독 실행 테스트
 #===================================================================
@@ -68,7 +99,12 @@ if __name__ == "__main__" :
 
     test_question = "서울삼전 행복주택 26형 신혼부부 임대보증금은 얼마인가요?"
 
-    print("=== [1] 의미 검색 (Vector) ===")
-    for rank, (doc, score) in enumerate(search_vector(test_question, top_k=3), start=1) :
+    print(f"=== [1] 의미 검색 (Vector | {DEFAULT_CHUNK_VERSION}) ===")
+    hits = search_vector(
+        test_question,
+        top_k=3,
+        filters={"chunk_version": DEFAULT_CHUNK_VERSION},
+    )
+    for rank, (doc, score) in enumerate(hits, start=1) :
         preview = doc.page_content[:80].replace("\n", " ")
-        print(f"  {rank}위 | {score:.4f} | {doc.id} | {preview}")
+        print(f"  {rank}위 | {score:.4f} | {doc.metadata.get('chunk_id')} | {preview}")

@@ -25,7 +25,15 @@ logger = get_logger(__name__)
 #===================================================================
 # 1. 입력값으로 넣을 청크문서 경로 설정하고 
 #===================================================================
-CHUNK_FILE = "공공임대_공고문_preV2_chunkV1_cs800_ov100.jsonl"
+PREPROCESS_VERSION = "V2"
+CHUNK_VERSION = "V2"
+CHUNK_SIZE = 800
+CHUNK_OVERLAP  = 100
+
+
+CHUNK_FILE = f"공공임대_공고문_pre{PREPROCESS_VERSION}_chunk{CHUNK_VERSION}_cs{CHUNK_SIZE}_ov{CHUNK_OVERLAP}.jsonl"
+
+
 BATCH_SIZE = 200          # Postgres 요청 인자 수 한도(65,535) 때문에 나눠서 저장
 TEST_LIMIT = None     
 
@@ -38,8 +46,7 @@ IN_CHUNK_PATH = (
     / CHUNK_FILE
 )
 
-COLLECTION = "yj_" + CHUNK_FILE.split("공고문_")[1].removesuffix(".jsonl")
-# → "yj_preV2_chunkV1_cs800_ov100"
+COLLECTION = "yj_public_rental"   # 단일 컬렉션으로 통합 (버전은 cmetadata['chunk_version'] 필터로 구분)
 
 #===================================================================
 # 2. 청크 JSONL → Document (DB 기본키 id = "{COLLECTION}:{chunk_id}")
@@ -64,17 +71,18 @@ def load_chunks(path: Path, collection: str = COLLECTION) -> list[Document]:
 #===================================================================
 # 3. DB에 저장된 {chunk_id: content_hash} 조회
 #===================================================================
-def fetch_existing_hashes(collection: str) -> dict[str, str]:
+def fetch_existing_hashes(collection: str, chunk_version: str = CHUNK_VERSION) -> dict[str, str]:
     query = """
         SELECT e.id, e.cmetadata->>'content_hash'
         FROM langchain_pg_embedding e
         JOIN langchain_pg_collection c ON e.collection_id = c.uuid
         WHERE c.name = %s
+          AND e.cmetadata->>'chunk_version' = %s
     """
     conn = get_raw_db_connection()
     try:
         cur = conn.cursor()
-        cur.execute(query, (collection,))
+        cur.execute(query, (collection, chunk_version))
         return {row[0]: row[1] for row in cur.fetchall()}
     except psycopg.errors.UndefinedTable:
         # 처음 실행이라 테이블이 아직 없음 → 전부 신규
@@ -127,7 +135,12 @@ def migrate_legacy_ids(collection: str) -> int:
 #===================================================================
 # 5. 적재 (증분 또는 전체 재적재)
 #===================================================================
-def index_chunks(docs: list[Document], rebuild: bool = False, allow_delete: bool = True) -> dict:
+def index_chunks(
+    docs: list[Document],
+    rebuild: bool = False,
+    allow_delete: bool = True,
+    chunk_version: str = CHUNK_VERSION,
+) -> dict:
     # 벡터 스토어를 먼저 만들면 LangChain 테이블이 없을 때 자동으로 생성됨
     store = get_vector_store(COLLECTION, reset=rebuild)
 
@@ -136,7 +149,7 @@ def index_chunks(docs: list[Document], rebuild: bool = False, allow_delete: bool
         if migrated:
             logger.info(f"기존 PK 형식 변환 완료 : {migrated:,}건 -> '{COLLECTION}:{{chunk_id}}'")
 
-    existing = {} if rebuild else fetch_existing_hashes(COLLECTION)
+    existing = {} if rebuild else fetch_existing_hashes(COLLECTION, chunk_version=chunk_version)
     diff = diff_chunks(docs, existing)
     to_embed = diff["new"] + diff["updated"]
 
@@ -148,15 +161,16 @@ def index_chunks(docs: list[Document], rebuild: bool = False, allow_delete: bool
         store.add_documents(batch, ids=[d.id for d in batch])
         logger.info(f"임베딩·적재 {i + len(batch):,} / {len(to_embed):,}")
 
-    # 2) 삭제 : 청크 파일에서 사라진 chunk_id
+    # 2) 삭제 : 같은 chunk_version 내에서 청크 파일에서 사라진 chunk_id만 삭제
     deleted = 0
     if allow_delete and diff["deleted_ids"]:
         for i in range(0, len(diff["deleted_ids"]), BATCH_SIZE):
-            store.delete(ids=diff["deleted_ids"][i:i + BATCH_SIZE])
+            store.delete(ids=diff["deleted_ids"][i:i + BATCH_SIZE], collection_only=True)
         deleted = len(diff["deleted_ids"])
 
     return {
         "collection": COLLECTION,
+        "chunk_version": chunk_version,
         "embedding_model": embedding_settings.EMBEDDING_MODEL,
         "mode": "rebuild" if rebuild else "incremental",
         "total": len(docs),
@@ -172,7 +186,7 @@ def index_chunks(docs: list[Document], rebuild: bool = False, allow_delete: bool
 #===================================================================
 # 6. 적재 확인 (개수 · 벡터 · id · 차원)
 #===================================================================
-def verify(collection: str) -> dict:
+def verify(collection: str, chunk_version: str = CHUNK_VERSION) -> dict:
     query = """
         SELECT COUNT(*),
                COUNT(*) FILTER (WHERE e.embedding IS NULL),
@@ -181,11 +195,12 @@ def verify(collection: str) -> dict:
         FROM langchain_pg_embedding e
         JOIN langchain_pg_collection c ON e.collection_id = c.uuid
         WHERE c.name = %s
+          AND e.cmetadata->>'chunk_version' = %s
     """
     conn = get_raw_db_connection()
     try:
         cur = conn.cursor()
-        cur.execute(query, (collection,))
+        cur.execute(query, (collection, chunk_version))
         total, no_vec, id_mismatch, dims = cur.fetchone()
     finally:
         conn.close()
@@ -194,18 +209,20 @@ def verify(collection: str) -> dict:
 
 REPORT_DIR = Path(__file__).resolve().parents[2] / "docs" / "03_index_reports"
 
-def write_index_report(result: dict, check: dict, n_file: int, docs: list[Document]) -> Path: 
-    """실행 결과를 컬렉션별 md 파일에 이어 붙임 (처음이면 제목과 설정을 먼저 씀)"""
+def write_index_report(result: dict, check: dict, n_file: int, docs: list[Document]) -> Path:
+    """실행 결과를 컬렉션·버전별 md 파일에 이어 붙임 (처음이면 제목과 설정을 먼저 씀)"""
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    path = REPORT_DIR / f"{COLLECTION}.md"
+    path = REPORT_DIR / f"{COLLECTION}_chunk{CHUNK_VERSION}.md"
 
     lines = []
     if not path.exists():
         lines += [
-            f"# 인덱싱 기록 : {COLLECTION}",
+            f"# 인덱싱 기록 : {COLLECTION} ({CHUNK_VERSION})",
             "",
             "| 항목 | 값 |",
             "|---|---|",
+            f"| 컬렉션 | `{COLLECTION}` |",
+            f"| 청킹 버전 | `{CHUNK_VERSION}` |",
             f"| 청크 파일 | `docs/02_chunked/{CHUNK_FILE}` |",
             f"| 임베딩 모델 | {result['embedding_model']} |",
             f"| 배치 크기 | {BATCH_SIZE} |",
@@ -275,7 +292,11 @@ if __name__ == "__main__":
     report = write_index_report(result, check, n_file=len(docs), docs=docs)
     logger.info(f"기록 저장 : {report}")
 
-    # 검색 확인 : reset 없이(기본값 False) 불러오기
+    # 검색 확인 : reset 없이(기본값 False) 현재 chunk_version만 필터링해 불러오기
     store = get_vector_store(COLLECTION)
-    for doc, dist in store.similarity_search_with_score("행복주택 당첨자 발표일은 언제인가요?", k=5):
+    for doc, dist in store.similarity_search_with_score(
+        "행복주택 당첨자 발표일은 언제인가요?",
+        k=5,
+        filter={"chunk_version": CHUNK_VERSION},
+    ):
         logger.info(f"{dist:.3f}  {doc.id}  {doc.page_content[:50]!r}")

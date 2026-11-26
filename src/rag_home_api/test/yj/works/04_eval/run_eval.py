@@ -41,6 +41,7 @@ from rag_home_api.test.yj.core.vector_store import get_embeddings, get_llm
 from rag_home_api.test.yj.rag.A_vector_retriever import DEFAULT_COLLECTION, TOP_K, search_vector
 from rag_home_api.test.yj.rag.B_hybrid_retriever import BM25Index, search_hybrid
 from rag_home_api.test.yj.rag.C_reranker import RERANK_CANDIDATE_K, rerank_chunks
+from rag_home_api.test.yj.rag.D_query_rewriter import rewrite_query
 from rag_home_api.test.yj.rag.generator import generate_answer
 
 logger = get_logger(__name__)
@@ -49,14 +50,23 @@ logger = get_logger(__name__)
 #===================================================================
 # 1. 평가 설정값 및 경로 지정
 #===================================================================
-DATASET_VER = "first"         # 평가셋 폴더 버전 (docs/04-1_eval_set/first/)
-SPLIT = "dev"                 # 개발/튜닝은 "dev"(10문항), 최종 고정 평가만 "test"(20문항)
+CHUNK_VERSION = "V2"          # 평가할 청킹 버전 ("V1" / "V2") — 검색 필터 및 리포트 폴더 자동 연동
+SEARCH_FILTERS = {"chunk_version": CHUNK_VERSION}
+
+CHUNK_VER = f"chunk_{CHUNK_VERSION}"
+SPLIT = "test"                 # 개발/튜닝은 "dev"(10문항), 최종 고정 평가만 "test"(20문항)
 FAILURE_THRESHOLD = 0.7       # RAGAS 미달 판정 기준 점수
-MODES = ["A_vector", "B_hybrid", "C_hybrid_rerank"]
+
+MODES = [
+    "A_vector", 
+    "B_hybrid", 
+    "C_hybrid_rerank", 
+    "C_plus_opt" # (C_hybrid_rerank + Query Rewrite)
+    ]
 
 BASE_DIR = Path(__file__).resolve().parents[2]  # test/yj/
-EVAL_SET_PATH = BASE_DIR / "docs" / "04-1_eval_set" / DATASET_VER / f"{SPLIT}.json"
-REPORT_DIR = BASE_DIR / "docs" / "04-2_eval_reports"
+EVAL_SET_PATH = BASE_DIR / "docs" / "04-1_eval_set" / f"{SPLIT}.json"
+REPORT_DIR = BASE_DIR / "docs" / "04-2_eval_reports" / CHUNK_VER
 
 # 답변 본문에 아래 표현이 들어있거나 인용 번호가 비어있으면 '근거 부족 안내(거절)'로 판정
 INSUFFICIENT_PHRASES = ("찾을 수 없습니다", "찾지 못했습니다", "정보가 없", "확인할 수 없")
@@ -108,16 +118,29 @@ def run_pipeline_on_dataset(
     for item in qa_items :
         start_time = time.perf_counter()
         rerank_trace : list[dict] = []
+        rewritten_query : str | None = None
+        rewrite_fallback : str | None = None
 
         try :
-            # 1) 모드에 맞는 검색기 실행 (A / B / C)
+            # 1) 모드에 맞는 검색기 실행 (A / B / C / C_plus_opt) — chunk_version 메타데이터 필터 적용
             if pipeline_mode == "A_vector" :
-                hits = search_vector(item.question, collection=DEFAULT_COLLECTION, top_k=TOP_K)
+                hits = search_vector(
+                    item.question,
+                    collection=DEFAULT_COLLECTION,
+                    top_k=TOP_K,
+                    filters=SEARCH_FILTERS,
+                )
 
             elif pipeline_mode == "B_hybrid" :
                 if bm25 is None :
                     raise ValueError("B_hybrid 모드에는 BM25Index가 필요합니다.")
-                hits = search_hybrid(item.question, bm25, collection=DEFAULT_COLLECTION, top_k=TOP_K)
+                hits = search_hybrid(
+                    item.question,
+                    bm25,
+                    collection=DEFAULT_COLLECTION,
+                    top_k=TOP_K,
+                    filters=SEARCH_FILTERS,
+                )
 
             elif pipeline_mode == "C_hybrid_rerank" :
                 if bm25 is None :
@@ -127,8 +150,27 @@ def run_pipeline_on_dataset(
                     bm25,
                     collection=DEFAULT_COLLECTION,
                     top_k=RERANK_CANDIDATE_K,
+                    filters=SEARCH_FILTERS,
                 )
                 hits, rerank_trace = rerank_chunks(item.question, candidates, top_k=TOP_K)
+
+            elif pipeline_mode == "C_plus_opt" :
+                if bm25 is None :
+                    raise ValueError("C_plus_opt 모드에는 BM25Index가 필요합니다.")
+                # STEP 5: 검색·리랭킹에만 쿼리 리라이트 적용 (답변 생성은 원질문 유지)
+                rw = rewrite_query(item.question)
+                rewritten_query = rw["rewritten_query"]
+                rewrite_fallback = rw["fallback"]
+                search_q = rw["search_query"]
+
+                candidates = search_hybrid(
+                    search_q,
+                    bm25,
+                    collection=DEFAULT_COLLECTION,
+                    top_k=RERANK_CANDIDATE_K,
+                    filters=SEARCH_FILTERS,
+                )
+                hits, rerank_trace = rerank_chunks(search_q, candidates, top_k=TOP_K)
 
             else :
                 raise ValueError(f"지원하지 않는 모드입니다 : {pipeline_mode}")
@@ -170,6 +212,8 @@ def run_pipeline_on_dataset(
             "query_type": item.query_type,
             "pipeline_mode": pipeline_mode,
             "question": item.question,
+            "rewritten_query": rewritten_query,
+            "rewrite_fallback": rewrite_fallback,
             "ground_truth": item.ground_truth,
             "allowed_chunk_ids": item.allowed_chunk_ids,
             "retrieved_chunk_ids": chunk_ids,
@@ -371,8 +415,8 @@ def save_reports(
     # 2) 사람이 읽기 쉬운 비교 요약표 & 미달 문항 Markdown 저장
     md_path = REPORT_DIR / f"eval_{SPLIT}_{timestamp}.md"
     lines = [
-        f"# 평가 리포트 ({SPLIT}, {timestamp})",
-        f"- 컬렉션: `{DEFAULT_COLLECTION}` / Top-K: `{TOP_K}` / 임계치: `{FAILURE_THRESHOLD}`",
+        f"# 평가 리포트 ({SPLIT}, {CHUNK_VER}, {timestamp})",
+        f"- 컬렉션: `{DEFAULT_COLLECTION}` / 청킹 버전: `{CHUNK_VERSION}` / Top-K: `{TOP_K}` / 임계치: `{FAILURE_THRESHOLD}`",
         "",
         "## 1. 파이프라인 비교 요약",
         "| 모드 | Hit@5 | 근거없음 거절 | Context Precision | Context Recall | Faithfulness | Answer Relevancy | 평균(초) | 중앙값(초) | 오류 | 결측 |",
@@ -409,7 +453,7 @@ def save_reports(
 #===================================================================
 if __name__ == "__main__" :
     qa_items = load_eval_set()
-    bm25 = BM25Index(DEFAULT_COLLECTION)
+    bm25 = BM25Index(DEFAULT_COLLECTION, chunk_version=CHUNK_VERSION)
 
     all_raw : dict[str, list[dict]] = {}
     all_scored : dict[str, list[SampleEvaluationResult]] = {}
