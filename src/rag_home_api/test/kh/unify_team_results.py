@@ -109,34 +109,38 @@ def convert_yeji_eval(raw: dict[str, Any], source_label: str = "eval_dev.json", 
 
 
 def convert_jihun_jsonl(jsonl_text: str, source_label: str = "dev_원본로그.jsonl", source_branch: str = "origin/feat/cjh") -> dict[str, Any]:
-    """지훈(jh) dev_원본로그.jsonl -> 공통 UnifiedEvalSummary dict 변환 (RAGAS 미측정 시 정직하게 비움)."""
+    """지훈(jh) 신규 run.py --tag JSONL 또는 구 dev_원본로그.jsonl -> 공통 UnifiedEvalSummary dict 변환."""
     rows = [json.loads(line) for line in jsonl_text.splitlines() if line.strip()]
-    metas_by_tag: dict[str, dict] = {}
     groups: dict[str, list[dict]] = {}
     latest_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     for r in rows:
         if "meta" in r:
-            tag = str(r["meta"].get("tag", "run"))
-            metas_by_tag[tag] = r["meta"]
             if r["meta"].get("started"):
                 latest_ts = str(r["meta"]["started"])
             continue
-        run_id = str(r.get("run_id", ""))
-        parts = run_id.split(":")
-        tag = parts[0] if len(parts) >= 2 else "run"
-        mode = str(r.get("mode", parts[1] if len(parts) >= 2 else "B"))
-        key = f"{tag}_{mode}"
+        if "run_id" in r:
+            parts = str(r.get("run_id", "")).split(":")
+            tag = parts[0] if len(parts) >= 2 else "run"
+            mode = str(r.get("mode", parts[1] if len(parts) >= 2 else "B"))
+            key = f"{tag}_{mode}"
+        else:
+            # 신규 run.py --tag 출력 형식
+            qid = str(r.get("question_id", ""))
+            split_tag = "TEST" if "TEST" in qid else "DEV"
+            key = f"jh_1000_{split_tag}_{r.get('mode', 'B')}"
         groups.setdefault(key, []).append(r)
 
     modes_out: dict[str, dict[str, Any]] = {}
     for gkey, recs in groups.items():
         ans = [r for r in recs if r.get("expected_status") == "answered"]
+        unans = [r for r in recs if r.get("expected_status") == "insufficient_evidence"]
         hit_cnt = sum(1 for r in ans if r.get("hit5") is True)
         top1_cnt = sum(1 for r in ans if r.get("first_hit_rank") == 1)
         mrr_vals = [(1.0 / int(r["first_hit_rank"])) if r.get("first_hit_rank") else 0.0 for r in ans]
         lats = sorted(float(r.get("latency_sec", 0.0) or 0.0) * 1000.0 for r in recs if r.get("latency_sec") is not None)
         p95_ms = round(lats[max(0, int(len(lats) * 0.95) - 1)], 1) if lats else 0.0
+        ref_cnt = sum(1 for r in unans if r.get("status") == "insufficient_evidence")
         modes_out[gkey] = {
             "retrieval": {
                 "answerable_count": len(ans),
@@ -150,7 +154,7 @@ def convert_jihun_jsonl(jsonl_text: str, source_label: str = "dev_원본로그.j
                 "median": round(statistics.median(lats), 1) if lats else 0.0,
                 "p95": p95_ms,
             },
-            "refusal": "검색전용",
+            "refusal": f"{ref_cnt}/{len(unans)}" if unans and any(r.get("status") != "retrieval_only" for r in unans) else "검색전용",
             "ragas_avg": {},
             "underperforming_items": [],
         }
@@ -159,13 +163,83 @@ def convert_jihun_jsonl(jsonl_text: str, source_label: str = "dev_원본로그.j
         "timestamp": latest_ts,
         "owner": "jh",
         "domain": "law",
-        "eval_version": "jh_law_dev",
+        "eval_version": "jh_law_qa_v1",
         "ragas_target": 0.70,
         "collection_name": TEAM_COLLECTIONS["law"]["current"],
         "embedding_model": "text-embedding-3-small",
         "source_branch": source_branch,
         "source_file": source_label,
-        "notes": "지훈 법령 파트 검색 원본로그 자동 변환 (RAGAS 미측정 · 추후 RAGAS JSON 연동 시 자동 반영)",
+        "notes": "지훈 법령 파트 JSONL 자동 변환 (RAGAS 미측정 · 추후 RAGAS JSON 연동 시 자동 반영)",
+        "modes": modes_out,
+    }
+
+
+def convert_jihun_experiment_md(md_text: str, source_label: str = "실험기록.md (§19)", source_branch: str = "origin/dev") -> dict[str, Any]:
+    """지훈(jh) 최종 실험기록.md §19 DEV/TEST A/B/C 표 -> 공통 UnifiedEvalSummary dict 변환 (RAGAS 미측정 정직 표기)."""
+    sec19_idx = md_text.find("## 19.")
+    chunk = md_text[sec19_idx:] if sec19_idx >= 0 else md_text
+
+    # Hit@5 & 완료 정답률 표 (첫 번째 표만 파싱하여 하단 Context Precision 17/85 표와 덮어쓰기 방지)
+    hit_map: dict[tuple[str, str], str] = {}
+    ref_sec_idx = chunk.find("### 근거 부족 보류")
+    hit_chunk = chunk[:ref_sec_idx] if ref_sec_idx >= 0 else chunk
+    for m in re.finditer(r"^\|\s*(DEV|TEST)\s*\|\s*(A|B|C)\s*\|\s*(\d+/\d+)\s*\|", hit_chunk, flags=re.MULTILINE):
+        hit_map.setdefault((m.group(1), m.group(2)), m.group(3))
+
+    # 거절(보류) 표: | DEV | B | 2/2 | 2/2 | 2/2 | 2/2 | 0/10 |
+    ref_map: dict[tuple[str, str], str] = {}
+    if ref_sec_idx >= 0:
+        for m in re.finditer(r"^\|\s*(DEV|TEST)\s*\|\s*(A|B|C)\s*\|\s*(\d+/\d+)\s*\|", chunk[ref_sec_idx : ref_sec_idx + 1200], flags=re.MULTILINE):
+            ref_map.setdefault((m.group(1), m.group(2)), m.group(3))
+
+    # 지연 표: | DEV | B | 10 | 0.102 | 0 | 1.647 | 1.749 | 1.728 | 2.448 |
+    lat_map: dict[tuple[str, str], tuple[float, float, float]] = {}
+    lat_sec_idx = chunk.find("### 지연:")
+    if lat_sec_idx >= 0:
+        for m in re.finditer(
+            r"^\|\s*(DEV|TEST)\s*\|\s*(A|B|C)\s*\|\s*\d+\s*\|\s*[\d.]+\s*\|\s*[\d.]+\s*\|\s*[\d.]+\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|",
+            chunk[lat_sec_idx : lat_sec_idx + 1500],
+            flags=re.MULTILINE,
+        ):
+            lat_map[(m.group(1), m.group(2))] = (
+                round(float(m.group(3)) * 1000.0, 1),
+                round(float(m.group(4)) * 1000.0, 1),
+                round(float(m.group(5)) * 1000.0, 1),
+            )
+
+    modes_out: dict[str, dict[str, Any]] = {}
+    for split_name in ("DEV", "TEST"):
+        for mode_name in ("A", "B", "C"):
+            hit_str = hit_map.get((split_name, mode_name))
+            if not hit_str:
+                continue
+            ans_cnt = int(hit_str.split("/")[1])
+            avg_ms, med_ms, p95_ms = lat_map.get((split_name, mode_name), (0.0, 0.0, 0.0))
+            modes_out[f"jh_1000_{split_name}_{mode_name}"] = {
+                "retrieval": {
+                    "answerable_count": ans_cnt,
+                    "recall@12": None,
+                    "hit@5": hit_str,
+                    "top1": "-",
+                    "mrr@5": None,
+                },
+                "latency_ms": {"avg": avg_ms, "median": med_ms, "p95": p95_ms},
+                "refusal": ref_map.get((split_name, mode_name), "-"),
+                "ragas_avg": {},
+                "underperforming_items": [],
+            }
+
+    return {
+        "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+        "owner": "jh",
+        "domain": "law",
+        "eval_version": "law-qa-v1",
+        "ragas_target": 0.70,
+        "collection_name": TEAM_COLLECTIONS["law"]["current"],
+        "embedding_model": "text-embedding-3-small",
+        "source_branch": source_branch,
+        "source_file": source_label,
+        "notes": "지훈 법령 파트 실험기록.md §19 최종 집계 자동 변환 (로컬 평가 TEST B/C 17/17 · 거절 3/3 · 공식 RAGAS 미측정)",
         "modes": modes_out,
     }
 
@@ -286,30 +360,52 @@ def build_unified_team_snapshots(*, from_git: bool = True, out_dir: Path = TEAM_
         p_out.write_text(json.dumps(kh_norm, ensure_ascii=False, indent=2), encoding="utf-8")
         written.append(p_out)
 
-    # 2) 예지 (로컬 우선, 없으면 origin/feat/yeji)
+    # 2) 예지 (로컬 rglob 우선 — chunk_V1/chunk_V2 하위 폴더 모두 지원, 없으면 origin/feat/yeji)
     yj_local_dir = Path(__file__).resolve().parents[1] / "yj" / "docs" / "04-2_eval_reports"
     yj_text: str | None = None
     yj_name = "eval_dev_20261125_2155.json"
+    yj_branch = "local(dev)"
     if yj_local_dir.exists():
-        yj_local = sorted(yj_local_dir.glob("eval_*.json"), reverse=True)
+        yj_local = sorted(yj_local_dir.rglob("eval_*.json"), key=lambda p: p.name, reverse=True)
         if yj_local:
             yj_name = yj_local[0].name
             yj_text = yj_local[0].read_text(encoding="utf-8")
     if yj_text is None and from_git:
-        yj_text = _git_show_text(f"origin/feat/yeji:src/rag_home_api/test/yj/docs/04-2_eval_reports/{yj_name}")
+        yj_branch = "origin/feat/yeji"
+        yj_text = (
+            _git_show_text(f"origin/feat/yeji:src/rag_home_api/test/yj/docs/04-2_eval_reports/chunk_V1/{yj_name}")
+            or _git_show_text(f"origin/feat/yeji:src/rag_home_api/test/yj/docs/04-2_eval_reports/{yj_name}")
+        )
     if yj_text:
-        yj_norm = convert_yeji_eval(json.loads(yj_text), source_label=yj_name)
+        yj_norm = convert_yeji_eval(json.loads(yj_text), source_label=yj_name, source_branch=yj_branch)
         p_out = out_dir / "summary_yj.json"
         p_out.write_text(json.dumps(yj_norm, ensure_ascii=False, indent=2), encoding="utf-8")
         written.append(p_out)
 
-    # 3) 지훈 (로컬 우선, 없으면 origin/feat/cjh)
-    jh_local = Path(__file__).resolve().parents[1] / "jh" / "results" / "dev_원본로그.jsonl"
-    jh_text = jh_local.read_text(encoding="utf-8") if jh_local.exists() else (
-        _git_show_text("origin/feat/cjh:src/rag_home_api/test/jh/results/dev_원본로그.jsonl") if from_git else None
-    )
-    if jh_text:
-        jh_norm = convert_jihun_jsonl(jh_text)
+    # 3) 지훈 (로컬 results/*.jsonl 우선 -> 없으면 최신 실험기록.md §19 공식 집계 자동 파싱)
+    jh_dir = Path(__file__).resolve().parents[1] / "jh"
+    jh_norm: dict[str, Any] | None = None
+    jh_res_dir = jh_dir / "results"
+    if jh_res_dir.exists():
+        jh_jsonls = sorted(jh_res_dir.glob("*.jsonl"), reverse=True)
+        if jh_jsonls:
+            jh_norm = convert_jihun_jsonl(
+                jh_jsonls[0].read_text(encoding="utf-8"),
+                source_label=jh_jsonls[0].name,
+                source_branch="local(dev)",
+            )
+    if jh_norm is None:
+        jh_md_local = jh_dir / "실험기록.md"
+        jh_md_text = jh_md_local.read_text(encoding="utf-8") if jh_md_local.exists() else (
+            _git_show_text("origin/dev:src/rag_home_api/test/jh/실험기록.md") if from_git else None
+        )
+        if jh_md_text:
+            jh_norm = convert_jihun_experiment_md(
+                jh_md_text,
+                source_label="test/jh/실험기록.md (§19)",
+                source_branch="local(dev)" if jh_md_local.exists() else "origin/dev",
+            )
+    if jh_norm is not None:
         p_out = out_dir / "summary_jh.json"
         p_out.write_text(json.dumps(jh_norm, ensure_ascii=False, indent=2), encoding="utf-8")
         written.append(p_out)

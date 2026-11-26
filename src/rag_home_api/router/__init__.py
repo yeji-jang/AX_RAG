@@ -5,5 +5,12 @@ from rag_home_api.router.domain_router import (
     TeamDomainRouter,
     classify_domain,
 )
+from rag_home_api.router.law_adapter import LawDomainAdapter, create_law_handler
 
-__all__ = ["RouteDecision", "TeamDomainRouter", "classify_domain"]
+__all__ = [
+    "LawDomainAdapter",
+    "RouteDecision",
+    "TeamDomainRouter",
+    "classify_domain",
+    "create_law_handler",
+]

@@ -41,10 +41,10 @@ TEAM_COLLECTIONS: dict[str, dict[str, str]] = {
     },
     "rent_deals": {
         "standard": "rag_rent_deals_v1",
-        "current": "course_v1_small",
+        "current": "course_v0_small",
         "owner": "bc",
         "embedding_model": UNIFIED_EMBEDDING_MODEL,
-        "description": "전월세 개별 거래 조건 필터 검색 (1행=1청크)",
+        "description": "전월세 개별 거래 조건 필터 검색 (1행=1청크, 관악구 31,772청크)",
     },
 }
 
