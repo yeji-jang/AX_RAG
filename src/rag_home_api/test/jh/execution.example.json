@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "approved": false,
+  "eval_sha": "000000000000",
+  "eval_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "collection": "jh_1000",
+  "corpus_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "index_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "embedding_model": "text-embedding-3-small",
+  "generation_model": "gpt-6-luna",
+  "api_base": "https://api.openai.com/v1",
+  "splits": ["dev"],
+  "modes": ["A", "B", "C"],
+  "preset": "route",
+  "rewrite": false,
+  "generate": false
+}

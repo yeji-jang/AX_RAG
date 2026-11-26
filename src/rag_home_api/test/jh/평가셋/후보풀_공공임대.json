@@ -1,0 +1,13 @@
+{
+  "part": "비활성 개인 공공임대 후보",
+  "updated": "2026-11-25",
+  "format": "팀장(최기혁) dev.json 형식 + eval_category·allowed_row_ids·evidence_quotes",
+  "data": "shared/docs v1 + 법령 보강(4,985줄)",
+  "rules": [
+    "이전 공공임대 후보는 이전평가셋_c3d4c4ead6cb.json에 보존함",
+    "활성 개인 DEV·TEST는 법령파트_평가셋.json을 사용함"
+  ],
+  "items": [],
+  "active": false,
+  "replaced_by": "법령파트_평가셋.json"
+}
