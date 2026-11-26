@@ -57,6 +57,9 @@ ALL_PRESET_NAMES: list[str] = [
     "B_rrf_50_50_k15_kure_v1",
     "B_rrf_25_75_k15_filter_kure_v1",
     "B_rrf_25_75_k15_filter_v2_kure_v1",
+    "C_rrf_25_75_k15_filter_v2_rerank_kure_v1",
+    "C_rrf_25_75_k15_filter_v2_rewrite_kure_v1",
+    "C_rrf_25_75_k15_filter_v2_cache_kure_v1",
     "B_emb_kure_v1",
 ]
 
@@ -118,6 +121,45 @@ DOMAIN_META: dict[str, tuple[str, float]] = {
     "public_housing": ("공공임대 공고 (yj)", 0.70),
     "unified": ("통합 (전 도메인)", 0.65),
 }
+
+OWNER_META: dict[str, dict[str, Any]] = {
+    "kh": {
+        "label": "최기혁 (kh · 서울 25구 전월세 시세 · 목표 0.60)",
+        "domain": "rent_stats",
+        "target": 0.60,
+        "eval_dir": KH_EVAL_DIR,
+    },
+    "yj": {
+        "label": "예지 (yj · 공공임대 공고문 · 목표 0.70)",
+        "domain": "public_housing",
+        "target": 0.70,
+        "eval_dir": TEST_ROOT_DIR / "yj" / "docs" / "04-1_eval_set",
+    },
+    "jh": {
+        "label": "지훈 (jh · 주택임대차 법령 · 목표 0.70)",
+        "domain": "law",
+        "target": 0.70,
+        "eval_dir": TEST_ROOT_DIR / "jh" / "평가셋",
+    },
+    "bc": {
+        "label": "병철 (bc · 전월세 조건탐색 · 목표 0.60)",
+        "domain": "rent_deals",
+        "target": 0.60,
+        "eval_dir": TEST_ROOT_DIR / "bc" / "eval",
+    },
+}
+
+
+def _load_owner_summaries(owner: str) -> list[tuple[Path, dict]]:
+    """선택한 팀원(kh/yj/jh/bc)의 전체 회차별 평가 요약을 시간순으로 로드한다."""
+    if owner == "kh":
+        return _load_all_local_summaries()
+    try:
+        from rag_home_api.test.kh.unify_team_results import load_all_team_histories
+
+        return load_all_team_histories(from_git=False).get(owner, [])
+    except Exception:
+        return []
 
 RUN_MILESTONE_NOTES: dict[str, dict[str, str]] = {
     "20261125_114421": {
@@ -349,6 +391,8 @@ def _classify_funnel_stage(log_row: dict | None, ragas_scores: dict | None, targ
     hit12 = int(m12.get("hit@12", 0) or 0)
     hit5 = int(m5.get("hit@5", 0) or 0)
     rec12 = float(m12.get("recall@12", 0.0) or 0.0)
+    rec5 = float(m5.get("recall@5", 1.0 if hit5 else 0.0) or 0.0)
+    fn5 = int(m5.get("fn", 0) or 0)
     r12 = int(m12.get("first_rank", 0) or 0)
     r5 = int(m5.get("first_rank", 0) or 0)
 
@@ -358,10 +402,12 @@ def _classify_funnel_stage(log_row: dict | None, ragas_scores: dict | None, targ
         return 2, f"🔴 [2단계] 복합 정답 일부 누락 (FN · Recall@12={rec12:.2f}, 첫 정답 #{r12}) — Query Rewrite(서브쿼리 분해) 필요"
     if hit5 == 0:
         return 3, f"🟠 [3단계] 후보 12개 중 #{r12} 생존, Top-5 탈락 — 검색 C(Re-ranking)로 구제 가능"
+    if fn5 > 0 or rec5 < 1.0:
+        return 3, f"🟠 [3단계] 복합 정답 일부 Top-5 누락 (Recall@12=1.00, Recall@5={rec5:.2f}, FN@5={fn5}) — 검색 C(Re-ranking)로 12→5 구제 가능"
     if r5 > 1:
         return 3, f"🟡 [3단계] Top-5 포함(first_rank=#{r5}), 1등 밀림 — 검색 C(Re-ranking)·동 필터·가중치 개선"
     if is_fail:
-        return 4, "🔵 [4단계] 검색 1등 적중(first_rank=#1, FN=0) — 답변 생성·주어·TMI·인용 프롬프트 점검"
+        return 4, "🔵 [4단계] 검색 1등 적중(first_rank=#1, FN@5=0) — 답변 생성·주어·TMI·인용 프롬프트 점검"
     return 0, "🟢 [전 단계 통과] 검색 1등 + RAGAS 4지표 목표 달성"
 
 
@@ -385,13 +431,23 @@ def _describe_preset_diff(prev_step: dict | None, cur_step: dict) -> tuple[int, 
     cmode = cp.get("pipeline_mode") or ("A_vector" if cur_step["mode"] == "A_vector" else "B_hybrid")
     if pmode != cmode:
         diffs.append(f"검색 방식: {pmode} → {cmode}")
-    elif cmode != "A_vector" and (pp.get("bm25_weight") != cp.get("bm25_weight")):
-        bw1, vw1 = pp.get("bm25_weight", 0.55), pp.get("vector_weight", 0.45)
-        bw2, vw2 = cp.get("bm25_weight", 0.55), cp.get("vector_weight", 0.45)
-        diffs.append(f"BM25:Vec 가중치: {bw1:.2f}:{vw1:.2f} → {bw2:.2f}:{vw2:.2f}")
+    if pmode != "A_vector" and cmode != "A_vector":
+        bw1, vw1 = float(pp.get("bm25_weight", 0.55) or 0.55), float(pp.get("vector_weight", 0.45) or 0.45)
+        bw2, vw2 = float(cp.get("bm25_weight", 0.55) or 0.55), float(cp.get("vector_weight", 0.45) or 0.45)
+        if abs(bw1 - bw2) > 1e-6 or abs(vw1 - vw2) > 1e-6:
+            diffs.append(f"BM25:Vec 가중치: {bw1:.2f}:{vw1:.2f} → {bw2:.2f}:{vw2:.2f}")
+        rk1 = int(pp.get("rrf_k", 60) or 60)
+        rk2 = int(cp.get("rrf_k", 60) or 60)
+        if rk1 != rk2:
+            diffs.append(f"rrf_k: {rk1} → {rk2}")
 
     if bool(pp.get("use_metadata_filter")) != bool(cp.get("use_metadata_filter")):
         diffs.append(f"메타데이터 필터: {'ON' if pp.get('use_metadata_filter') else 'OFF'} → {'ON' if cp.get('use_metadata_filter') else 'OFF'}")
+    elif bool(pp.get("use_metadata_filter")) and bool(cp.get("use_metadata_filter")):
+        pv2 = "filter_v2" in str(prev_step.get("mode", ""))
+        cv2 = "filter_v2" in str(cur_step.get("mode", ""))
+        if pv2 != cv2:
+            diffs.append(f"사전 필터 규칙: {'v2(평수·법정동)' if pv2 else 'v1'} → {'v2(평수·법정동)' if cv2 else 'v1'}")
     if bool(pp.get("use_rewrite")) != bool(cp.get("use_rewrite")):
         diffs.append(f"Query Rewrite: {'ON' if pp.get('use_rewrite') else 'OFF'} → {'ON' if cp.get('use_rewrite') else 'OFF'}")
     if bool(pp.get("use_cache")) != bool(cp.get("use_cache")):
@@ -402,8 +458,14 @@ def _describe_preset_diff(prev_step: dict | None, cur_step: dict) -> tuple[int, 
         diffs.append(f"candidate_k: {pp.get('candidate_k')} → {cp.get('candidate_k')}")
     if pp.get("collection_name") != cp.get("collection_name") and (pp.get("collection_name") or cp.get("collection_name")):
         diffs.append(f"청킹 컬렉션: {pp.get('collection_name', 'housing_rent_kh')} → {cp.get('collection_name', 'housing_rent_kh')}")
+    if pp.get("chunk_strategy") != cp.get("chunk_strategy") and pp.get("chunk_strategy") and cp.get("chunk_strategy"):
+        diffs.append(f"청킹/단계: {pp.get('chunk_strategy')} → {cp.get('chunk_strategy')}")
     if pp.get("embedding_model") != cp.get("embedding_model") and (pp.get("embedding_model") or cp.get("embedding_model")):
         diffs.append(f"임베딩 모델: {pp.get('embedding_model', 'text-embedding-3-small')} → {cp.get('embedding_model', 'text-embedding-3-small')}")
+    pv_prompt = pp.get("prompt_version")
+    cv_prompt = cp.get("prompt_version")
+    if pv_prompt and cv_prompt and pv_prompt != cv_prompt:
+        diffs.append(f"프롬프트: {pv_prompt} → {cv_prompt}")
 
     if not diffs:
         if cur_step.get("run_note"):
@@ -467,7 +529,8 @@ def _build_history_steps(all_summaries: list[tuple[Path, dict]]) -> list[dict]:
         run_note = str(summary.get("run_note", ""))
         run_tag = RUN_MILESTONE_NOTES.get(ts, {}).get("tag", f"RUN ({_fmt_ts(ts)})")
         comp_path = _find_companion_jsonl(path, ts)
-        comp_logs = _load_jsonl_file(comp_path) if comp_path else []
+        comp_logs = summary.get("_companion_logs") or (_load_jsonl_file(comp_path) if comp_path else [])
+        owner = str(summary.get("owner") or "kh")
 
         for mname, mdata in summary.get("modes", {}).items():
             idx += 1
@@ -482,7 +545,7 @@ def _build_history_steps(all_summaries: list[tuple[Path, dict]]) -> list[dict]:
             ref_logs = [r for r in mode_logs if r.get("expected_status") == "insufficient_evidence"]
             cite_str = mdata.get("citation_rate")
             if not cite_str and ans_logs:
-                c_ok = sum(1 for r in ans_logs if ("출처:" in (r.get("response") or "") or ".csv" in (r.get("response") or "")))
+                c_ok = sum(1 for r in ans_logs if ("출처:" in (r.get("response") or "") or ".csv" in (r.get("response") or "") or re.search(r"\[\d+\]", r.get("response") or "")))
                 cite_str = f"{c_ok}/{len(ans_logs)}"
             scope_str = mdata.get("scope_notice")
             if not scope_str and ref_logs:
@@ -493,18 +556,31 @@ def _build_history_steps(all_summaries: list[tuple[Path, dict]]) -> list[dict]:
                 )
                 scope_str = f"{s_ok}/{len(ref_logs)}"
 
+            has_f = rg.get("faithfulness") is not None
+            has_ar = rg.get("answer_relevancy") is not None
+            has_cp = rg.get("llm_context_precision_with_reference") is not None
+            has_cr = rg.get("context_recall") is not None
+            has_ragas = any((has_f, has_ar, has_cp, has_cr))
+            has_r12 = ret.get("recall@12") is not None
+            has_mrr5 = ret.get("mrr@5") is not None
+            has_top1 = _parse_ratio(ret.get("top1")) is not None
+            has_lat = float(lat.get("median", 0.0) or 0.0) > 0.0 or float(lat.get("avg", 0.0) or 0.0) > 0.0
+
             f_val = float(rg.get("faithfulness", 0.0) or 0.0)
             ar_val = float(rg.get("answer_relevancy", 0.0) or 0.0)
             cp_val = float(rg.get("llm_context_precision_with_reference", 0.0) or 0.0)
             cr_val = float(rg.get("context_recall", 0.0) or 0.0)
+            measured_ragas = [v for ok, v in ((has_f, f_val), (has_ar, ar_val), (has_cp, cp_val), (has_cr, cr_val)) if ok]
+            ragas_mean = round(sum(measured_ragas) / len(measured_ragas), 4) if measured_ragas else 0.0
             fail_cnt = len(mdata.get("underperforming_items", []))
+            dom_target = float(summary.get("ragas_target", 0.60) or 0.60)
 
             short_ts = ts[-6:-2] if len(ts) >= 6 else ts
             step_label = f"#{idx} [{short_ts}] {mname}"
             if ts == "20261125_154004":
                 step_label = f"#{idx} [{short_ts}] {mname} (+주어)"
             elif run_note:
-                step_label = f"#{idx} [{short_ts}] {mname} ({run_note[:14]})"
+                step_label = f"#{idx} [{short_ts}] {mname} ({run_note[:16]})"
 
             # 문항별 RAGAS 점수 맵 (per_item_ragas 우선, 없으면 underperforming_items에서 보완)
             item_ragas: dict[str, dict[str, float]] = {}
@@ -517,6 +593,7 @@ def _build_history_steps(all_summaries: list[tuple[Path, dict]]) -> list[dict]:
 
             rec = {
                 "order": idx,
+                "owner": owner,
                 "step_label": step_label,
                 "file_path": path,
                 "file_name": path.name,
@@ -534,6 +611,15 @@ def _build_history_steps(all_summaries: list[tuple[Path, dict]]) -> list[dict]:
                 "corpus_n": corpus_n,
                 "mode": mname,
                 "preset": preset,
+                "has_r12": has_r12,
+                "has_mrr5": has_mrr5,
+                "has_top1": has_top1,
+                "has_f": has_f,
+                "has_ar": has_ar,
+                "has_cp": has_cp,
+                "has_cr": has_cr,
+                "has_ragas": has_ragas,
+                "has_lat": has_lat,
                 "recall12": float(ret.get("recall@12", 0.0) or 0.0),
                 "hit5_str": str(ret.get("hit@5", "-")),
                 "hit5_rate": _parse_ratio(ret.get("hit@5")) or 0.0,
@@ -551,9 +637,9 @@ def _build_history_steps(all_summaries: list[tuple[Path, dict]]) -> list[dict]:
                 "ar": ar_val,
                 "cp": cp_val,
                 "cr": cr_val,
-                "ragas_mean": round((f_val + ar_val + cp_val + cr_val) / 4.0, 4),
+                "ragas_mean": ragas_mean,
                 "fail_cnt": fail_cnt,
-                "pass_4of4": all(v >= 0.60 for v in (f_val, ar_val, cp_val, cr_val)),
+                "pass_4of4": (len(measured_ragas) == 4 and all(v >= dom_target for v in measured_ragas)),
                 "cm12": _aggregate_confusion_matrix(mode_logs, mname, k=12, total_corpus_chunks=corpus_n),
                 "cm5": _aggregate_confusion_matrix(mode_logs, mname, k=5, total_corpus_chunks=corpus_n),
             }
@@ -642,26 +728,33 @@ def _recommend_next_variable(step: dict, target: float) -> tuple[str, str, str, 
             "use_metadata_filter: False → True (결과 <3건 시 자동 폴백)",
             "복합 비교 문항 과잉 필터링 여부 + 답변 Answer Relevancy 변동 감시",
         )
-    if len(buckets[4]) >= 1:
-        return (
-            "ANSWER_PROMPT 보강 (첫 문장 대상 5조건 주어 명시 · TMI 금지)",
-            f"검색은 1등인데 4단계 생성에서 미달({', '.join(buckets[4])})이 발생했습니다. 주어 생략·TMI가 RAGAS Answer Relevancy를 깎고 있습니다.",
-            "ANSWER_PROMPT 규칙 1: 첫 문장에 대상 5조건 주어 명시",
-            "Faithfulness 유지 여부 & Context Precision 보존 확인",
-        )
-    if len(buckets[3]) >= 1:
-        return (
-            "검색 C (retrieval/reranker.py) 추가 또는 법정동(dong) 필터 확장",
-            f"후보 12개에 정답이 100% 들어있으나 3단계 순위 실패({', '.join(buckets[3])})가 남았습니다. B 후보 12개를 정밀 재정렬하세요.",
-            "pipeline_mode: B_hybrid → C_rerank (candidate_k=12 → top_k=5)",
-            "LLM 리랭킹 지연(p95) 증가 폭 + 이미 1등이던 문항 하락 0건 확인",
-        )
     if len(buckets[2]) >= 1:
         return (
             "Query Rewrite (optimize/query_rewriter.py · 복합 2구 서브쿼리 분해)",
             f"2단계 검색 누락 FN({', '.join(buckets[2])})은 Re-ranker(C)로 살릴 수 없습니다! 2개 지역 비교 질문을 서브쿼리 2개로 분해해 각각 검색·병합하세요.",
             "use_rewrite: False → True (복합 질의 분해 + 구어체 정규화)",
             "단순 문항 6건의 조건 왜곡·악화 0건 확인",
+        )
+    if len(buckets[3]) >= 1:
+        if pmode != "C_hybrid_rerank":
+            return (
+                "검색 C (retrieval/reranker.py · 12→5 정밀 재정렬)",
+                f"후보 12개에 정답이 100% 들어있으나 3단계 순위/복합 Top-5 누락({', '.join(buckets[3])})이 남았습니다. 검색 C로 후보 12개를 재정렬하세요.",
+                "pipeline_mode: B_hybrid → C_hybrid_rerank (candidate_k=12 → top_k=5)",
+                "LLM 리랭킹 지연(p95) 증가 폭 + 이미 1등이던 문항 하락 0건 확인",
+            )
+        return (
+            "Query Rewrite (2구 서브쿼리 분해)로 복합 문항 양쪽 지역 Top-5 동시 보장",
+            f"검색 C 이후에도 3단계 순위/복합 Top-5 누락({', '.join(buckets[3])})이 남았습니다. 서브쿼리 분해로 양쪽 지역을 라운드로빈 병합하세요.",
+            "use_rewrite: False → True (서브쿼리 분해)",
+            "단순 문항 6건의 조건 왜곡·악화 0건 확인",
+        )
+    if len(buckets[4]) >= 1:
+        return (
+            "ANSWER_PROMPT 보강 (생활어·공식표기 괄호 병기 · 첫 문장 주어 · 거절 고지)",
+            f"검색은 1등(FN@5=0)인데 4단계 생성에서 미달({', '.join(buckets[4])})이 발생했습니다. 생활어-문서표기 괄호 병기 및 첫 문장 주어를 보강하세요.",
+            "ANSWER_PROMPT v3: 생활어+공식표기 괄호 병기 · 최근 1년 실거래 · 과거 고지 고정",
+            "Faithfulness 유지 여부 & Context Precision 보존 확인",
         )
     return (
         "목표 달성! 다음 단계: 버전 캐싱(cache.py) · HyDE · 봉인 test 20문항 최종 1회 평가",
@@ -1122,9 +1215,14 @@ def _evaluate_decision_matrix(
     s2_partial_qids: list[str] = []
     s2_zero_qids: list[str] = []
     s3_qids: list[str] = []
+    s3_partial5_qids: list[str] = []
     s4_ar_qids: list[str] = []
     s4_f_qids: list[str] = []
     over_refusal_qids: list[str] = []
+    is_kure_track = bool(
+        after_s and ("kure" in str(col_name).lower() or "kure" in str(after_s.get("mode", "")).lower())
+    )
+    cur_mode_name = str(after_s.get("mode", "")) if after_s else ""
 
     for r in mode_logs:
         qid = str(r.get("question_id", ""))
@@ -1135,7 +1233,9 @@ def _evaluate_decision_matrix(
         rg = item_ragas.get(qid) or {}
         stg, _ = _classify_funnel_stage(r, rg, target)
         m12 = r.get("metrics_k12") or {}
+        m5 = r.get("metrics_k5") or {}
         rec12 = float(m12.get("recall@12", 0.0) or 0.0)
+        fn5_item = int(m5.get("fn", 0) or 0)
         if stg == 2:
             s2_qids.append(qid)
             if rec12 > 0:
@@ -1144,6 +1244,8 @@ def _evaluate_decision_matrix(
                 s2_zero_qids.append(qid)
         elif stg == 3:
             s3_qids.append(qid)
+            if fn5_item > 0 and int(m5.get("hit@5", 0) or 0) == 1:
+                s3_partial5_qids.append(qid)
         elif stg == 4:
             if rg.get("answer_relevancy") is not None and float(rg["answer_relevancy"]) < target:
                 s4_ar_qids.append(qid)
@@ -1165,62 +1267,137 @@ def _evaluate_decision_matrix(
         s1_status = "ok"
         s1_reading = f"컬렉션 `{col_name}` 정답 ID 누락 0건 ({cnt_txt})"
 
-    # 2단계 판정 (FN(k=12) > 0 or Recall@12 < 0.90 or CR < target)
+    # 2단계 판정 (FN(k=12) > 0 or Recall@12 < 0.90 or CR < target — 미측정 지표는 오발동 제외)
     if after_s is None:
         s2_status, s2_reading, s2_preset, s2_note = "idle", "실행 전 — A_vector 실행 후 k=12 FN 확인", "A_vector", "S1: A_vector 기준선 측정"
     else:
+        has_r12 = bool(after_s.get("has_r12", True))
+        has_cr = bool(after_s.get("has_cr", True))
         fn12 = int(after_s["cm12"]["fn"])
         rec12 = float(after_s["recall12"])
         cr_v = float(after_s["cr"])
-        s2_trig = fn12 > 0 or rec12 < 0.90 or cr_v < target
-        s2_status = "triggered" if s2_trig else "ok"
-        s2_reading = (
-            f"FN(k=12)={fn12}건 · Recall@12={rec12:.3f} (기준 ≥0.90) · CR={cr_v:.3f} (기준 ≥{target:.2f})"
-            + (f" · 누락: {', '.join(s2_qids)}" if s2_qids else " · 누락 0건")
-        )
+        if not has_r12 and not has_cr and after_s["cm12"]["q_count"] == 0:
+            s2_status = "idle"
+            s2_reading = f"Recall@12=미측정 · CR=미측정 · Hit@5={after_s['hit5_str']} (검색 전용 로그)"
+        else:
+            s2_trig = (fn12 > 0) or (has_r12 and rec12 < 0.90) or (has_cr and cr_v < target)
+            s2_status = "triggered" if s2_trig else "ok"
+            r12_txt = f"{rec12:.3f} (기준 ≥0.90)" if has_r12 else "미측정"
+            cr_txt = f"{cr_v:.3f} (기준 ≥{target:.2f})" if has_cr else "미측정"
+            s2_reading = (
+                f"FN(k=12)={fn12}건 · Recall@12={r12_txt} · CR={cr_txt}"
+                + (f" · 누락: {', '.join(s2_qids[:6])}" if s2_qids else " · 누락 0건")
+            )
         if pmode == "A_vector":
             s2_preset, s2_note = "B_rrf_55_45", "가설: Vector 단독 FN 해소를 위해 BM25+RRF(55:45) 결합"
         elif s2_partial_qids or not preset.get("use_rewrite"):
             s2_preset = "C_filter_rewrite" if pmode == "C_hybrid_rerank" else "B_filter_rewrite"
-            s2_note = f"가설: 2구·구어체 FN({', '.join(s2_qids) or '부분누락'}) 해소를 위해 Query Rewrite ON"
+            s2_note = f"가설: 2구·구어체 FN({', '.join(s2_qids[:4]) or '부분누락'}) 해소를 위해 Query Rewrite ON"
         else:
             s2_preset, s2_note = "C_filter_rewrite_hyde", "가설: Rewrite 이후 잔여 의미 불일치 FN을 HyDE(Vector전용)로 보강"
 
-    # 3단계 판정 (FN(k=12)==0인데 Top1 < 0.70 or MRR@5 < 0.65 or CP < target)
+    # 3단계 판정 (FN(k=12)==0인데 Top1 < 0.70 or MRR@5 < 0.65 or CP < target or 복합 Top-5 누락)
     if after_s is None:
         s3_status, s3_reading, s3_preset, s3_note = "idle", "실행 전 — 2단계 FN 해소 후 확인", "B_rrf_70_30", "가설: RRF 가중치 70:30 스윕"
     else:
+        has_top1 = bool(after_s.get("has_top1", True))
+        has_mrr5 = bool(after_s.get("has_mrr5", True))
+        has_cp = bool(after_s.get("has_cp", True))
         fn12 = int(after_s["cm12"]["fn"])
         fn5 = int(after_s["cm5"]["fn"])
         top1_r = float(after_s["top1_rate"])
         mrr5 = float(after_s["mrr5"])
         cp_v = float(after_s["cp"])
-        s3_has_issue = top1_r < 0.70 or mrr5 < 0.65 or cp_v < target or len(s3_qids) > 0
-        s3_status = ("triggered" if (s3_has_issue and fn12 == 0) else ("watch" if s3_has_issue else "ok"))
-        axis_summary = []
-        if cond_mismatch_qids:
-            axis_summary.append(f"[면적/계약/유형 불일치 {len(cond_mismatch_qids)}건: {', '.join(cond_mismatch_qids)}]")
-        if dong_mismatch_qids:
-            axis_summary.append(f"[동 불일치 {len(dong_mismatch_qids)}건: {', '.join(dong_mismatch_qids)}]")
-        s3_reading = (
-            f"Top1={after_s['top1_str']}({top1_r*100:.0f}%, 기준 ≥70%) · MRR@5={mrr5:.3f}(≥0.65) · CP={cp_v:.3f}(≥{target:.2f}) · FN(k5)={fn5}"
-            + (f" · {' '.join(axis_summary)}" if axis_summary else "")
-        )
-        if pmode == "A_vector":
-            s3_preset, s3_note = "B_rrf_55_45", "가설: A→B(55:45) 전환으로 검색 순위 기준선 확보"
-        elif bw < 0.68 and not preset.get("use_metadata_filter"):
-            s3_preset, s3_note = "B_rrf_70_30", "가설: BM25 가중치 55:45→70:30 상향으로 지명·조건 Top-1 개선"
-        elif not preset.get("use_metadata_filter"):
-            s3_preset, s3_note = "B_rrf_70_30_filter", "가설: 경량 메타데이터 필터 ON으로 면적/계약/유형 불일치 제거"
+        if not has_top1 and not has_mrr5 and not has_cp and len(s3_qids) == 0:
+            s3_status = "ok" if after_s["hit5_rate"] >= 0.80 else "watch"
+            s3_reading = f"Hit@5={after_s['hit5_str']}({after_s['hit5_rate']*100:.1f}%) · Top1/MRR@5/CP=미측정"
         else:
-            s3_preset, s3_note = "C_rrf_70_30_filter_rerank", f"가설: 검색 C(Re-ranking)로 잔여 동 불일치({', '.join(dong_mismatch_qids) or '순위밀림'}) Top-1 구제"
+            s3_has_issue = (has_top1 and top1_r < 0.70) or (has_mrr5 and mrr5 < 0.65) or (has_cp and cp_v < target) or len(s3_qids) > 0 or fn5 > 0
+            s3_status = ("triggered" if (s3_has_issue and fn12 == 0) else ("watch" if s3_has_issue else "ok"))
+            axis_summary = []
+            if s3_partial5_qids:
+                axis_summary.append(f"[복합 Top-5 누락 {len(s3_partial5_qids)}건: {', '.join(s3_partial5_qids)}]")
+            if cond_mismatch_qids:
+                axis_summary.append(f"[면적/계약/유형 불일치 {len(cond_mismatch_qids)}건: {', '.join(cond_mismatch_qids)}]")
+            if dong_mismatch_qids:
+                axis_summary.append(f"[동 불일치 {len(dong_mismatch_qids)}건: {', '.join(dong_mismatch_qids)}]")
+            top1_txt = f"{after_s['top1_str']}({top1_r*100:.0f}%, 기준 ≥70%)" if has_top1 else "미측정"
+            mrr_txt = f"{mrr5:.3f}(≥0.65)" if has_mrr5 else "미측정"
+            cp_txt = f"{cp_v:.3f}(≥{target:.2f})" if has_cp else "미측정"
+            s3_reading = (
+                f"Top1={top1_txt} · MRR@5={mrr_txt} · CP={cp_txt} · FN(k5)={fn5}"
+                + (f" · {' '.join(axis_summary)}" if axis_summary else "")
+            )
+        if is_kure_track:
+            if pmode == "A_vector":
+                s3_preset, s3_note = "B_rrf_25_75_k15_kure_v1", "가설: KURE-v1 A→FIX B(25:75, k=15) 전환"
+            elif not preset.get("use_metadata_filter"):
+                s3_preset, s3_note = "B_rrf_25_75_k15_filter_v2_kure_v1", "가설: 평수·법정동 사전 필터 v2 ON으로 Top-1 100% 확보"
+            elif pmode != "C_hybrid_rerank":
+                s3_preset = "C_rrf_25_75_k15_filter_v2_rerank_kure_v1"
+                s3_note = f"가설: 검색 C(12→5 Re-ranking)로 복합 Top-5 누락({', '.join(s3_partial5_qids or s3_qids) or '순위밀림'}) 구제"
+            else:
+                s3_preset = "C_rrf_25_75_k15_filter_v2_rewrite_kure_v1"
+                s3_note = f"가설: 검색 C 이후 잔여 복합 문항({', '.join(s3_qids) or '순위밀림'}) Query Rewrite(2구 분해) 구제"
+        else:
+            if pmode == "A_vector":
+                s3_preset, s3_note = "B_rrf_55_45", "가설: A→B(55:45) 전환으로 검색 순위 기준선 확보"
+            elif bw < 0.68 and not preset.get("use_metadata_filter"):
+                s3_preset, s3_note = "B_rrf_70_30", "가설: BM25 가중치 55:45→70:30 상향으로 지명·조건 Top-1 개선"
+            elif not preset.get("use_metadata_filter"):
+                s3_preset, s3_note = "B_rrf_70_30_filter", "가설: 경량 메타데이터 필터 ON으로 면적/계약/유형 불일치 제거"
+            elif pmode != "C_hybrid_rerank":
+                s3_preset, s3_note = "C_rrf_70_30_filter_rerank", f"가설: 검색 C(Re-ranking)로 잔여 동 불일치({', '.join(dong_mismatch_qids) or '순위밀림'}) Top-1 구제"
+            else:
+                s3_preset, s3_note = "C_filter_rewrite", f"가설: 검색 C 이후 잔여 순위 실패({', '.join(s3_qids) or '복합문항'}) Query Rewrite로 구제"
 
-    # 4단계 판정 (first_rank==1인데 AR < target 또는 F < 0.80)
+    # 4단계 / Track B / 운영 단계 추천 프리셋 (자기 자신 재추천 방지!)
+    if is_kure_track:
+        if pmode != "C_hybrid_rerank":
+            s4_next_preset = "C_rrf_25_75_k15_filter_v2_rerank_kure_v1"
+            s4_rec_label = "ANSWER_PROMPT v3 + 검색 C (C_rrf_25_75_k15_filter_v2_rerank_kure_v1)"
+        elif not preset.get("use_rewrite"):
+            s4_next_preset = "C_rrf_25_75_k15_filter_v2_rewrite_kure_v1"
+            s4_rec_label = "ANSWER_PROMPT 보강 후 C+Rewrite (C_rrf_25_75_k15_filter_v2_rewrite_kure_v1)"
+        else:
+            s4_next_preset = "C_rrf_25_75_k15_filter_v2_cache_kure_v1"
+            s4_rec_label = "ANSWER_PROMPT 보강 + Cache 검증"
+        s4_candidates = [
+            p for p in [
+                "C_rrf_25_75_k15_filter_v2_rerank_kure_v1",
+                "C_rrf_25_75_k15_filter_v2_rewrite_kure_v1",
+                "C_rrf_25_75_k15_filter_v2_cache_kure_v1",
+            ]
+            if p != cur_mode_name
+        ] or ["C_rrf_25_75_k15_filter_v2_cache_kure_v1"]
+        s6_next_preset = "C_rrf_25_75_k15_filter_v2_cache_kure_v1"
+        s6_candidates = [
+            "C_rrf_25_75_k15_filter_v2_cache_kure_v1",
+            "C_rrf_25_75_k15_filter_v2_rerank_kure_v1",
+            "C_rrf_25_75_k15_filter_v2_rewrite_kure_v1",
+        ]
+    else:
+        if pmode != "C_hybrid_rerank":
+            s4_next_preset = "C_rrf_70_30_filter_rerank"
+            s4_rec_label = "ANSWER_PROMPT v3 + 검색 C (C_rrf_70_30_filter_rerank)"
+        else:
+            s4_next_preset = "C_filter_rewrite"
+            s4_rec_label = "ANSWER_PROMPT 보강 + C_filter_rewrite"
+        s4_candidates = [
+            p for p in ["C_rrf_70_30_filter_rerank", "C_filter_rewrite", "C_filter_rewrite_cache"]
+            if p != cur_mode_name
+        ] or ["C_filter_rewrite_cache"]
+        s6_next_preset = "C_filter_rewrite_cache"
+        s6_candidates = ["C_filter_rewrite_cache", "C_filter_rewrite_hyde", "C_filter_rewrite"]
+
+    # 4단계 판정 (first_rank==1인데 AR < target 또는 F < 0.80 — 미측정 시 idle)
     if after_s is None:
         s4_status, s4_reading = "idle", "실행 전 — 검색 1등 확보 후 생성 지표 점검"
+    elif not after_s.get("has_f", True) and not after_s.get("has_ar", True):
+        s4_status, s4_reading = "idle", "AR=미측정 · F=미측정 (공식 RAGAS 생성 지표 미실행)"
     else:
         ar_v, f_v = float(after_s["ar"]), float(after_s["f"])
-        s4_trig = len(s4_ar_qids) > 0 or len(s4_f_qids) > 0 or ar_v < target or f_v < 0.80
+        s4_trig = len(s4_ar_qids) > 0 or len(s4_f_qids) > 0 or (after_s.get("has_ar", True) and ar_v < target) or (after_s.get("has_f", True) and f_v < 0.80)
         s4_status = "triggered" if (len(s4_ar_qids) > 0 or len(s4_f_qids) > 0) else ("watch" if s4_trig else "ok")
         s4_reading = (
             f"AR={ar_v:.3f}(기준 ≥{target:.2f}) · F={f_v:.3f}(기준 ≥0.80)"
@@ -1228,9 +1405,11 @@ def _evaluate_decision_matrix(
             + (f" · F<0.80: {', '.join(s4_f_qids)}" if s4_f_qids else "")
         )
 
-    # Track B 거절 / 과거 데이터 판정
+    # Track B 거절 / 과거 데이터 판정 (미측정 시 idle)
     if after_s is None:
         s5_status, s5_reading = "idle", "실행 전 — 거절 전용 트랙 별도 측정"
+    elif _parse_ratio(after_s["refusal_str"]) is None and len(over_refusal_qids) == 0:
+        s5_status, s5_reading = "idle", f"Refusal={after_s['refusal_str']} · 과거 고지={after_s['scope_notice_str']} (별도 거절 집계 없음)"
     else:
         ref_r = float(after_s["refusal_rate"])
         scope_r = _parse_ratio(after_s["scope_notice_str"])
@@ -1350,9 +1529,10 @@ def _evaluate_decision_matrix(
                 "• **`Faithfulness < 0.80`**: 실제 환각(없는 숫자 지어냄)이면 '근거 외 수치 생성 금지' 강화 / 원문 일치인데 점수만 튀면 judge 변동(±0.05) 기록"
             ),
             "forbidden": "검색 1등인데 BM25 가중치·필터 건드리기",
-            "recommended_preset": after_s["mode"] if (after_s and after_s["mode"] in ALL_PRESET_NAMES) else "B_rrf_70_30_filter",
-            "candidate_presets": [after_s["mode"]] if (after_s and after_s["mode"] in ALL_PRESET_NAMES) else ["B_rrf_70_30_filter", "C_filter_rewrite"],
-            "default_note": "가설: ANSWER_PROMPT 첫 문장 5조건 주어 명시 및 TMI 제거로 AR 개선",
+            "recommended_preset": s4_next_preset,
+            "recommended_label": s4_rec_label,
+            "candidate_presets": s4_candidates,
+            "default_note": "가설: ANSWER_PROMPT v3(생활어·공식표기 괄호 병기 + 최근 1년) 및 검색 C로 AR/CR 개선",
         },
         {
             "stage_id": "S5_refusal",
@@ -1365,12 +1545,13 @@ def _evaluate_decision_matrix(
             "current_reading": s5_reading,
             "workbench_evidence": "• **5번 탭** 거절 트랙 표 (`insufficient_evidence` 전용)\n• 현재 공실/옵션 질문에 과거 통계로 억지 답변했는지 확인",
             "action_guide": (
-                "• `ANSWER_PROMPT` 거절 규칙 보강 — '최근 1년 체결 완료 실거래 통계이므로 실시간 공실·관리비·옵션은 확인 불가' 고지 후 과거 시세 참고 안내"
+                "• `ANSWER_PROMPT` 거절 규칙 보강 — '본 자료는 과거 체결 완료된 실거래 요약 통계 기준이므로' 고지 문구 고정"
             ),
             "forbidden": "거절 문항을 RAGAS 평균에 섞어 `AR = 0.0`으로 착각하기",
-            "recommended_preset": after_s["mode"] if (after_s and after_s["mode"] in ALL_PRESET_NAMES) else "B_rrf_70_30_filter",
-            "candidate_presets": [after_s["mode"]] if (after_s and after_s["mode"] in ALL_PRESET_NAMES) else ["B_rrf_70_30_filter", "C_filter_rewrite"],
-            "default_note": "가설: 거절·과거 실거래 범위 고지 프롬프트 보강 (Track B 검증)",
+            "recommended_preset": s4_next_preset,
+            "recommended_label": f"거절 고지 프롬프트 v3 → {s4_next_preset}",
+            "candidate_presets": s4_candidates,
+            "default_note": "가설: 거절·과거 실거래 범위 고지 프롬프트 v3 보강 (Track B 100% 검증)",
         },
         {
             "stage_id": "S6_ops",
@@ -1383,12 +1564,12 @@ def _evaluate_decision_matrix(
             "current_reading": s6_reading,
             "workbench_evidence": "• **1번 탭** 지연 KPI (`median` / `p95`)\n• 캐시 히트/무효화 · `status='error'` 미저장 로그",
             "action_guide": (
-                "• **`C_filter_rewrite_cache`** ON (반복 질의 지연 단축 · 버전 무효화 검증)\n"
+                f"• **`{s6_next_preset}`** ON (반복 질의 지연 단축 · 버전 무효화 검증)\n"
                 "• C/HyDE/Rewrite로 품질 이득은 `+0.01` 미만인데 `p95`만 +3초 늘면 **비용·지연 대비 효용 부족으로 기각**"
             ),
             "forbidden": "`status='error'` 응답을 캐시에 저장하거나 버전 키(`collection`/`prompt_version`) 누락",
-            "recommended_preset": "C_filter_rewrite_cache",
-            "candidate_presets": ["C_filter_rewrite_cache", "C_filter_rewrite_hyde", "C_filter_rewrite"],
+            "recommended_preset": s6_next_preset,
+            "candidate_presets": s6_candidates,
             "default_note": "가설: 버전 인식 SQLite Cache ON으로 반복 질의 <100ms 및 무효화 검증",
         },
     ]
@@ -1463,7 +1644,7 @@ def _render_compact_status_bar(
         else:
             c2.markdown(f"**단일 변인 가드**\n\n⚠️ 복합 {n_diff}개 동시 변경")
         c3.markdown(f"**최우선 병목**\n\n{top_row['status_badge']} **{top_row['short_title']}**")
-        c4.markdown(f"**추천 다음 1변수**\n\n`{top_row['recommended_preset']}`")
+        c4.markdown(f"**추천 다음 1변수**\n\n`{top_row.get('recommended_label') or top_row['recommended_preset']}`")
 
 
 def _render_sop_coach_panel(
@@ -1654,25 +1835,60 @@ def render_decision_tab(
     # 1) 검색 지표 (6)
     st.markdown("##### 🔎 검색 지표 (Retrieval)")
     r1, r2, r3, r4, r5, r6 = st.columns(6)
-    r1.metric("Recall@12 (재현율)", f"{after_s['recall12']:.3f}", f"{after_s['recall12'] - before_s['recall12']:+.3f}", help=METRIC_HELP["recall@12"])
+    r1.metric(
+        "Recall@12 (재현율)",
+        f"{after_s['recall12']:.3f}" if after_s.get("has_r12", True) else "미측정",
+        f"{after_s['recall12'] - before_s['recall12']:+.3f}" if (after_s.get("has_r12", True) and before_s.get("has_r12", True)) else None,
+        help=METRIC_HELP["recall@12"],
+    )
     r2.metric("Hit@5 (적중률)", after_s["hit5_str"], f"{(after_s['hit5_rate'] - before_s['hit5_rate'])*100:+.1f}%p", help=METRIC_HELP["hit@5"])
-    r3.metric("Top1 (1등 정답률)", after_s["top1_str"], f"{(after_s['top1_rate'] - before_s['top1_rate'])*100:+.1f}%p", help=METRIC_HELP["top1"])
-    r4.metric("MRR@5 (평균역순위)", f"{after_s['mrr5']:.3f}", f"{after_s['mrr5'] - before_s['mrr5']:+.3f}", help=METRIC_HELP["mrr@5"])
-    r5.metric("Context Precision", f"{after_s['cp']:.3f}", f"{after_s['cp'] - before_s['cp']:+.3f}", help=METRIC_HELP["cp"])
-    r6.metric("Context Recall", f"{after_s['cr']:.3f}", f"{after_s['cr'] - before_s['cr']:+.3f}", help=METRIC_HELP["cr"])
+    r3.metric(
+        "Top1 (1등 정답률)",
+        after_s["top1_str"],
+        f"{(after_s['top1_rate'] - before_s['top1_rate'])*100:+.1f}%p" if (after_s.get("has_top1", True) and before_s.get("has_top1", True)) else None,
+        help=METRIC_HELP["top1"],
+    )
+    r4.metric(
+        "MRR@5 (평균역순위)",
+        f"{after_s['mrr5']:.3f}" if after_s.get("has_mrr5", True) else "미측정",
+        f"{after_s['mrr5'] - before_s['mrr5']:+.3f}" if (after_s.get("has_mrr5", True) and before_s.get("has_mrr5", True)) else None,
+        help=METRIC_HELP["mrr@5"],
+    )
+    r5.metric(
+        "Context Precision",
+        f"{after_s['cp']:.3f}" if after_s.get("has_cp", True) else "미측정",
+        f"{after_s['cp'] - before_s['cp']:+.3f}" if (after_s.get("has_cp", True) and before_s.get("has_cp", True)) else None,
+        help=METRIC_HELP["cp"],
+    )
+    r6.metric(
+        "Context Recall",
+        f"{after_s['cr']:.3f}" if after_s.get("has_cr", True) else "미측정",
+        f"{after_s['cr'] - before_s['cr']:+.3f}" if (after_s.get("has_cr", True) and before_s.get("has_cr", True)) else None,
+        help=METRIC_HELP["cr"],
+    )
 
     # 2) 생성 + 거절·운영 지표 (6)
     st.markdown("##### ✍️ 생성 (Generation) · 🛡️ 거절 (Track B) · ⏱️ 지연")
     g1, g2, g3, g4, g5, g6 = st.columns(6)
-    g1.metric("Faithfulness (충실도)", f"{after_s['f']:.3f}", f"{after_s['f'] - before_s['f']:+.3f}", help=METRIC_HELP["f"])
-    g2.metric("Answer Relevancy", f"{after_s['ar']:.3f}", f"{after_s['ar'] - before_s['ar']:+.3f}", help=METRIC_HELP["ar"])
+    g1.metric(
+        "Faithfulness (충실도)",
+        f"{after_s['f']:.3f}" if after_s.get("has_f", True) else "미측정",
+        f"{after_s['f'] - before_s['f']:+.3f}" if (after_s.get("has_f", True) and before_s.get("has_f", True)) else None,
+        help=METRIC_HELP["f"],
+    )
+    g2.metric(
+        "Answer Relevancy",
+        f"{after_s['ar']:.3f}" if after_s.get("has_ar", True) else "미측정",
+        f"{after_s['ar'] - before_s['ar']:+.3f}" if (after_s.get("has_ar", True) and before_s.get("has_ar", True)) else None,
+        help=METRIC_HELP["ar"],
+    )
     g3.metric("Citation (출처 표기)", after_s["citation_str"], help=METRIC_HELP["citation_rate"])
     g4.metric("Refusal (거절률)", after_s["refusal_str"], help=METRIC_HELP["refusal"])
     g5.metric("Scope Notice (고지)", after_s["scope_notice_str"], help=METRIC_HELP["scope_notice"])
     g6.metric(
         "Latency 중앙값",
-        f"{after_s['lat_median']:.1f} ms",
-        f"{after_s['lat_median'] - before_s['lat_median']:+.1f} ms",
+        f"{after_s['lat_median']:.1f} ms" if after_s.get("has_lat", True) else "미측정",
+        f"{after_s['lat_median'] - before_s['lat_median']:+.1f} ms" if (after_s.get("has_lat", True) and before_s.get("has_lat", True)) else None,
         delta_color="inverse",
         help=METRIC_HELP["lat_median"],
     )
@@ -1822,24 +2038,33 @@ def render_xray_tab(before_s: dict, after_s: dict, target: float, coach_mode: bo
 
     st.info(_funnel_badge(arow, arg, target))
 
-    # 패널 A: Before vs After Top-5 5조건 불일치 자동 태그 비교
-    st.markdown("#### A. 검색 Top-5 조건 불일치 X-Ray (정답 5조건 vs 실제 Top-5)")
+    # 패널 A: Before vs After Top-5 조건 불일치 / 허용 청크 적중 X-Ray
+    st.markdown("#### A. 검색 Top-5 정답 적중 X-Ray (허용 정답 청크 vs 실제 Top-5)")
     targets = _parse_reference_targets(arow)
+    allowed_set = set(arow.get("allowed_chunk_ids") or [])
     col_b, col_a = st.columns(2)
     with col_b:
         st.markdown(f"**Before · `{before_s['step_label']}`**")
         if brow:
             for rank_i, cid in enumerate(brow.get("top5_ids") or [], start=1):
-                ok, tags = _explain_chunk_mismatch(cid, targets)
-                tag_str = " ".join(tags)
+                if targets:
+                    ok, tags = _explain_chunk_mismatch(cid, targets)
+                    tag_str = " ".join(tags)
+                else:
+                    ok = cid in allowed_set
+                    tag_str = "✅ ★ 허용 정답 청크 일치!" if ok else "⬜ 참고 후보 청크"
                 (st.success if ok else st.markdown)(f"`#{rank_i}` `{cid}`  \n{tag_str}")
         else:
             st.caption("Before 실행에 동일 문항 로그가 없습니다.")
     with col_a:
         st.markdown(f"**After · `{after_s['step_label']}`**")
         for rank_i, cid in enumerate(arow.get("top5_ids") or [], start=1):
-            ok, tags = _explain_chunk_mismatch(cid, targets)
-            tag_str = " ".join(tags)
+            if targets:
+                ok, tags = _explain_chunk_mismatch(cid, targets)
+                tag_str = " ".join(tags)
+            else:
+                ok = cid in allowed_set
+                tag_str = "✅ ★ 허용 정답 청크 일치!" if ok else "⬜ 참고 후보 청크"
             (st.success if ok else st.markdown)(f"`#{rank_i}` `{cid}`  \n{tag_str}")
 
     # 패널 B: 문항별 TP/FP/FN/TN 혼동행렬 (깔끔하게 접어 두고 필요할 때만 펼치기)
@@ -2081,7 +2306,7 @@ def render_per_test_report_tab(steps: list[dict], target: float, coach_mode: boo
 
 
 # ==================== TAB 5: 시험지 버전(_v{n}) & 거절 트랙 ====================
-def render_evalset_tab() -> None:
+def render_evalset_tab(selected_owner: str = "kh") -> None:
     st.subheader("🧪 시험지 버전 관리 (`_v{n}`) & 2-Track 거절 평가 점검")
 
     # 2-Track 원리 안내 (과거 데이터 vs 현재 매물)
@@ -2101,43 +2326,65 @@ def render_evalset_tab() -> None:
     st.caption("💡 불변 스냅샷 원칙: 질문·정답을 수정할 때만 `_v2`, `_v3` 새 파일 생성 · 시스템(가중치/필터/C/프롬프트) 튜닝 중에는 같은 `_v{n}` 고정 재사용!")
 
     uploaded_eval = st.file_uploader("외부/팀원 평가셋 JSON 업로드 (선택)", type=["json"], key="eval_uploader")
-    eval_items: list[dict] | None = None
+    raw_eval: Any = None
     source_label = ""
     unlock = True
 
     if uploaded_eval is not None:
-        eval_items = json.loads(uploaded_eval.read().decode("utf-8"))
+        raw_eval = json.loads(uploaded_eval.read().decode("utf-8"))
         source_label = uploaded_eval.name
     else:
-        local_files = sorted(KH_EVAL_DIR.glob("*.json")) if KH_EVAL_DIR.exists() else []
+        owner_eval_dir = OWNER_META.get(selected_owner, OWNER_META["kh"])["eval_dir"]
+        local_files = sorted(owner_eval_dir.glob("*.json")) if owner_eval_dir.exists() else []
         if not local_files:
-            st.info("`test/kh/eval/`에 JSON 평가셋 파일이 아직 없습니다.")
+            st.info(f"`{owner_eval_dir}`에 JSON 평가셋 파일이 아직 없습니다.")
             return
-        sel_file = st.selectbox("로컬 시험지 선택 (`test/kh/eval/`)", local_files, format_func=lambda p: p.name)
+        sel_file = st.selectbox(
+            f"로컬 시험지 선택 (`{selected_owner}` · `{owner_eval_dir.relative_to(TEST_ROOT_DIR)}`)",
+            local_files,
+            format_func=lambda p: p.name,
+            key=f"eval_file_sel_{selected_owner}",
+        )
         source_label = sel_file.name
-        if "test" in sel_file.name.lower():
+        if "test" in sel_file.name.lower() and selected_owner == "kh":
             st.warning("🔒 **최종 성적표용(`test`) 시험지입니다!** 튜닝 전 과적합 방지를 위해 문항 본문은 기본 봉인됩니다.")
-            unlock = st.checkbox("통계만 말고 문항 본문도 열람하기 (주의: 튜닝 시 참고 금지!)", value=False)
-        eval_items = _load_json_file(sel_file)
+            unlock = st.checkbox("통계만 말고 문항 본문도 열람하기 (주의: 튜닝 시 참고 금지!)", value=False, key=f"unlock_{sel_file.name}")
+        raw_eval = _load_json_file(sel_file)
 
-    if not isinstance(eval_items, list):
-        st.error("평가셋 JSON은 리스트(`[...]`) 형태여야 합니다.")
+    if isinstance(raw_eval, list):
+        eval_items = raw_eval
+    elif isinstance(raw_eval, dict):
+        eval_items = raw_eval.get("items") or raw_eval.get("questions") or []
+    else:
+        eval_items = []
+
+    if not eval_items:
+        st.error("평가셋 JSON에서 문항 리스트(`[...]`, `items`, `questions`)를 찾지 못했습니다.")
         return
 
-    df_meta = pd.DataFrame(
-        [
+    norm_rows = []
+    for x in eval_items:
+        if not isinstance(x, dict):
+            continue
+        qtype = str(x.get("question_type") or x.get("query_type") or "")
+        if "expected_status" in x:
+            exp_st = str(x.get("expected_status"))
+        elif "reference_answerable" in x:
+            exp_st = "answered" if x.get("reference_answerable") else "insufficient_evidence"
+        else:
+            exp_st = "insufficient_evidence" if qtype == "unanswerable" else "answered"
+        norm_rows.append(
             {
-                "ID": x.get("question_id", ""),
-                "구분": x.get("eval_category", x.get("expected_status", "")),
-                "질문 타입": x.get("question_type", ""),
-                "기대 상태": x.get("expected_status", ""),
-                "근거 청크 수": len(x.get("allowed_chunk_ids", [])),
-                "질문 (user_input)": x.get("user_input", x.get("question", "")),
-                "모범정답 (reference)": x.get("reference", ""),
+                "ID": x.get("question_id") or x.get("id") or "",
+                "구분": x.get("eval_category") or x.get("split") or exp_st,
+                "질문 타입": qtype,
+                "기대 상태": exp_st,
+                "근거 청크 수": len(x.get("allowed_chunk_ids") or []),
+                "질문 (user_input)": x.get("user_input") or x.get("question") or "",
+                "모범정답 (reference)": x.get("reference") or x.get("ground_truth") or x.get("answer") or "",
             }
-            for x in eval_items
-        ]
-    )
+        )
+    df_meta = pd.DataFrame(norm_rows)
 
     k1, k2, k3 = st.columns(3)
     k1.metric("총 문항 수", len(eval_items))
@@ -2440,16 +2687,13 @@ def render_team_integration_tab() -> None:
 # ==================== MAIN ====================
 def main() -> None:
     st.set_page_config(
-        page_title="서울 주거 RAG — 실험 분석 워크벤치 (kh)",
+        page_title="서울 주거 RAG — 4인 통합 실험 워크벤치",
         page_icon="🧪",
         layout="wide",
     )
     _inject_clean_theme()
 
-    all_summaries = _load_all_local_summaries()
-    all_steps = _build_history_steps(all_summaries)
-
-    # ==================== SIDEBAR (깔끔한 메뉴 + 최소 통제만 배치) ====================
+    # ==================== SIDEBAR (담당자 · 시험지 · 기준선/실험군 선택) ====================
     with st.sidebar:
         st.markdown("### 🧪 서울 주거 RAG 워크벤치")
         page = st.radio(
@@ -2465,53 +2709,91 @@ def main() -> None:
         )
 
         st.divider()
-        st.markdown("**🎛️ 비교 대상 선택**")
+        st.markdown("**🎛️ 비교 대상 선택 (팀원 4인 전원 지원)**")
+        owner_keys = list(OWNER_META.keys())
+        sel_owner = st.selectbox(
+            "👤 담당자 / 팀원 (`owner`)",
+            owner_keys,
+            index=0,
+            format_func=lambda k: OWNER_META[k]["label"],
+            help="팀원별 로컬 평가 결과(kh · yj · jh · bc)를 전환해 시험지 버전과 기준선(Before) · 실험군(After)을 동일 워크벤치에서 비교합니다.",
+        )
+
+        all_summaries = _load_owner_summaries(sel_owner)
+        all_steps = _build_history_steps(all_summaries)
+
         eval_versions = sorted({s["eval_version"] for s in all_steps})
-        ver_options = ["전체 시험지 (버전 혼합)", *eval_versions]
+        ver_options = ["전체 시험지 (버전 혼합)", *eval_versions] if len(eval_versions) > 1 else eval_versions
         default_ver_idx = len(ver_options) - 1 if eval_versions else 0
         sel_eval_ver = st.selectbox(
             "시험지 버전 (`eval_version`)",
-            ver_options,
-            index=default_ver_idx,
-            help="같은 시험지(_v{n})끼리만 비교해야 시스템 변경 효과가 공정하게 보입니다.",
+            ver_options or ["(결과 없음)"],
+            index=default_ver_idx if ver_options else 0,
+            key=f"eval_ver_sel_{sel_owner}",
+            help="같은 시험지(_v{n} / dev / test)끼리만 비교해야 시스템 변경 효과가 공정하게 보입니다.",
         )
 
-        scoped_steps = all_steps if sel_eval_ver.startswith("전체 시험지") else [s for s in all_steps if s["eval_version"] == sel_eval_ver]
+        scoped_steps = (
+            all_steps
+            if (not sel_eval_ver or sel_eval_ver.startswith("전체 시험지"))
+            else [s for s in all_steps if s["eval_version"] == sel_eval_ver]
+        )
 
         before_s: dict | None = None
         after_s: dict | None = None
         if scoped_steps:
             step_labels = [s["step_label"] for s in scoped_steps]
-            b_lbl = st.selectbox("기준선 (Before)", step_labels, index=max(0, len(step_labels) - 2))
-            a_lbl = st.selectbox("실험군 (After)", step_labels, index=len(step_labels) - 1)
+            b_lbl = st.selectbox(
+                "기준선 (Before)",
+                step_labels,
+                index=max(0, len(step_labels) - 2),
+                key=f"before_sel_{sel_owner}_{sel_eval_ver}",
+            )
+            a_lbl = st.selectbox(
+                "실험군 (After)",
+                step_labels,
+                index=len(step_labels) - 1,
+                key=f"after_sel_{sel_owner}_{sel_eval_ver}",
+            )
             before_s = scoped_steps[step_labels.index(b_lbl)]
             after_s = scoped_steps[step_labels.index(a_lbl)]
 
         # 고급 설정·코치·내보내기는 접어 두어 사이드바 스크롤 제거
-        default_target = float(after_s["summary"].get("ragas_target", 0.60)) if after_s else 0.60
+        default_target = float(
+            after_s["summary"].get("ragas_target", OWNER_META[sel_owner]["target"])
+            if after_s
+            else OWNER_META[sel_owner]["target"]
+        )
         with st.expander("⚙️ 목표치 · 코치 팁 · 내보내기", expanded=False):
             coach_mode = st.toggle("코치 팁 표시", value=True)
-            target = st.slider("RAGAS 목표치", 0.30, 0.95, default_target, 0.05)
+            target = st.slider(
+                "RAGAS 목표치",
+                0.30,
+                0.95,
+                default_target,
+                0.05,
+                key=f"target_slider_{sel_owner}",
+            )
             if after_s is not None:
                 ts_tag = after_s["timestamp"]
                 st.download_button(
                     "🌐 HTML 종합 리포트",
                     data=_export_html(after_s, before_s, scoped_steps, target).encode("utf-8"),
-                    file_name=f"workbench_report_{ts_tag}_{after_s['mode']}.html",
+                    file_name=f"workbench_report_{sel_owner}_{ts_tag}_{after_s['mode']}.html",
                     mime="text/html",
                     use_container_width=True,
                 )
                 st.download_button(
                     "📊 CSV 비교표 (Excel)",
                     data=_build_comparison_df(after_s["summary"]).to_csv(index=False).encode("utf-8-sig"),
-                    file_name=f"summary_{ts_tag}.csv",
+                    file_name=f"summary_{sel_owner}_{ts_tag}.csv",
                     mime="text/csv",
                     use_container_width=True,
                 )
                 st.download_button(
                     "📝 Markdown 리포트",
                     data=_build_single_step_report_md(after_s, before_s, target).encode("utf-8"),
-                    file_name=f"eval_report_{ts_tag}_{after_s['mode']}.md",
+                    file_name=f"eval_report_{sel_owner}_{ts_tag}_{after_s['mode']}.md",
                     mime="text/markdown",
                     use_container_width=True,
                 )
@@ -2524,7 +2806,7 @@ def main() -> None:
     # ==================== 선택된 1개 페이지 렌더링 (1화면 1목적) ====================
     if page.startswith("📊 1."):
         if before_s is None or after_s is None:
-            st.info("`test/kh/results/summary_*.json` 파일이 아직 없습니다. `2. 원인 진단 & 다음 실험 선택`에서 `A_vector`부터 실행해 보세요.")
+            st.info(f"`{sel_owner}` 팀원의 실행 기록이 아직 없습니다.")
         else:
             render_decision_tab(before_s, after_s, target, coach_mode=coach_mode, matrix_rows=matrix_rows)
 
@@ -2550,7 +2832,7 @@ def main() -> None:
     else:
         t_eval, t_team = st.tabs(["🧪 시험지 버전(_v{n}) & 거절 트랙", "🤝 팀원 통합 비교 (도메인 · 120문항)"])
         with t_eval:
-            render_evalset_tab()
+            render_evalset_tab(selected_owner=sel_owner)
         with t_team:
             render_team_integration_tab()
 
