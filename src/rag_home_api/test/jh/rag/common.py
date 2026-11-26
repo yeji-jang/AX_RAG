@@ -1,9 +1,3 @@
-"""공통: 경로·청크 불러오기·평가셋.
-
-청크는 PGVector에 저장할 때(chunktest.ipynb 1~5단계)와 같은 방법으로 JSONL을 다시 잘라 만든다.
-→ 같은 입력·같은 설정이면 결과가 같으므로, BM25와 PGVector가 같은 청크 ID를 쓴다.
-"""
-
 import hashlib
 import json
 import os
