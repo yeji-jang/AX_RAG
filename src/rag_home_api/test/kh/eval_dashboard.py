@@ -55,6 +55,8 @@ ALL_PRESET_NAMES: list[str] = [
     "B_rrf_55_45_kure_v1",
     "B_rrf_25_75_k15_kure_v1",
     "B_rrf_50_50_k15_kure_v1",
+    "B_rrf_25_75_k15_filter_kure_v1",
+    "B_rrf_25_75_k15_filter_v2_kure_v1",
     "B_emb_kure_v1",
 ]
 

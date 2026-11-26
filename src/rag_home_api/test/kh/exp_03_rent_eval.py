@@ -95,14 +95,58 @@ DIAG_PROMPT = ChatPromptTemplate.from_messages(
 )
 
 
+from functools import lru_cache
+
+
+@lru_cache(maxsize=1)
+def _load_known_seoul_dongs() -> tuple[str, ...]:
+    """로컬 전월세 매니페스트에서 서울시 실제 법정동 목록을 길이 내림차순으로 로드한다 (0원·오탐 0%)."""
+    manifest = DATA_DIR / "chunk_manifest_rent_kh.jsonl"
+    if not manifest.exists():
+        return ()
+    dongs: set[str] = set()
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            d = str(json.loads(line).get("dong") or "").strip()
+            if len(d) >= 2:
+                dongs.add(d)
+        except Exception:
+            continue
+    # '성수동2가'가 '성수동'보다 먼저 매칭되도록 길이 내림차순 정렬
+    return tuple(sorted(dongs, key=len, reverse=True))
+
+
+def _extract_dongs(question: str) -> list[str]:
+    """질문에서 서울시 실제 법정동(예: 마천동, 양재동, 성수동2가)을 중복·부분겹침 없이 추출한다."""
+    found: list[str] = []
+    occupied: list[tuple[int, int]] = []
+    for dong in _load_known_seoul_dongs():
+        start = question.find(dong)
+        if start < 0:
+            continue
+        end = start + len(dong)
+        if any(not (end <= s or start >= e) for s, e in occupied):
+            continue
+        occupied.append((start, end))
+        found.append(dong)
+    return found
+
+
 def extract_rent_filters(question: str) -> dict[str, str] | None:
-    """LLM 호출 없이(0원·0ms) 질문에서 단일 조건이 명확한 경우에만 메타데이터 필터를 추출한다."""
+    """LLM 호출 없이(0원·0ms) 질문에서 단일 조건이 명확한 경우에만 사전(Pre) 메타데이터 필터를 추출한다."""
     q = question
     filters: dict[str, str] = {}
 
     found_gu = [g for g in SEOUL_DISTRICTS if g in q]
-    if len(found_gu) == 1:
+    found_dongs = _extract_dongs(q)
+
+    # 2개 이상 자치구 또는 2개 이상 법정동 비교 질문(예: 연희동 vs 용산구 갈월동)은 지역 필터를 걸지 않는다!
+    if len(found_dongs) <= 1 and len(found_gu) == 1:
         filters["district"] = found_gu[0]
+    if len(found_dongs) == 1 and len(found_gu) <= 1:
+        filters["dong"] = found_dongs[0]
 
     has_jeonse = bool(
         re.search(r"전세(?!사기|자금|대출)|월세\s*없이|다달이\s*(?:임대료|돈)?\s*(?:안|없이)|보증금만", q)
@@ -125,12 +169,23 @@ def extract_rent_filters(question: str) -> dict[str, str] | None:
     if len(h_matches) == 1:
         filters["housing_type"] = next(iter(h_matches))
 
+    # 명시적 평수/㎡ 표현을 우선 추출하고, '원룸건물'은 주택형태 수식어이므로 면적 33이하 오매칭에서 제외한다.
     b_matches: set[str] = set()
-    if any(w in q for w in ("33㎡ 이하", "33㎡이하", "원룸급", "원룸")):
+    if (
+        any(w in q for w in ("33㎡ 이하", "33㎡이하", "원룸급"))
+        or re.search(r"원룸(?!\s*건물)", q)
+        or re.search(r"(?:(?<!\d)10\s*평\s*(?:이하|미만|안\s*되는)|(?<!\d)[5-9]\s*평)", q)
+    ):
         b_matches.add("33이하")
-    if any(w in q for w in ("33~60", "33㎡~60", "소형", "투룸")):
+    if (
+        any(w in q for w in ("33~60", "33㎡~60", "소형", "투룸"))
+        or re.search(r"(?:(?<!\d)10\s*[~\-]\s*1[5-9]\s*평|(?<!\d)1[1-8]\s*평)", q)
+    ):
         b_matches.add("33초과_60이하")
-    if any(w in q for w in ("60㎡ 초과", "60㎡초과", "중대형", "넓은")):
+    if (
+        any(w in q for w in ("60㎡ 초과", "60㎡초과", "중대형", "넓은"))
+        or re.search(r"(?:(?<!\d)20\s*평대|(?<!\d)2\d\s*평|(?<!\d)(?:19|20)\s*평\s*이상)", q)
+    ):
         b_matches.add("60초과")
     if len(b_matches) == 1:
         filters["area_band"] = next(iter(b_matches))
@@ -223,9 +278,15 @@ def _search_single_plan(
         )
 
     hits = _exec(applied_filters)
-    if applied_filters and len(hits) < 3:
+    # 법정동(dong)까지 5조건이 걸리면 1건 정확 매칭이 정상이므로 0건일 때만 완화(동 제거 -> 전체 해제)한다.
+    min_required = 1 if (applied_filters and "dong" in applied_filters) else 3
+    if applied_filters and len(hits) < min_required:
         fallback_used = True
-        hits = _exec(None)
+        if "dong" in applied_filters and len(applied_filters) > 1:
+            relaxed = {k: v for k, v in applied_filters.items() if k != "dong"}
+            hits = _exec(relaxed)
+        if len(hits) < 3:
+            hits = _exec(None)
     return hits, applied_filters, fallback_used
 
 
