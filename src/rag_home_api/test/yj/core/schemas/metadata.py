@@ -58,6 +58,10 @@ class PublicRentalChunkMetadata(PublicRentalNoticeMetadata) :
     chunk_id : str = Field(
         description="청크 고유 ID, {페이지ID}_{청크버전}_c{순번 2자리}")
 
+    chunk_version : str = Field(
+        description="V1 / V2와 같은 청크버전"
+    )
+
     chunk_index : int = Field(
         description="문서 내 청크 순번")
     
