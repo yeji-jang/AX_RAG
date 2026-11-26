@@ -15,27 +15,81 @@ from rag_home_api.config import settings
 # temperature=1(기본값)만 허용하는 최신/추론 모델 접두사 (gpt-6-luna 포함)
 _FIXED_TEMP_PREFIXES = ("gpt-5", "gpt-6", "o1", "o3", "o4")
 
+# 팀 통합 표준 임베딩 (전원 1536차원 통일) 및 도메인별 멀티 컬렉션 레지스트리
+UNIFIED_EMBEDDING_MODEL = "text-embedding-3-small"
+TEAM_COLLECTIONS: dict[str, dict[str, str]] = {
+    "law": {
+        "standard": "rag_law_v1",
+        "current": "jh_1000",
+        "owner": "jh",
+        "embedding_model": UNIFIED_EMBEDDING_MODEL,
+        "description": "주택임대차 법령·가이드 (1000/200)",
+    },
+    "public_housing": {
+        "standard": "rag_notice_v1",
+        "current": "yj_preV2_chunkV1_cs800_ov100",
+        "owner": "yj",
+        "embedding_model": UNIFIED_EMBEDDING_MODEL,
+        "description": "공공임대·청년안심주택 모집 공고문 (800/100)",
+    },
+    "rent_stats": {
+        "standard": "rag_rent_stats_v1",
+        "current": "housing_rent_kh",
+        "owner": "kh",
+        "embedding_model": UNIFIED_EMBEDDING_MODEL,
+        "description": "서울 25구 전월세 실거래 요약 통계 블록 (6,200청크)",
+    },
+    "rent_deals": {
+        "standard": "rag_rent_deals_v1",
+        "current": "course_v1_small",
+        "owner": "bc",
+        "embedding_model": UNIFIED_EMBEDDING_MODEL,
+        "description": "전월세 개별 거래 조건 필터 검색 (1행=1청크)",
+    },
+}
+
+
+def make_db_id(collection_name: str, chunk_id: str) -> str:
+    """PGVector 단일 테이블(langchain_pg_embedding.id) 전역 PK 충돌 방지용 표준 ID 생성기.
+
+    이미 '{collection_name}:' 접두어가 붙어 있으면 중복으로 붙이지 않는다(멱등성 보장).
+    """
+    prefix = f"{collection_name}:"
+    return chunk_id if chunk_id.startswith(prefix) else f"{prefix}{chunk_id}"
+
 
 class _LocalSentenceTransformerEmbeddings(Embeddings):
     """로컬 GPU/CPU HuggingFace 임베딩 모델(KURE-v1, KURE-v3, BGE-M3 등) LangChain 어댑터."""
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, batch_size: int = 32) -> None:
         try:
+            import torch
             from sentence_transformers import SentenceTransformer
         except ImportError as exc:
             raise ImportError(
-                f"로컬 임베딩 모델({model_name})을 사용하려면 sentence-transformers가 필요합니다. "
-                "예: `uv run --with sentence-transformers ...`"
+                f"로컬 임베딩 모델({model_name})을 사용하려면 torch와 sentence-transformers가 필요합니다."
             ) from exc
         self.model_name = model_name
-        self._model = SentenceTransformer(model_name)
+        self.batch_size = batch_size
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        model_kwargs = {"torch_dtype": torch.float16} if self.device == "cuda" else {}
+        self._model = SentenceTransformer(model_name, device=self.device, model_kwargs=model_kwargs)
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        vecs = self._model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+        vecs = self._model.encode(
+            texts,
+            batch_size=self.batch_size,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
         return [v.tolist() for v in vecs]
 
     def embed_query(self, text: str) -> list[float]:
-        vec = self._model.encode(text, normalize_embeddings=True, show_progress_bar=False)
+        vec = self._model.encode(
+            text,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
         return vec.tolist()
 
 

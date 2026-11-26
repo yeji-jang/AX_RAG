@@ -12,6 +12,7 @@ v1 확정 설계 (/grill-me 합의):
      → dev 10문항은 육안 검수 후 kh_rent_dev.json 확정, test 20문항은 자동 검증 통과 후 봉인(kh_rent_test.json)!
 """
 
+import argparse
 import json
 import random
 import re
@@ -394,12 +395,291 @@ def validate_eval_drafts(
     }
 
 
+class BlindUserQuestion(BaseModel):
+    """[v2 편향 차단 1단계] 근거 문서를 보지 않고 현실 세입자 말투로 질문만 작성."""
+
+    user_input: str = Field(description="실제 서울 2030 세입자가 커뮤니티·메신저에서 물어볼 법한 자연스러운 한국어 질문")
+
+
+class GroundedReference(BaseModel):
+    """[v2 편향 차단 2단계] 질문과 근거 문서를 보고 사실 기반 모범 정답만 작성."""
+
+    reference: str = Field(description="근거 문서의 기준 기간·정확한 중앙값(원/만원)·핵심 결론만 담은 2~3문장 간결 모범 정답")
+
+
+BLIND_QUESTION_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "당신은 서울에서 방을 구하는 20~30대 실수요자입니다.\n"
+            "아래 [사용자 의도 메모]만 보고, 부동산 카페나 AI 챗봇에 실제로 물어볼 법한 자연스러운 한국어 질문 1개를 작성하세요.\n"
+            "[편향 차단 절대 규칙 — 문서 어휘 복사 금지]\n"
+            "1. 공문서·통계표 말투를 절대 쓰지 마세요. 금지어: '연립다세대', '단독다가구', '33㎡', '60㎡', '전용면적', '보증금 중앙값', '월세 중앙값', '실거래 요약', '최근 1년간 ~ 거래에서'.\n"
+            "2. 대신 일상 생활어와 평수 표현을 자연스럽게 쓰세요: '빌라/다세대', '단독/다가구 원룸건물', '10평 이하 원룸', '10~18평 투룸/소형', '20평대 이상 넓은 집', '보증금만 내는 전세', '다달이 월세', '보통 시세 얼마 정도', '대체로 몇 년식'.\n"
+            "3. [사용자 의도 메모]에 적힌 지역·집 종류·전월세·크기 조건의 의미는 빠짐없이 자연스럽게 녹여 모호하지 않게 하세요.\n"
+            "4. 구체적 날짜(YYYY-MM-DD)를 적지 말고 필요하면 '요즘', '최근 시세' 정도로만 표현하세요.",
+        ),
+        (
+            "human",
+            "[질문 스타일 지시]: {style_guide}\n\n[사용자 의도 메모]:\n{intent_memo}",
+        ),
+    ]
+)
+
+REFERENCE_GROUNDER_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "당신은 서울 전월세 실거래 통계 검수 전문가입니다.\n"
+            "주어진 [사용자 질문]에 대해 반드시 [근거 문서] 안의 사실과 숫자만 사용해 2~3문장 간결한 모범 정답(reference)을 작성하세요.\n"
+            "[규칙]\n"
+            "1. 사용자가 '보통 얼마', '시세'를 물으면 근거 문서의 **중앙값**을 기준으로 답하고, 기준 기간(YYYY-MM-DD~YYYY-MM-DD)과 정확한 금액(만원/원)을 포함하세요.\n"
+            "2. 질문에서 비교를 요청했다면 두 조건의 핵심 수치와 차이/결론만 명확히 적으세요.\n"
+            "3. 질문하지 않은 일반 주의사항이나 TMI는 넣지 마세요.",
+        ),
+        (
+            "human",
+            "[사용자 질문]: {user_input}\n\n[근거 문서]:\n{context}",
+        ),
+    ]
+)
+
+SCHEMA_LEAK_TOKENS: tuple[str, ...] = (
+    "연립다세대",
+    "단독다가구",
+    "33㎡",
+    "60㎡",
+    "전용면적",
+    "보증금 중앙값",
+    "월세 중앙값",
+    "실거래 요약",
+)
+
+
+def _humanize_chunk_intent(chunk: dict, *, omit_district: bool = False, strong_slang: bool = False) -> str:
+    """근거 문서 원문을 숨기고, 사용자 머릿속 의도 메모(평수·생활어)만 추출한다."""
+    gu = chunk["district"]
+    dong = chunk["dong"]
+    h_type = chunk["housing_type"]
+    lease = chunk["lease_type"]
+    band = chunk["area_band"]
+
+    if strong_slang:
+        h_map = {
+            "연립다세대": "빌라",
+            "단독다가구": "다가구/원룸건물(단독주택)",
+            "오피스텔": "오피스텔(오피)",
+            "아파트": "아파트",
+        }
+        l_map = {"전세": "매달 월세 안 내고 보증금만 넣고 사는 집(전세)", "월세": "보증금 걸고 다달이 내는 집(월세)"}
+        b_map = {
+            "33이하": "10평 안 되는 작은 원룸 크기",
+            "33초과_60이하": "10평~18평 정도 투룸·소형 크기",
+            "60초과": "20평대 이상 넉넉한 크기",
+        }
+    else:
+        h_map = {
+            "연립다세대": "빌라(다세대)",
+            "단독다가구": "단독/다가구 주택",
+            "오피스텔": "오피스텔",
+            "아파트": "아파트",
+        }
+        l_map = {"전세": "전세", "월세": "월세"}
+        b_map = {
+            "33이하": "10평 이하 원룸 크기",
+            "33초과_60이하": "10~18평대 소형/투룸 크기",
+            "60초과": "18평 초과 중대형 크기",
+        }
+
+    area_loc = f"서울 {dong} (자치구 이름 '{gu}'는 생략하고 동 이름만 자연스럽게 사용)" if omit_district else f"서울 {gu} {dong}"
+    return f"- 동네: {area_loc}\n- 집 형태: {h_map.get(h_type, h_type)}\n- 계약 방식: {l_map.get(lease, lease)}\n- 크기대: {b_map.get(band, band)}"
+
+
+def generate_dev_v2_unbiased(
+    dev_pool: list[dict],
+    all_chunks: list[dict],
+    dev_v1_ids: set[str],
+    seed: int = 2026,
+) -> tuple[list[dict], dict]:
+    """[v2 편향 차단 2단계 생성] 질문 작성기에서 근거 문서를 완전 차단한 현실 구어체·평수 dev_v2(10문항)를 생성한다."""
+    llm = get_llm()
+    q_chain = BLIND_QUESTION_PROMPT | llm.with_structured_output(BlindUserQuestion)
+    ref_chain = REFERENCE_GROUNDER_PROMPT | llm.with_structured_output(GroundedReference)
+    unans_chain = UNANSWERABLE_PROMPT | llm.with_structured_output(DraftUnanswerableQA)
+
+    # 서울시 전체에서 유일한 법정동 계산 (구 생략 문항에서 모호성 0 보장)
+    dong_to_gus: dict[str, set[str]] = {}
+    for c in all_chunks:
+        dong_to_gus.setdefault(c["dong"], set()).add(c["district"])
+    unique_dongs = {d for d, gus in dong_to_gus.items() if len(gus) == 1}
+
+    # dev_v1에서 이미 쓴 청크 제외 (dev_pool 자체가 test_pool과 100% 분리되어 있으므로 test 겹침도 0!)
+    fresh_pool = [c for c in dev_pool if c["chunk_id"] not in dev_v1_ids]
+    rng = random.Random(seed)
+    rng.shuffle(fresh_pool)
+
+    # 10문항 현실 분포: 단순(표준생활어) 2 + 단순(동만 언급·구어체) 2 + 복합(2구 비교) 2 + 용어 변형(강한 구어체/평수) 2 + 거절 2
+    v2_slots: list[dict] = [
+        {"qtype": "단순 질문", "cat": "직접 검색", "n_chunks": 1, "band": "33이하", "omit_gu": False, "slang": False, "ask": "보통 시세(보증금·월세)와 요즘 거래가 얼마나 되는지 묻기"},
+        {"qtype": "단순 질문", "cat": "직접 검색", "n_chunks": 1, "band": "33초과_60이하", "omit_gu": False, "slang": False, "ask": "보통 시세와 건물들이 대충 몇 년식 정도인지 묻기"},
+        {"qtype": "단순 질문", "cat": "표현 변형·유사 조건 구분", "n_chunks": 1, "band": "33이하", "omit_gu": True, "slang": True, "ask": "자치구 이름을 빼고 동 이름만 자연스럽게 말하며 보통 보증금/월세 시세 묻기"},
+        {"qtype": "단순 질문", "cat": "표현 변형·유사 조건 구분", "n_chunks": 1, "band": "33초과_60이하", "omit_gu": True, "slang": True, "ask": "자치구 이름을 빼고 동 이름만 자연스럽게 말하며 시세와 거래량 묻기"},
+        {"qtype": "복합 추론 질문", "cat": "직접 검색", "n_chunks": 2, "band": "33이하", "omit_gu": False, "slang": False, "ask": "두 동네 중 어디가 보증금·월세 부담이 더 적고 거래가 활발한지 비교 질문 (비교 포인트 2개)"},
+        {"qtype": "복합 추론 질문", "cat": "직접 검색", "n_chunks": 2, "band": "33초과_60이하", "omit_gu": False, "slang": True, "ask": "두 동네의 보통 시세 차이와 건물 연식(어디가 더 덜 낡았는지) 비교 질문 (비교 포인트 2개)"},
+        {"qtype": "용어 다르게 질문", "cat": "표현 변형·유사 조건 구분", "n_chunks": 1, "band": "33이하", "omit_gu": False, "slang": True, "ask": "사회초년생 첫 자취 말투로 평수·빌라/보증금만/다달이 같은 구어체로 시세 묻기"},
+        {"qtype": "용어 다르게 질문", "cat": "표현 변형·유사 조건 구분", "n_chunks": 1, "band": "60초과", "omit_gu": False, "slang": True, "ask": "신혼·2인 가구 말투로 20평대 이상 넓은 집 시세와 연식을 일상어로 묻기"},
+        {"qtype": "문항 외 질문", "cat": "근거 없음", "n_chunks": 0, "topic": DEV_UNANSWERABLE_TOPICS[0]},
+        {"qtype": "문항 외 질문", "cat": "근거 없음", "n_chunks": 0, "topic": DEV_UNANSWERABLE_TOPICS[1]},
+    ]
+
+    used_ids: set[str] = set()
+    used_gu_cnt: Counter = Counter()
+    prev_unans: list[str] = []
+    sample_areas = ", ".join(sorted({f"{c['district']} {c['dong']}" for c in fresh_pool[:40]})[:10])
+    items: list[dict] = []
+
+    for idx, slot in enumerate(v2_slots, start=1):
+        qid = f"RENT-KH-DEV2-{idx:02d}"
+        qtype = slot["qtype"]
+        cat = slot["cat"]
+        print(f"  [dev_v2 {idx:02d}/10] {cat} / {qtype} 생성 중...", flush=True)
+
+        if qtype == "문항 외 질문":
+            topic = slot["topic"]
+            uq: DraftUnanswerableQA = unans_chain.invoke(
+                {
+                    "scope": DATA_SCOPE_SUMMARY,
+                    "assigned_topic": topic,
+                    "sample_areas": sample_areas,
+                    "previous_questions": "\n".join(prev_unans) if prev_unans else "없음",
+                }
+            )
+            prev_unans.append(uq.user_input)
+            items.append(
+                {
+                    "question_id": qid,
+                    "split": "dev_v2",
+                    "domain": "rent",
+                    "eval_category": cat,
+                    "question_type": qtype,
+                    "expected_status": "insufficient_evidence",
+                    "assigned_exclusion_topic": topic,
+                    "user_input": uq.user_input,
+                    "reference": uq.reference,
+                    "reference_contexts": [],
+                    "allowed_chunk_ids": [],
+                    "source_location": "",
+                    "absence_reason": uq.absence_reason,
+                }
+            )
+            continue
+
+        # 청크 선택 (구 생략 문항은 유일 법정동 + 가급적 빌라/단독/오피스텔 포함)
+        picked: list[dict] = []
+        for _ in range(slot["n_chunks"]):
+            sub_pool = fresh_pool
+            if slot.get("omit_gu"):
+                sub_pool = [c for c in fresh_pool if c["dong"] in unique_dongs]
+            elif slot.get("slang"):
+                non_apt = [c for c in fresh_pool if c["housing_type"] in {"연립다세대", "단독다가구", "오피스텔"}]
+                if non_apt:
+                    sub_pool = non_apt
+            ch = _pop_chunk(sub_pool, slot["band"], used_ids, used_gu_cnt)
+            picked.append(ch)
+
+        # 1단계: 근거 문서 원문을 완전히 숨기고 의도 메모만으로 현실 질문 생성
+        memo_blocks = [
+            f"[대상 {i}]\n{_humanize_chunk_intent(c, omit_district=bool(slot.get('omit_gu')), strong_slang=bool(slot.get('slang')))}"
+            for i, c in enumerate(picked, start=1)
+        ]
+        intent_memo = "\n\n".join(memo_blocks) + f"\n\n- 궁금한 점: {slot['ask']}"
+
+        # 어휘 누수 자동 감지 시 최대 2회 재생성
+        user_q = ""
+        for attempt in range(3):
+            extra = "" if attempt == 0 else "\n[재시도 경고] 이전 초안에 공문서 금지어('연립다세대/단독다가구/㎡/중앙값')가 들어갔습니다! 반드시 일상 구어체·평수로만 다시 쓰세요."
+            bq: BlindUserQuestion = q_chain.invoke(
+                {"style_guide": slot["ask"] + extra, "intent_memo": intent_memo}
+            )
+            user_q = bq.user_input.strip()
+            if not any(tok in user_q for tok in SCHEMA_LEAK_TOKENS):
+                break
+
+        # 2단계: 생성된 질문 + 실제 근거 문서로 사실 기반 모범 정답(reference) 작성
+        context_text = "\n\n---\n\n".join(c["page_content"] for c in picked)
+        gr: GroundedReference = ref_chain.invoke({"user_input": user_q, "context": context_text})
+
+        items.append(
+            {
+                "question_id": qid,
+                "split": "dev_v2",
+                "domain": "rent",
+                "eval_category": cat,
+                "question_type": qtype,
+                "expected_status": "answered",
+                "user_input": user_q,
+                "reference": gr.reference.strip(),
+                "reference_contexts": [c["page_content"] for c in picked],
+                "allowed_chunk_ids": [c["chunk_id"] for c in picked],
+                "source_location": " | ".join(c["location"] for c in picked),
+                "absence_reason": "",
+            }
+        )
+
+    # 자동 편향·누수 감사 리포트
+    date_pat = re.compile(r"202[56][-\.년]\s*\d{1,2}[-\.월]\s*\d{1,2}")
+    manifest_by_id = {c["chunk_id"]: c for c in all_chunks}
+    v2_ids = {cid for it in items for cid in it["allowed_chunk_ids"]}
+    leak_hits = [
+        {"qid": it["question_id"], "tokens": [t for t in SCHEMA_LEAK_TOKENS if t in it["user_input"]]}
+        for it in items
+        if any(t in it["user_input"] for t in SCHEMA_LEAK_TOKENS)
+    ]
+    date_leaks = [it["question_id"] for it in items if date_pat.search(it["user_input"])]
+    missing_ids = [cid for cid in v2_ids if cid not in manifest_by_id]
+    overlap_v1 = sorted(v2_ids & dev_v1_ids)
+    audit = {
+        "total": len(items),
+        "answerable": sum(1 for x in items if x["expected_status"] == "answered"),
+        "unanswerable": sum(1 for x in items if x["expected_status"] == "insufficient_evidence"),
+        "schema_leak_hits": leak_hits,
+        "date_leak_qids": date_leaks,
+        "missing_chunk_ids": missing_ids,
+        "overlap_with_dev_v1": overlap_v1,
+        "unique_districts": len({manifest_by_id[cid]["district"] for cid in v2_ids if cid in manifest_by_id}),
+        "all_passed": not leak_hits and not date_leaks and not missing_ids and not overlap_v1,
+    }
+    return items, audit
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description="서울 전월세 RAG 평가셋 생성기 (v1 기본 / --dev-v2 편향차단 2단계 생성)")
+    parser.add_argument("--dev-v2", action="store_true", help="근거 문서 미노출 2단계 생성으로 현실 구어체·평수 kh_rent_dev_v2.json 생성 (test 봉인 불변)")
+    parser.add_argument("--seed", type=int, default=2026, help="dev_v2 랜덤 시드 (기본 2026)")
+    parser.add_argument("--output", default="kh_rent_dev_v2.json", help="--dev-v2 출력 파일명 (eval/ 하위)")
+    args = parser.parse_args()
+
     chunks = _load_manifest(RENT_MANIFEST_PATH)
     manifest_by_id = {c["chunk_id"]: c for c in chunks}
     KH_EVAL_DIR.mkdir(parents=True, exist_ok=True)
 
     dev_pool, test_pool = _stratified_shuffle_split(chunks, dev_ratio=0.35, seed=42)
+
+    if args.dev_v2:
+        v1_path = KH_EVAL_DIR / "kh_rent_dev.json"
+        v1_ids: set[str] = set()
+        if v1_path.exists():
+            for row in json.loads(v1_path.read_text(encoding="utf-8")):
+                v1_ids.update(row.get("allowed_chunk_ids") or [])
+
+        v2_items, audit = generate_dev_v2_unbiased(dev_pool, chunks, v1_ids, seed=args.seed)
+        out_path = KH_EVAL_DIR / args.output
+        out_path.write_text(json.dumps(v2_items, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("\n==================== [dev_v2 편향·누수 자동 감사 결과] ====================")
+        print(json.dumps(audit, ensure_ascii=False, indent=2))
+        print(f"\ndev_v2 저장 완료: {out_path} (test_pool 겹침 0% 보장 · kh_rent_test.json 미열람/불변)")
+        return
+
     used_unans: list[str] = []
 
     dev_items = generate_split(

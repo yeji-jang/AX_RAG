@@ -48,6 +48,13 @@ ALL_PRESET_NAMES: list[str] = [
     "C_filter_rewrite_hyde",
     "B_chunk_v3_pyeong",
     "B_emb_3large",
+    "A_vector_kure_v1",
+    "B_rrf_10_90_kure_v1",
+    "B_rrf_25_75_kure_v1",
+    "B_rrf_50_50_kure_v1",
+    "B_rrf_55_45_kure_v1",
+    "B_rrf_25_75_k15_kure_v1",
+    "B_rrf_50_50_k15_kure_v1",
     "B_emb_kure_v1",
 ]
 
@@ -103,8 +110,10 @@ METRIC_HELP: dict[str, str] = {
 
 DOMAIN_META: dict[str, tuple[str, float]] = {
     "rent": ("전월세 (실거래)", 0.60),
-    "law": ("주택임대차 법령", 0.70),
-    "public_housing": ("공공임대 공고", 0.70),
+    "rent_stats": ("전월세 시세통계 (kh)", 0.60),
+    "rent_deals": ("전월세 조건탐색 (bc)", 0.60),
+    "law": ("주택임대차 법령 (jh)", 0.70),
+    "public_housing": ("공공임대 공고 (yj)", 0.70),
     "unified": ("통합 (전 도메인)", 0.65),
 }
 
@@ -923,27 +932,117 @@ def _export_html(
 </div></body></html>"""
 
 
-# ==================== UI 렌더링 헬퍼: 2×2 혼동행렬 카드 ====================
+# ==================== UI 렌더링 헬퍼: 깔끔한 스타일 & 2×2 혼동행렬 카드 ====================
+def _inject_clean_theme() -> None:
+    """여백·카드·지표 가독성을 정돈해 번잡함을 줄이는 최소 CSS (Streamlit 상단 헤더 겹침 방지)."""
+    st.markdown(
+        """
+        <style>
+          .block-container { padding-top: 3.6rem !important; padding-bottom: 2.4rem; max-width: 1380px; }
+          div[data-testid="stMetric"] {
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 10px;
+            padding: 10px 14px;
+            background: rgba(148, 163, 184, 0.04);
+          }
+          div[data-testid="stMetricLabel"] p { font-size: 0.80rem !important; opacity: 0.82; }
+          div[data-testid="stMetricValue"] { font-size: 1.45rem !important; font-weight: 700; }
+          h1 { font-size: 1.65rem !important; margin-bottom: 0.25rem !important; }
+          h2, h3 { margin-top: 0.5rem !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def _render_confusion_matrix_2x2(
     cm: dict[str, int],
     k: int,
     prev_cm: dict[str, int] | None = None,
     title_prefix: str = "",
+    horizontal: bool = False,
 ) -> None:
-    def _delta(key: str) -> str:
+    def _delta_val(key: str) -> str | None:
         if not prev_cm:
-            return ""
+            return None
         d = cm[key] - prev_cm[key]
-        return f" ({d:+d})" if d != 0 else " (변동 없음)"
+        return f"{d:+d}" if d != 0 else "0"
 
-    st.markdown(f"**{title_prefix}청크 단위 2×2 혼동행렬 (상위 `k={k}` 기준)**")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.success(f"**TP (True Positive · 찾은 정답)**\n### `{cm['tp']}`{_delta('tp')}\n실제 정답 청크를 상위 {k}개에 포함 ✅")
-        st.warning(f"**FP (False Positive · 섞인 노이즈)**\n### `{cm['fp']}`{_delta('fp')}\n정답이 아닌 청크가 상위 {k}개에 섞임")
-    with c2:
-        st.error(f"**FN (False Negative · 놓친 정답 / 검색 누락!)**\n### `{cm['fn']}`{_delta('fn')}\n실제 정답을 상위 {k}개에 못 넣음 ❌ *(0이 목표!)*")
-        st.info(f"**TN (True Negative · 잘 걸러낸 무관 청크)**\n### `{cm['tn']:,}`\n무관한 청크를 안 뽑음 *(N이 커서 Accuracy 대신 Precision·Recall 사용)*")
+    if title_prefix:
+        st.caption(f"{title_prefix}상위 `k={k}` 청크 단위 혼동행렬")
+
+    cards = [
+        ("✅ TP · 뽑은 진짜 정답", f"{cm['tp']}", _delta_val("tp"), "normal", f"뽑았는데(P) 진짜 정답(T) — 상위 {k}개 적중"),
+        ("🔴 FN · 놓친 정답 (누락!)", f"{cm['fn']}", _delta_val("fn"), "inverse", "안 뽑았는데(N) 사실 정답(F) — 0이 목표!"),
+        ("⚠️ FP · 뽑았지만 오답", f"{cm['fp']}", _delta_val("fp"), "inverse", f"뽑았는데(P) 오답(F) — 정답 1권 문항은 구조상 {max(0, k-1)}권 FP"),
+        ("👍 TN · 잘 버린 무관 청크", f"{cm['tn']:,}", None, "off", "안 뽑았는데(N) 무관(T) — Accuracy 대신 Recall·MRR 사용"),
+    ]
+    if horizontal:
+        cols = st.columns(4)
+        for col, (lbl, val, dlt, dcol, cap) in zip(cols, cards):
+            with col:
+                with st.container(border=True):
+                    st.metric(lbl, val, dlt, delta_color=dcol)
+                    st.caption(cap)
+    else:
+        c1, c2 = st.columns(2)
+        for idx_c, (lbl, val, dlt, dcol, cap) in enumerate(cards):
+            with (c1 if idx_c in (0, 2) else c2):
+                with st.container(border=True):
+                    st.metric(lbl, val, dlt, delta_color=dcol)
+                    st.caption(cap)
+
+
+def _render_wrapped_html_table(headers: list[str], rows: list[dict[str, Any]], col_widths: list[str] | None = None) -> None:
+    """셀 줄바꿈이 자연스럽게 동작해 잘림(...) 없이 한눈에 다 보이는 반응형 HTML 테이블."""
+    ths = []
+    for idx_h, h in enumerate(headers):
+        w = f' style="width:{col_widths[idx_h]};"' if col_widths and idx_h < len(col_widths) else ""
+        ths.append(f"<th{w}>{html_lib.escape(h)}</th>")
+
+    trs = []
+    for r in rows:
+        row_cls = r.get("_row_cls", "")
+        tds = []
+        for h in headers:
+            raw = str(r.get(h, ""))
+            cell = html_lib.escape(raw)
+            cell = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", cell)
+            cell = re.sub(r"`([^`]+)`", r"<code>\1</code>", cell)
+            cell = cell.replace("\n", "<br>")
+            tds.append(f"<td>{cell}</td>")
+        trs.append(f'<tr class="{row_cls}">{"".join(tds)}</tr>')
+
+    st.markdown(
+        f"""
+        <style>
+          .kh-wrap-tbl {{
+            width: 100%; border-collapse: collapse; font-size: 0.87rem; line-height: 1.5;
+            border: 1px solid rgba(148,163,184,0.32); border-radius: 10px; overflow: hidden;
+          }}
+          .kh-wrap-tbl th {{
+            text-align: left; padding: 9px 12px; font-weight: 700;
+            background: rgba(148,163,184,0.12); border-bottom: 1px solid rgba(148,163,184,0.32);
+            white-space: nowrap;
+          }}
+          .kh-wrap-tbl td {{
+            padding: 9px 12px; vertical-align: top; word-break: keep-all; overflow-wrap: anywhere;
+            border-bottom: 1px solid rgba(148,163,184,0.18);
+          }}
+          .kh-wrap-tbl tr.row-trig {{ background: rgba(239, 68, 68, 0.08); }}
+          .kh-wrap-tbl tr.row-watch {{ background: rgba(245, 158, 11, 0.06); }}
+          .kh-wrap-tbl code {{
+            padding: 1px 5px; border-radius: 4px; font-size: 0.82rem;
+            background: rgba(148,163,184,0.16);
+          }}
+        </style>
+        <table class="kh-wrap-tbl">
+          <thead><tr>{"".join(ths)}</tr></thead>
+          <tbody>{"".join(trs)}</tbody>
+        </table>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # ==================== 6단계 수치 기준 의사결정 네비게이터 엔진 ====================
@@ -951,7 +1050,7 @@ def _load_manifest_chunk_ids(collection_name: str) -> set[str] | None:
     """컬렉션에 대응하는 청크 매니페스트(.jsonl)에서 chunk_id 집합을 로드한다."""
     candidates = [REPO_DATA_DIR / f"chunk_manifest_{collection_name}.jsonl"]
     if collection_name == "housing_rent_kh":
-        candidates.append(REPO_DATA_DIR / "chunk_manifest_rent.jsonl")
+        candidates.extend([REPO_DATA_DIR / "chunk_manifest_rent_kh.jsonl", REPO_DATA_DIR / "chunk_manifest_rent.jsonl"])
     for path in candidates:
         if not path.exists():
             continue
@@ -1334,7 +1433,37 @@ def _evaluate_keep_discard_gate(before_s: dict | None, after_s: dict | None, tar
     return {"verdict": verdict, "checks": checks}
 
 
-# ==================== 7단계 SOP 코치 & 인터랙티브 의사결정 네비게이터 ====================
+# ==================== 상단 1줄 요약 바 & PAGE 1~2 (현황 요약 / 네비게이터) ====================
+def _render_compact_status_bar(
+    before_s: dict | None,
+    after_s: dict | None,
+    matrix_rows: list[dict[str, Any]],
+) -> None:
+    """페이지 상단에 단 1줄의 정돈된 현황 스트립만 표시한다 (과도한 배너·중첩 제거)."""
+    top_row = next((r for r in matrix_rows if r["status"] == "triggered"), None) or next(
+        (r for r in matrix_rows if r["status"] == "watch"), matrix_rows[0]
+    )
+    with st.container(border=True):
+        c1, c2, c3, c4 = st.columns([1.45, 1.15, 1.15, 1.05])
+        if after_s is None or before_s is None:
+            c1.markdown("**현재 비교**\n\n`실행 기록 대기`")
+            c2.markdown("**단일 변인 가드**\n\n⚪ 기준선 실행 전")
+            c3.markdown("**최우선 병목**\n\n⚪ Step 1 (`A_vector`) 시작")
+            c4.markdown("**추천 다음 1변수**\n\n`A_vector`")
+            return
+
+        n_diff, diffs = _describe_preset_diff(before_s, after_s)
+        c1.markdown(f"**현재 비교 (`{after_s['eval_version']}`)**\n\n`{before_s['step_label']}` → **`{after_s['step_label']}`**")
+        if before_s["order"] == after_s["order"]:
+            c2.markdown("**단일 변인 가드**\n\n⚪ 동일 스텝 선택 중")
+        elif n_diff == 1:
+            c2.markdown(f"**단일 변인 가드**\n\n✅ 변수 1개 (`{diffs[0][:34]}`)")
+        else:
+            c2.markdown(f"**단일 변인 가드**\n\n⚠️ 복합 {n_diff}개 동시 변경")
+        c3.markdown(f"**최우선 병목**\n\n{top_row['status_badge']} **{top_row['short_title']}**")
+        c4.markdown(f"**추천 다음 1변수**\n\n`{top_row['recommended_preset']}`")
+
+
 def _render_sop_coach_panel(
     scoped_steps: list[dict],
     before_s: dict | None,
@@ -1343,97 +1472,56 @@ def _render_sop_coach_panel(
     sel_eval_ver: str,
     matrix_rows: list[dict[str, Any]],
 ) -> None:
-    """현재 실험 진행 상태 + 6단계 수치 기준 매트릭스를 인터랙티브 네비게이터로 가이드한다."""
-    primary_row = next((r for r in matrix_rows if r["status"] == "triggered"), None)
-    if primary_row is None:
-        primary_row = next((r for r in matrix_rows if r["status"] == "watch"), matrix_rows[1])
+    """PAGE 2: 원인 진단 & 다음 실험 선택 (독립 전용 화면 — 중첩 탭·과잉 박스 제거)."""
+    primary_row = next((r for r in matrix_rows if r["status"] == "triggered"), None) or next(
+        (r for r in matrix_rows if r["status"] == "watch"), matrix_rows[1]
+    )
+    st.subheader("🧭 원인 진단 & 다음 실험 선택 네비게이터")
+    st.caption("1→6순위 수치 기준에 따라 현재 병목을 자동 판정하고, 바꿀 손잡이 딱 1개와 실행 명령어를 바로 조립합니다.")
 
-    if not scoped_steps or after_s is None:
-        cur_step_num = 1
-        status_msg = "👉 **현재 위치: Step 0 → Step 1 (A 단독 기준선 실행 전)** — 시험지(`dev_v1` 또는 `dev_v2`) 확정 후 `A_vector` 1개만 먼저 실행하세요!"
-    elif len(scoped_steps) == 1:
-        cur_step_num = 2
-        status_msg = (
-            f"👉 **현재 위치: Step 2 → Step 3 (기준선 `{after_s['mode']}` 병목 판별)** — "
-            f"최우선 발동 단계: **{primary_row['status_badge']} {primary_row['short_title']}** → 추천 손잡이: **`{primary_row['recommended_preset']}`**"
+    t_diag, t_table, t_sop = st.tabs(
+        [
+            "🎯 단계별 진단 & 명령어 조립",
+            "📊 6단계 수치 기준표 & Keep/Discard 게이트",
+            "📖 7단계 표준 루틴 (SOP)",
+        ]
+    )
+
+    # ---- Sub-tab 1: 깔끔한 단계별 선택기 + 2열 정돈 카드 + 명령어 조립기 ----
+    with t_diag:
+        stage_labels = [f"{r['status_badge']} {r['short_title']}" for r in matrix_rows]
+        default_idx = matrix_rows.index(primary_row)
+        after_key = f"{after_s['timestamp']}_{after_s['mode']}" if after_s else "none"
+
+        picked_lbl = st.radio(
+            "진단할 단계 선택 (기본값 = 현재 최우선 발동 단계)",
+            stage_labels,
+            index=default_idx,
+            horizontal=True,
+            key=f"nav_stage_radio_{after_key}",
         )
-    elif after_s["pass_4of4"] and after_s["fail_cnt"] == 0:
-        cur_step_num = 7
-        status_msg = (
-            f"🏆 **현재 위치: Step 6~7 (전 문항 목표 달성!)** — 다음 점검: **{primary_row['status_badge']} {primary_row['short_title']}** "
-            "확인 후 `실험기록.md` 기록 및 봉인 `test` 20문항 최종 1회 평가 준비!"
-        )
-    else:
-        cur_step_num = 5
-        status_msg = (
-            f"👉 **현재 위치: Step 5 → 다음 루프 (누적 {len(scoped_steps)}스텝 · 미달 {after_s['fail_cnt']}건)** — "
-            f"최우선 발동 단계: **{primary_row['status_badge']} {primary_row['short_title']}** → 추천 손잡이: **`{primary_row['recommended_preset']}`**"
-        )
+        sel_row = matrix_rows[stage_labels.index(picked_lbl)]
 
-    step_badges = [
-        ("S0 시험지 동결", 0),
-        ("S1 A 단독 실행", 1),
-        ("S2 5분 병목 판별", 2),
-        ("S3 손잡이 1개 선택", 3),
-        ("S4 1변수 재실행", 4),
-        ("S5 채택/기각 판정", 5),
-        ("S6~7 기록·test봉인", 6),
-    ]
-    bar_parts = [
-        f"**[▶ {lbl}]**" if num == cur_step_num else (f"~~{lbl}~~ ✅" if num < cur_step_num else lbl)
-        for lbl, num in step_badges
-    ]
-    st.info(f"**🎓 7단계 직접 튜닝 코치 & 의사결정 네비게이터** &nbsp;|&nbsp; {' → '.join(bar_parts)}\n\n{status_msg}")
-
-    with st.expander(
-        "🧭 인터랙티브 의사결정 네비게이터 — 단계별 수치 기준(Trigger) · 근거(Workbench) · 손잡이 선택 · 실행 명령어",
-        expanded=(len(scoped_steps) <= 1),
-    ):
-        nav_t1, nav_t2, nav_t3 = st.tabs(
-            [
-                "🎯 1. 실시간 단계별 진단 & 손잡이 선택",
-                "📊 2. 전체 6단계 수치 기준표 & 채택/기각(Keep·Discard) 게이트",
-                "📖 3. A부터 직접 1변수씩 7단계 루틴(SOP)",
-            ]
-        )
-
-        # ---- Nav Sub-tab 1: Interactive Stage Picker + Live Evidence + Auto Command Builder ----
-        with nav_t1:
-            stage_labels = [f"{r['status_badge']} {r['short_title']}" for r in matrix_rows]
-            default_idx = matrix_rows.index(primary_row)
-            after_key = f"{after_s['timestamp']}_{after_s['mode']}" if after_s else "none"
-            picked_lbl = st.radio(
-                "🔍 진단·수정할 병목 단계를 선택하세요 (위→아래 우선순위 · 자동 선택 = 현재 최우선 발동 단계)",
-                stage_labels,
-                index=default_idx,
-                horizontal=True,
-                key=f"nav_stage_radio_{after_key}",
-            )
-            sel_row = matrix_rows[stage_labels.index(picked_lbl)]
-
-            # 4분면 진단·처방 카드
-            q1, q2 = st.columns(2)
-            with q1:
-                st.markdown(f"##### 🔴 언제 문제인가? (수치 기준) — {sel_row['status_badge']}")
+        col_l, col_r = st.columns(2, gap="medium")
+        with col_l:
+            with st.container(border=True):
+                st.markdown(f"**① 수치 기준 & 현재 실측치** &nbsp; {sel_row['status_badge']}")
                 st.markdown(sel_row["trigger_rule"])
-                if sel_row["status"] == "triggered":
-                    st.error(f"**📌 현재 내 실측치 (기준 발동!)**\n\n{sel_row['current_reading']}")
-                elif sel_row["status"] == "watch":
-                    st.warning(f"**📌 현재 내 실측치 (점검 권장)**\n\n{sel_row['current_reading']}")
-                else:
-                    st.success(f"**📌 현재 내 실측치**\n\n{sel_row['current_reading']}")
+                st.divider()
+                st.markdown(f"**📌 내 실측치**: {sel_row['current_reading']}")
+            with st.container(border=True):
+                st.markdown("**② 대시보드에서 확인할 근거 (Workbench)**")
+                st.markdown(sel_row["workbench_evidence"])
+        with col_r:
+            with st.container(border=True):
+                st.markdown("**③ 정확히 바꿀 손잡이 (딱 1개)**")
+                st.markdown(sel_row["action_guide"])
+            with st.container(border=True):
+                st.markdown("**④ ❌ 절대 하면 안 되는 헛수고**")
+                st.markdown(sel_row["forbidden"])
 
-                st.markdown("##### 🔍 대시보드에서 확인할 근거 (Workbench)")
-                st.info(sel_row["workbench_evidence"])
-            with q2:
-                st.markdown("##### 🔧 정확히 어떤 손잡이(1개)를 어떻게 수정할 것인가?")
-                st.success(sel_row["action_guide"])
-                st.markdown("##### ❌ 절대 하면 안 되는 헛수고")
-                st.error(sel_row["forbidden"])
-
-            # 선택 단계와 자동 연동되는 실행 명령어 조립기
-            st.divider()
-            st.markdown(f"**⚡ `{sel_row['short_title']}` 추천 손잡이 실행 명령어 자동 조립기 (복사 후 터미널 실행)**")
+        with st.container(border=True):
+            st.markdown(f"**⚡ 실행 명령어 자동 조립기** — `{sel_row['short_title']}` 맞춤 추천")
             eval_files = [p.name for p in sorted(KH_EVAL_DIR.glob("*.json")) if "test" not in p.name.lower()] if KH_EVAL_DIR.exists() else []
             if not eval_files:
                 eval_files = ["kh_rent_dev.json", "kh_rent_dev_v2.json"]
@@ -1442,11 +1530,11 @@ def _render_sop_coach_panel(
             with cg1:
                 rec_p = sel_row["recommended_preset"] if sel_row["recommended_preset"] in ALL_PRESET_NAMES else "A_vector"
                 cmd_preset = st.selectbox(
-                    "실행할 프리셋 1개 (단계 맞춤 자동 선택)",
+                    "프리셋 (1개)",
                     ALL_PRESET_NAMES,
                     index=ALL_PRESET_NAMES.index(rec_p),
                     key=f"nav_cmd_preset_{sel_row['stage_id']}_{after_key}",
-                    help=f"이 단계 추천 프리셋 후보: {', '.join(sel_row['candidate_presets'])}",
+                    help=f"이 단계 추천 후보: {', '.join(sel_row['candidate_presets'])}",
                 )
             with cg2:
                 default_eval_idx = 0
@@ -1455,23 +1543,20 @@ def _render_sop_coach_panel(
                         default_eval_idx = idx_e
                         break
                 cmd_eval = st.selectbox(
-                    "시험지 파일 (`dev`만 허용)",
+                    "시험지 (`dev` 전용)",
                     eval_files,
                     index=default_eval_idx,
                     key=f"nav_cmd_eval_{sel_row['stage_id']}_{after_key}",
                 )
             with cg3:
                 cmd_note = st.text_input(
-                    "내 가설 1줄 메모 (`--note`)",
+                    "가설 메모 (`--note`)",
                     value=sel_row["default_note"],
                     key=f"nav_cmd_note_{sel_row['stage_id']}_{after_key}",
                 )
 
             if cmd_preset in SAFE_COLLECTION_PREP_CMDS:
-                st.warning(
-                    f"📦 **`{cmd_preset}`는 별도 컬렉션 안전 비교 프리셋입니다!** "
-                    "기존 `housing_rent_kh`를 덮어쓰지 않도록 최초 1회 아래 분리 색인을 먼저 실행한 뒤 평가를 돌리세요:"
-                )
+                st.caption(f"📦 `{cmd_preset}`은 기존 DB를 덮어쓰지 않는 별도 컬렉션 프리셋입니다. 최초 1회 분리 색인 명령어:")
                 st.code(SAFE_COLLECTION_PREP_CMDS[cmd_preset], language="powershell")
 
             safe_note = cmd_note.replace('"', "'")
@@ -1480,154 +1565,162 @@ def _render_sop_coach_panel(
                 language="powershell",
             )
 
-        # ---- Nav Sub-tab 2: Full 6-Row Trigger->Evidence->Action Matrix + Keep/Discard Gate ----
-        with nav_t2:
-            st.markdown("**A. 단계별 수치 기준(Trigger) → 근거(Workbench) → 수정 결정(Action) 전체 매트릭스**")
-            matrix_df = pd.DataFrame(
-                [
-                    {
-                        "우선순위 & 병목 단계": r["stage_title"],
-                        "현재 판정": r["status_badge"],
-                        "🔴 언제 문제인가? (수치 기준)": r["trigger_rule"].replace("\n", " / "),
-                        "📌 내 실측치": r["current_reading"],
-                        "🔍 대시보드 근거": r["workbench_evidence"].replace("\n", " / "),
-                        "🔧 바꿀 손잡이 (딱 1개)": r["action_guide"].replace("\n", " / "),
-                        "❌ 절대 금지 헛수고": r["forbidden"],
-                    }
-                    for r in matrix_rows
-                ]
-            )
-            st.dataframe(matrix_df, use_container_width=True, hide_index=True)
+    # ---- Sub-tab 2: 전체 6단계 수치 기준표 & Step 5 Keep/Discard 게이트 ----
+    with t_table:
+        st.markdown("##### A. 단계별 수치 기준(Trigger) → 근거 → 수정 결정(Action) 전체 표")
+        full_headers = ["병목 단계", "판정", "수치 기준 (언제 문제인가?)", "현재 실측치", "수정할 손잡이 (딱 1개)", "금지 헛수고"]
+        full_rows = [
+            {
+                "_row_cls": "row-trig" if r["status"] == "triggered" else ("row-watch" if r["status"] == "watch" else ""),
+                "병목 단계": f"**{r['short_title']}**",
+                "판정": r["status_badge"],
+                "수치 기준 (언제 문제인가?)": r["trigger_rule"],
+                "현재 실측치": r["current_reading"],
+                "수정할 손잡이 (딱 1개)": r["action_guide"],
+                "금지 헛수고": r["forbidden"],
+            }
+            for r in matrix_rows
+        ]
+        _render_wrapped_html_table(full_headers, full_rows, col_widths=["12%", "8%", "20%", "20%", "26%", "14%"])
 
-            st.divider()
-            st.markdown("**B. Step 5 채택(Keep) vs 기각(Discard) 4중 게이트 자동 점검 (`Before → After`)**")
-            gate = _evaluate_keep_discard_gate(before_s, after_s, target)
-            if gate["verdict"].startswith("✅"):
-                st.success(gate["verdict"])
-            elif gate["verdict"].startswith("❌"):
-                st.error(gate["verdict"])
-            else:
-                st.info(gate["verdict"])
-            if gate["checks"]:
-                gc = st.columns(4)
-                for col, (gname, gok, gdetail) in zip(gc, gate["checks"]):
-                    (col.success if gok else col.warning)(f"**{'✅' if gok else '⚠️'} {gname}**\n\n{gdetail}")
+        st.markdown("##### B. Step 5 채택(Keep) vs 기각(Discard) 4중 게이트")
+        gate = _evaluate_keep_discard_gate(before_s, after_s, target)
+        if gate["verdict"].startswith("✅"):
+            st.success(gate["verdict"])
+        elif gate["verdict"].startswith("❌"):
+            st.error(gate["verdict"])
+        else:
+            st.info(gate["verdict"])
+        if gate["checks"]:
+            gc = st.columns(4)
+            for col, (gname, gok, gdetail) in zip(gc, gate["checks"]):
+                with col:
+                    with st.container(border=True):
+                        st.markdown(f"**{'✅' if gok else '⚠️'} {gname}**")
+                        st.caption(gdetail)
 
-        # ---- Nav Sub-tab 3: 7-Step SOP Reference ----
-        with nav_t3:
-            st.markdown(
-                """
-**🧭 A부터 직접 1변수씩 진행하는 7단계 표준 실험 루틴 (SOP)**
-1. **Step 0 (시험지 동결)**: `dev_v1` 유지 또는 어휘 누수를 없앤 현실 구어체·평수 `dev_v2` 확정 *(질문 수정 시에만 `_v{n}` 신설, 시스템 튜닝 중엔 시험지 고정!)*
+    # ---- Sub-tab 3: 7단계 SOP ----
+    with t_sop:
+        if not scoped_steps or after_s is None:
+            cur_step_num = 1
+        elif len(scoped_steps) == 1:
+            cur_step_num = 2
+        elif after_s["pass_4of4"] and after_s["fail_cnt"] == 0:
+            cur_step_num = 7
+        else:
+            cur_step_num = 5
+        step_badges = [
+            ("S0 시험지 동결", 0),
+            ("S1 A 단독 실행", 1),
+            ("S2 5분 판별", 2),
+            ("S3 손잡이 1개", 3),
+            ("S4 1변수 실행", 4),
+            ("S5 채택/기각", 5),
+            ("S6~7 기록·test봉인", 6),
+        ]
+        bar_parts = [
+            f"**[▶ {lbl}]**" if num == cur_step_num else (f"~~{lbl}~~ ✅" if num < cur_step_num else lbl)
+            for lbl, num in step_badges
+        ]
+        with st.container(border=True):
+            st.markdown(" → ".join(bar_parts))
+        st.markdown(
+            """
+1. **Step 0 (시험지 동결)**: `dev_v1` 유지 또는 현실 구어체·평수 `dev_v2` 확정 *(질문 수정 시에만 `_v{n}` 신설, 튜닝 중엔 시험지 고정)*
 2. **Step 1 (A 단독 실행)**: `A_vector` 딱 1개만 먼저 돌려 바닥 기준선 확보
-3. **Step 2 (워크벤치 5분 판별)**: 좌측 **실시간 병목 네비게이터** + **1번 탭(`TP/FP/FN/TN` + 4단계 깔때기)** → **2번 탭(불일치 태그 X-Ray)**에서 **가장 윗단계(1→2→3→4순)** 병목 확인
-4. **Step 3 (손잡이 딱 1개 선택)**: 위 **`1. 실시간 단계별 진단 & 손잡이 선택`** 탭에서 발동된 단계의 추천 변수 **딱 1개**만 선택 *(2단계 FN이 남았는데 C·프롬프트 먼저 건드리지 않기!)*
-5. **Step 4 (1개만 바꿔 실행)**: `--note "가설: ~"` 적고 자동 조립된 PowerShell 명령어로 프리셋 1개만 실행
-6. **Step 5 (Before/After 판정)**: 좌측 **단일 변인 가드(✅)** + **`2. Keep/Discard 4중 게이트`** + **4번 탭 Regression Watch(악화 0건)** 확인 후 **채택(Keep) / 기각(Discard)** 결정
-7. **Step 6~7 (기록 & 봉인 개봉)**: 4번 탭 리포트 → `실험기록.md` 누적 → dev 완성 후 봉인 `test` 20문항 1회 성적표 + **6번 탭 팀 120문항 통합**!
-                """
-            )
-
-
-# ==================== TAB 1: 의사결정 홈 ====================
-def render_decision_tab(before_s: dict, after_s: dict, target: float, coach_mode: bool = True) -> None:
-    st.subheader(f"🧭 의사결정 홈 — `{before_s['step_label']}` → `{after_s['step_label']}`")
-    if coach_mode:
-        st.caption(
-            "💡 **Step 2·3 코치 팁**: 각 지표 이름 옆 **`?` 툴팁**에 마우스를 올리면 쉬운 비유가 뜹니다! "
-            "① `k=12` 혼동행렬의 **`FN`(놓친 정답)**부터 확인 → ② 4단계 깔때기 중 **가장 윗단계(2→3→4순)** 공략 → ③ 맨 아래 추천 변수 1개만 실행!"
+3. **Step 2 (5분 병목 판별)**: `1. 현황 요약` (`k=12` `FN` 확인) → `3. 문항별 X-Ray` (불일치 태그)에서 **가장 윗단계(1→2→3→4순)** 확인
+4. **Step 3 (손잡이 1개 선택)**: `2. 원인 진단 & 다음 실험 선택` 탭에서 발동 단계의 추천 변수 **딱 1개**만 선택
+5. **Step 4 (1개만 바꿔 실행)**: `--note "가설: ~"` 적고 자동 조립된 명령어로 프리셋 1개 실행
+6. **Step 5 (채택/기각 판정)**: 단일 변인 가드(✅) + `Keep/Discard 4중 게이트` + `4. 추이 & 회차 리포트`의 Regression Watch(악화 0건) 확인
+7. **Step 6~7 (기록 & 봉인 개봉)**: 회차 리포트 → `실험기록.md` 누적 → dev 완성 후 봉인 `test` 20문항 1회 성적표 + `5. 팀 통합 비교`
+            """
         )
 
-    # 1) 3구역 분리 KPI: 검색 지표 / 생성 지표 / 거절·운영 지표
-    st.markdown("#### 1) 🔎 검색 지표 (Retrieval — `metrics_k12` · `metrics_k5` · RAGAS 검색 2지표)")
-    r1, r2, r3, r4, r5, r6 = st.columns(6)
-    r1.metric(RETRIEVAL_LABELS["recall@12"], f"{after_s['recall12']:.3f}", f"{after_s['recall12'] - before_s['recall12']:+.3f}", help=METRIC_HELP["recall@12"])
-    r2.metric(RETRIEVAL_LABELS["hit@5"], after_s["hit5_str"], f"{(after_s['hit5_rate'] - before_s['hit5_rate'])*100:+.1f}%p", help=METRIC_HELP["hit@5"])
-    r3.metric(RETRIEVAL_LABELS["top1"], after_s["top1_str"], f"{(after_s['top1_rate'] - before_s['top1_rate'])*100:+.1f}%p", help=METRIC_HELP["top1"])
-    r4.metric(RETRIEVAL_LABELS["mrr@5"], f"{after_s['mrr5']:.3f}", f"{after_s['mrr5'] - before_s['mrr5']:+.3f}", help=METRIC_HELP["mrr@5"])
-    r5.metric(RAGAS_LABELS["llm_context_precision_with_reference"], f"{after_s['cp']:.3f}", f"{after_s['cp'] - before_s['cp']:+.3f}", help=METRIC_HELP["cp"])
-    r6.metric(RAGAS_LABELS["context_recall"], f"{after_s['cr']:.3f}", f"{after_s['cr'] - before_s['cr']:+.3f}", help=METRIC_HELP["cr"])
 
-    st.markdown("#### 2) ✍️ 생성 지표 (Generation) & 🛡️ 거절·운영 트랙 (Track B 분리)")
+# ==================== PAGE 1: 현황 요약 (KPI · 혼동행렬 · 6단계 상태) ====================
+def render_decision_tab(
+    before_s: dict,
+    after_s: dict,
+    target: float,
+    coach_mode: bool = True,
+    matrix_rows: list[dict[str, Any]] | None = None,
+) -> None:
+    st.subheader("📊 현황 요약 — 핵심 지표 · 혼동행렬 · 단계별 상태")
+    if coach_mode:
+        st.caption("💡 각 지표 이름 옆 **`?`**에 마우스를 올리면 쉬운 풀이가 보입니다. 병목 진단과 다음 실행 명령어는 좌측 **`2. 원인 진단 & 다음 실험 선택`** 메뉴에서 바로 진행하세요.")
+
+    # 1) 검색 지표 (6)
+    st.markdown("##### 🔎 검색 지표 (Retrieval)")
+    r1, r2, r3, r4, r5, r6 = st.columns(6)
+    r1.metric("Recall@12 (재현율)", f"{after_s['recall12']:.3f}", f"{after_s['recall12'] - before_s['recall12']:+.3f}", help=METRIC_HELP["recall@12"])
+    r2.metric("Hit@5 (적중률)", after_s["hit5_str"], f"{(after_s['hit5_rate'] - before_s['hit5_rate'])*100:+.1f}%p", help=METRIC_HELP["hit@5"])
+    r3.metric("Top1 (1등 정답률)", after_s["top1_str"], f"{(after_s['top1_rate'] - before_s['top1_rate'])*100:+.1f}%p", help=METRIC_HELP["top1"])
+    r4.metric("MRR@5 (평균역순위)", f"{after_s['mrr5']:.3f}", f"{after_s['mrr5'] - before_s['mrr5']:+.3f}", help=METRIC_HELP["mrr@5"])
+    r5.metric("Context Precision", f"{after_s['cp']:.3f}", f"{after_s['cp'] - before_s['cp']:+.3f}", help=METRIC_HELP["cp"])
+    r6.metric("Context Recall", f"{after_s['cr']:.3f}", f"{after_s['cr'] - before_s['cr']:+.3f}", help=METRIC_HELP["cr"])
+
+    # 2) 생성 + 거절·운영 지표 (6)
+    st.markdown("##### ✍️ 생성 (Generation) · 🛡️ 거절 (Track B) · ⏱️ 지연")
     g1, g2, g3, g4, g5, g6 = st.columns(6)
-    g1.metric(RAGAS_LABELS["faithfulness"], f"{after_s['f']:.3f}", f"{after_s['f'] - before_s['f']:+.3f}", help=METRIC_HELP["f"])
-    g2.metric(RAGAS_LABELS["answer_relevancy"], f"{after_s['ar']:.3f}", f"{after_s['ar'] - before_s['ar']:+.3f}", help=METRIC_HELP["ar"])
-    g3.metric(RETRIEVAL_LABELS["citation_rate"], after_s["citation_str"], help=METRIC_HELP["citation_rate"])
-    g4.metric(RETRIEVAL_LABELS["refusal"], after_s["refusal_str"], help=METRIC_HELP["refusal"])
-    g5.metric(RETRIEVAL_LABELS["scope_notice"], after_s["scope_notice_str"], help=METRIC_HELP["scope_notice"])
+    g1.metric("Faithfulness (충실도)", f"{after_s['f']:.3f}", f"{after_s['f'] - before_s['f']:+.3f}", help=METRIC_HELP["f"])
+    g2.metric("Answer Relevancy", f"{after_s['ar']:.3f}", f"{after_s['ar'] - before_s['ar']:+.3f}", help=METRIC_HELP["ar"])
+    g3.metric("Citation (출처 표기)", after_s["citation_str"], help=METRIC_HELP["citation_rate"])
+    g4.metric("Refusal (거절률)", after_s["refusal_str"], help=METRIC_HELP["refusal"])
+    g5.metric("Scope Notice (고지)", after_s["scope_notice_str"], help=METRIC_HELP["scope_notice"])
     g6.metric(
-        RETRIEVAL_LABELS["lat_median"],
+        "Latency 중앙값",
         f"{after_s['lat_median']:.1f} ms",
         f"{after_s['lat_median'] - before_s['lat_median']:+.1f} ms",
         delta_color="inverse",
         help=METRIC_HELP["lat_median"],
     )
 
-    # 2) TP / FP / FN / TN 2×2 혼동행렬
     st.divider()
-    st.markdown("#### 3) 🧮 검색 혼동행렬 (`TP · FP · FN · TN` — 전체 답변 가능 문항 합계)")
-    k_choice = st.radio(
-        "혼동행렬 기준 k 선택",
-        ["후보 단계 k=12 (검색 B의 FN 누락 점검)", "최종 전달 k=5 (생성기 입력 FP·FN 점검)"],
-        horizontal=True,
+
+    # 3) 전체 너비: 🚦 6단계 병목 진단 요약 (잘림/스크롤 없이 한눈에 전체 확인!)
+    st.markdown(f"##### 🚦 6단계 병목 진단 요약 (목표 `{target:.2f}` · 위→아래 우선순위)")
+    rows = matrix_rows if matrix_rows is not None else _evaluate_decision_matrix(after_s, before_s, target)
+    sum_headers = ["단계", "상태", "현재 실측치 & 원인 문항", "추천 1변수"]
+    sum_rows = [
+        {
+            "_row_cls": "row-trig" if r["status"] == "triggered" else ("row-watch" if r["status"] == "watch" else ""),
+            "단계": f"**{r['short_title']}**",
+            "상태": r["status_badge"],
+            "현재 실측치 & 원인 문항": r["current_reading"],
+            "추천 1변수": f"`{r['recommended_preset']}`",
+        }
+        for r in rows
+    ]
+    _render_wrapped_html_table(sum_headers, sum_rows, col_widths=["16%", "9%", "59%", "16%"])
+
+    top_r = next((r for r in rows if r["status"] == "triggered"), None) or next(
+        (r for r in rows if r["status"] == "watch"), rows[0]
     )
+    st.caption(
+        f"🎯 **최우선 공략**: {top_r['status_badge']} **{top_r['short_title']}** → **`{top_r['recommended_preset']}`** "
+        "(상세 기준·근거·실행 명령어는 좌측 메뉴 **`🧭 2. 원인 진단 & 다음 실험 선택`**에서 바로 복사하세요)"
+    )
+
+    st.divider()
+
+    # 4) 전체 너비 4열 가로 배치: 🧮 검색 혼동행렬 (TP · FN · FP · TN)
+    cm_head_l, cm_head_r = st.columns([1.2, 1.3])
+    with cm_head_l:
+        st.markdown("##### 🧮 검색 혼동행렬 (`TP · FN · FP · TN`)")
+    with cm_head_r:
+        k_choice = st.radio(
+            "집계 기준",
+            ["후보 단계 k=12 (2단계 FN 누락 점검)", "최종 전달 k=5 (3단계 Top-5 점검)"],
+            horizontal=True,
+            label_visibility="collapsed",
+        )
     k_val = 12 if "12" in k_choice else 5
     cur_cm = after_s["cm12"] if k_val == 12 else after_s["cm5"]
     prev_cm = (before_s["cm12"] if k_val == 12 else before_s["cm5"]) if before_s["order"] != after_s["order"] else None
     if cur_cm["q_count"] > 0:
-        _render_confusion_matrix_2x2(cur_cm, k=k_val, prev_cm=prev_cm, title_prefix=f"[{after_s['mode']}] ")
+        _render_confusion_matrix_2x2(cur_cm, k=k_val, prev_cm=prev_cm, horizontal=True)
     else:
         st.info("연동된 `.jsonl` 상세 로그가 없어 혼동행렬을 산출할 수 없습니다.")
-
-    # 3) 4단계 깔때기 병목 레이더 + 6단계 수치 기준 연동
-    st.divider()
-    st.markdown(f"#### 4) 🔻 4단계 깔때기 병목 레이더 (`{after_s['step_label']}` 기준 · 목표 `{target:.2f}`)")
-    buckets: dict[int, list[str]] = {0: [], 2: [], 3: [], 4: []}
-    for r in after_s["mode_logs"]:
-        if r.get("expected_status") != "answered":
-            continue
-        qid = r.get("question_id", "")
-        stg, _ = _classify_funnel_stage(r, after_s["item_ragas"].get(qid), target)
-        buckets.setdefault(stg, []).append(qid)
-
-    mat = {r["stage_id"]: r for r in _evaluate_decision_matrix(after_s, before_s, target)}
-    b1, b2, b3, b4 = st.columns(4)
-    (b1.error if mat["S1_chunk"]["status"] == "triggered" else b1.success)(
-        f"**1단계 · 청킹/색인** {mat['S1_chunk']['status_badge']}\n\n"
-        f"{mat['S1_chunk']['current_reading']}\n\n"
-        "처방: 별도 컬렉션 분리 적재 (`B_chunk_v3_pyeong`) · ❌ 기존 DB 덮어쓰기 금지"
-    )
-    (b2.error if mat["S2_fn"]["status"] == "triggered" else b2.success)(
-        f"**2단계 · 검색 누락 (FN)** {mat['S2_fn']['status_badge']}\n\n"
-        f"**{len(buckets[2])}건**: `{', '.join(buckets[2]) or '없음'}`\n\n"
-        "기준: `FN(k=12)>0` · `Recall@12<0.90` · `CR<목표`\n\n"
-        "처방: `B` · `Rewrite` · `HyDE/임베딩` · ❌ C·프롬프트 먼저 금지"
-    )
-    (b3.warning if mat["S3_fp"]["status"] in ("triggered", "watch") else b3.success)(
-        f"**3단계 · 순위 실패 (FP)** {mat['S3_fp']['status_badge']}\n\n"
-        f"**{len(buckets[3])}건**: `{', '.join(buckets[3]) or '없음'}`\n\n"
-        "기준: `FN(k=12)=0`인데 `Top1<70%` · `MRR<0.65` · `CP<목표`\n\n"
-        "처방: `가중치(70:30)` · `Filter` · `검색 C(Rerank)`"
-    )
-    (b4.info if mat["S4_gen"]["status"] in ("triggered", "watch") else b4.success)(
-        f"**4단계 · 생성 / 인용** {mat['S4_gen']['status_badge']}\n\n"
-        f"**{len(buckets[4])}건**: `{', '.join(buckets[4]) or '없음'}`\n\n"
-        "기준: `1등`인데 `AR<목표` · `F<0.80`\n\n"
-        "처방: `ANSWER_PROMPT` 5조건 주어·TMI 제거 · ❌ 검색기 수정 금지"
-    )
-
-    # 4) 다음 단일 변수 추천 카드 + Track B / 운영 상태 1줄 요약
-    st.divider()
-    rec_title, rec_why, rec_knob, rec_watch = _recommend_next_variable(after_s, target)
-    st.markdown(f"#### 5) 🎯 다음에 딱 1개만 바꿀 변수 추천 (통과 문항: `{len(buckets[0])}/{max(1, sum(len(v) for v in buckets.values()))}`)")
-    st.success(f"**추천 액션: {rec_title}**\n\n- **판단 근거**: {rec_why}\n- **바꿀 변수 (딱 1개)**: `{rec_knob}`\n- **함께 감시할 부작용**: {rec_watch}")
-    tb1, tb2 = st.columns(2)
-    (tb1.error if mat["S5_refusal"]["status"] == "triggered" else tb1.info)(
-        f"**Track B · 거절/과거 데이터** {mat['S5_refusal']['status_badge']} — {mat['S5_refusal']['current_reading']}"
-    )
-    (tb2.warning if mat["S6_ops"]["status"] in ("triggered", "watch") else tb2.info)(
-        f"**운영 · 캐시/지연** {mat['S6_ops']['status_badge']} — {mat['S6_ops']['current_reading']}"
-    )
 
 
 # ==================== TAB 2: 문항별 X-Ray 해부 ====================
@@ -1747,27 +1840,27 @@ def render_xray_tab(before_s: dict, after_s: dict, target: float, coach_mode: bo
             tag_str = " ".join(tags)
             (st.success if ok else st.markdown)(f"`#{rank_i}` `{cid}`  \n{tag_str}")
 
-    # 패널 B: 문항별 TP/FP/FN/TN 2×2 혼동행렬 (k=12 / k=5)
-    st.markdown("#### B. 이 문항의 `TP · FP · FN · TN` 2×2 혼동행렬 (`metrics_k12` · `metrics_k5`)")
-    cm_c1, cm_c2 = st.columns(2)
-    with cm_c1:
-        _render_confusion_matrix_2x2(
-            _item_confusion_matrix(arow, 12, after_s["corpus_n"]),
-            k=12,
-            prev_cm=_item_confusion_matrix(brow, 12, before_s["corpus_n"]) if brow else None,
-            title_prefix="[후보 k=12] ",
+    # 패널 B: 문항별 TP/FP/FN/TN 혼동행렬 (깔끔하게 접어 두고 필요할 때만 펼치기)
+    with st.expander("🧮 이 문항의 청크 혼동행렬 (`TP · FP · FN · TN` · `k=12 / k=5`) 펼치기", expanded=False):
+        cm_c1, cm_c2 = st.columns(2)
+        with cm_c1:
+            _render_confusion_matrix_2x2(
+                _item_confusion_matrix(arow, 12, after_s["corpus_n"]),
+                k=12,
+                prev_cm=_item_confusion_matrix(brow, 12, before_s["corpus_n"]) if brow else None,
+                title_prefix="[후보 k=12] ",
+            )
+        with cm_c2:
+            _render_confusion_matrix_2x2(
+                _item_confusion_matrix(arow, 5, after_s["corpus_n"]),
+                k=5,
+                prev_cm=_item_confusion_matrix(brow, 5, before_s["corpus_n"]) if brow else None,
+                title_prefix="[최종 k=5] ",
+            )
+        st.caption(
+            "💡 정답 청크가 1권뿐인 단일 문항에서 5권을 뽑아 1등으로 맞히면 `TP=1(진짜 정답), FP=4(나머지 4칸 오답)` → "
+            "`Precision@5 = 1/5 = 0.20`이 이론상 만점입니다. 순위 품질은 `MRR@5`와 RAGAS `Context Precision`으로 확인하세요."
         )
-    with cm_c2:
-        _render_confusion_matrix_2x2(
-            _item_confusion_matrix(arow, 5, after_s["corpus_n"]),
-            k=5,
-            prev_cm=_item_confusion_matrix(brow, 5, before_s["corpus_n"]) if brow else None,
-            title_prefix="[최종 k=5] ",
-        )
-    st.caption(
-        "💡 참고: 정답 청크가 1개뿐인 단일 문항은 1등으로 맞혀도 `Precision@5 = 1/5 = 0.20`이 이론상 만점이며, "
-        "순위 정밀도는 `MRR@5`와 RAGAS `Context Precision`으로 확인합니다."
-    )
 
     # 패널 C: RAGAS 4지표 & 생성 답변 Before vs After
     st.markdown("#### C. RAGAS 4대 지표 & 생성 답변 (`response`) Before vs After")
@@ -2061,36 +2154,56 @@ def render_evalset_tab() -> None:
 
 # ==================== TAB 6: 팀원 통합 비교 (도메인별 · 120문항) ====================
 def _discover_team_summaries() -> list[tuple[str, Path, dict]]:
-    """src/rag_home_api/test/*/results/summary_*.json 을 팀원별로 자동 탐색 (최신 파일 우선)."""
+    """data/team_unified/summary_*.json (방안 3 통합 어댑터) + test/*/results/summary_*.json 자동 탐색."""
     found: list[tuple[str, Path, dict]] = []
-    if not TEST_ROOT_DIR.exists():
-        return found
-    for member_dir in sorted(TEST_ROOT_DIR.iterdir()):
-        if not member_dir.is_dir():
-            continue
-        res_dir = member_dir / "results"
-        if not res_dir.exists():
-            continue
-        files = sorted(res_dir.glob("summary_*.json"), reverse=True)
-        for fp in files:
+    unified_dir = REPO_DATA_DIR / "team_unified"
+    if unified_dir.exists():
+        for fp in sorted(unified_dir.glob("summary_*.json")):
             try:
-                found.append((member_dir.name, fp, _load_json_file(fp)))
+                data = _load_json_file(fp)
+                owner = str(data.get("owner") or fp.stem.replace("summary_", ""))
+                found.append((owner, fp, data))
             except Exception:
                 continue
+
+    if TEST_ROOT_DIR.exists():
+        for member_dir in sorted(TEST_ROOT_DIR.iterdir()):
+            if not member_dir.is_dir():
+                continue
+            res_dir = member_dir / "results"
+            if not res_dir.exists():
+                continue
+            files = sorted(res_dir.glob("summary_*.json"), reverse=True)
+            for fp in files:
+                try:
+                    found.append((member_dir.name, fp, _load_json_file(fp)))
+                except Exception:
+                    continue
     return found
 
 
+def _adapt_uploaded_team_json(raw: Any, filename: str) -> dict | None:
+    """팀원 원본 JSON(예지 eval_dev_*.json, 병철 comparison_data.json, 표준 summary_*.json)을 자동 변환."""
+    try:
+        from rag_home_api.test.kh.unify_team_results import convert_any_uploaded_json
+
+        return convert_any_uploaded_json(raw, filename)
+    except Exception:
+        return raw if isinstance(raw, dict) and "modes" in raw else None
+
+
 def render_team_integration_tab() -> None:
-    st.subheader("🤝 팀원 통합 비교 (도메인별 목표치 자동 적용 · 4명 120문항 통합)")
+    st.subheader("🤝 팀원 통합 비교 (방안 3 통합 어댑터 · 도메인별 목표치 · 120문항)")
     st.caption(
-        "`src/rag_home_api/test/<팀원>/results/summary_*.json`을 자동 탐색하거나, 팀원들의 결과 JSON / 평가셋 JSON을 여러 개 한 번에 업로드해 비교합니다. "
-        "(목표치 자동 매핑: 전월세 `0.60` · 법령/공공임대 `0.70` · 거절률 `70%+`)"
+        "`data/team_unified/summary_*.json` 및 `test/<팀원>/results/summary_*.json`을 자동 탐색합니다. "
+        "예지(`eval_*.json`)·병철(`comparison_data.json`) 원본 JSON을 바로 드래그해도 자동 변환됩니다! "
+        "(목표치: 전월세 `0.60` · 법령/공공임대 `0.70` · 거절률 `70%+`)"
     )
 
     # 1) 팀원 결과 파일 수집 (로컬 자동 탐색 + 다중 업로드)
     auto_found = _discover_team_summaries()
     uploaded_team = st.file_uploader(
-        "팀원 결과 summary_*.json 다중 업로드 (지훈·예지·병철·최기혁 파일 한 번에 드래그!)",
+        "팀원 결과 JSON 다중 업로드 (표준 summary_*.json · 예지 eval_*.json · 병철 comparison_data.json 모두 지원)",
         type=["json"],
         accept_multiple_files=True,
         key="team_summary_uploader",
@@ -2103,7 +2216,7 @@ def render_team_integration_tab() -> None:
         by_member.setdefault(member, []).append((fp, data))
 
     if by_member:
-        st.markdown("#### 1) 로컬 자동 감지된 팀원 결과 (`test/*/results/`)")
+        st.markdown("#### 1) 자동 감지된 팀원 결과 (`data/team_unified/` · `test/*/results/`)")
         cols = st.columns(max(1, min(4, len(by_member))))
         for i, (member, flist) in enumerate(by_member.items()):
             with cols[i % len(cols)]:
@@ -2136,7 +2249,11 @@ def render_team_integration_tab() -> None:
 
     for uf in uploaded_team or []:
         try:
-            sdata = json.loads(uf.read().decode("utf-8"))
+            raw_json = json.loads(uf.read().decode("utf-8"))
+            sdata = _adapt_uploaded_team_json(raw_json, uf.name)
+            if not sdata:
+                st.warning(f"파일 `{uf.name}`은 인식 가능한 결과 JSON 형식이 아닙니다.")
+                continue
             modes = list((sdata.get("modes") or {}).keys())
             if not modes:
                 continue
@@ -2157,10 +2274,11 @@ def render_team_integration_tab() -> None:
             st.error(f"파일 `{uf.name}` 로드 실패: {exc}")
 
     if not entries:
-        st.info("비교할 팀원 `summary_*.json` 파일이 없습니다. 위 업로더로 팀원 결과 JSON을 올려보세요!")
+        st.info("비교할 팀원 `summary_*.json` 파일이 없습니다. `uv run python -m rag_home_api.test.kh.unify_team_results --from-git` 실행 또는 위 업로더를 사용하세요!")
     else:
         rows = []
         chart_rows = []
+        ragas_f_vals, ragas_ar_vals, ragas_cp_vals = [], [], []
         for e in entries:
             dom_label, dom_target = DOMAIN_META.get(e["domain"], (e["domain"], 0.65))
             dom_target = float(e["summary"].get("ragas_target", dom_target))
@@ -2168,11 +2286,21 @@ def render_team_integration_tab() -> None:
             ret = mdata.get("retrieval") or {}
             lat = mdata.get("latency_ms") or {}
             rg = mdata.get("ragas_avg") or {}
-            f_v = float(rg.get("faithfulness", 0.0) or 0.0)
-            ar_v = float(rg.get("answer_relevancy", 0.0) or 0.0)
-            cp_v = float(rg.get("llm_context_precision_with_reference", 0.0) or 0.0)
-            cr_v = float(rg.get("context_recall", 0.0) or 0.0)
-            pass_cnt = sum(1 for v in (f_v, ar_v, cp_v, cr_v) if v >= dom_target)
+            has_ragas = bool(rg) and any(rg.get(k) is not None for k in RAGAS_LABELS)
+            if has_ragas:
+                f_v = float(rg.get("faithfulness", 0.0) or 0.0)
+                ar_v = float(rg.get("answer_relevancy", 0.0) or 0.0)
+                cp_v = float(rg.get("llm_context_precision_with_reference", 0.0) or 0.0)
+                cr_v = float(rg.get("context_recall", 0.0) or 0.0)
+                pass_cnt = sum(1 for v in (f_v, ar_v, cp_v, cr_v) if v >= dom_target)
+                pass_txt = f"{pass_cnt}/4 {'🏆' if pass_cnt == 4 else '⚠️'}"
+                ragas_f_vals.append(f_v)
+                ragas_ar_vals.append(ar_v)
+                ragas_cp_vals.append(cp_v)
+            else:
+                f_v = ar_v = cp_v = cr_v = None
+                pass_txt = "RAGAS 미측정"
+
             label_id = f"{e['owner']} ({dom_label} · {e['mode']})"
             rows.append(
                 {
@@ -2181,34 +2309,35 @@ def render_team_integration_tab() -> None:
                     "목표치": dom_target,
                     "대표 프리셋": e["mode"],
                     "문항 수(답변가능)": ret.get("answerable_count", "-"),
-                    RETRIEVAL_LABELS["recall@12"]: ret.get("recall@12", "-"),
+                    RETRIEVAL_LABELS["recall@12"]: "-" if ret.get("recall@12") is None else ret.get("recall@12"),
                     RETRIEVAL_LABELS["hit@5"]: ret.get("hit@5", "-"),
                     RETRIEVAL_LABELS["top1"]: ret.get("top1", "-"),
-                    RETRIEVAL_LABELS["mrr@5"]: ret.get("mrr@5", "-"),
-                    RAGAS_LABELS["faithfulness"]: round(f_v, 4),
-                    RAGAS_LABELS["answer_relevancy"]: round(ar_v, 4),
-                    RAGAS_LABELS["llm_context_precision_with_reference"]: round(cp_v, 4),
-                    RAGAS_LABELS["context_recall"]: round(cr_v, 4),
+                    RETRIEVAL_LABELS["mrr@5"]: "-" if ret.get("mrr@5") is None else ret.get("mrr@5"),
+                    RAGAS_LABELS["faithfulness"]: round(f_v, 4) if f_v is not None else "미측정",
+                    RAGAS_LABELS["answer_relevancy"]: round(ar_v, 4) if ar_v is not None else "미측정",
+                    RAGAS_LABELS["llm_context_precision_with_reference"]: round(cp_v, 4) if cp_v is not None else "미측정",
+                    RAGAS_LABELS["context_recall"]: round(cr_v, 4) if cr_v is not None else "미측정",
                     RETRIEVAL_LABELS["refusal"]: mdata.get("refusal", "-"),
                     RETRIEVAL_LABELS["lat_median"]: lat.get("median", "-"),
-                    "목표 달성": f"{pass_cnt}/4 {'🏆' if pass_cnt == 4 else '⚠️'}",
+                    "목표 달성": pass_txt,
                 }
             )
-            for mk, ml in RAGAS_LABELS.items():
-                chart_rows.append({"팀원·도메인": label_id, "RAGAS 지표": ml, "점수": float(rg.get(mk, 0.0) or 0.0)})
+            if has_ragas:
+                for mk, ml in RAGAS_LABELS.items():
+                    chart_rows.append({"팀원·도메인": label_id, "RAGAS 지표": ml, "점수": float(rg.get(mk, 0.0) or 0.0)})
 
         team_df = pd.DataFrame(rows)
         st.markdown("#### 2) 팀원 · 도메인별 통합 성적표")
         k1, k2, k3, k4 = st.columns(4)
-        k1.metric("참여 결과 수", f"{len(rows)}개")
-        k2.metric("팀 평균 Faithfulness (충실도)", f"{team_df[RAGAS_LABELS['faithfulness']].mean():.3f}")
-        k3.metric("팀 평균 Answer Relevancy (답변 관련성)", f"{team_df[RAGAS_LABELS['answer_relevancy']].mean():.3f}")
-        k4.metric("팀 평균 Context Precision (근거 정밀도)", f"{team_df[RAGAS_LABELS['llm_context_precision_with_reference']].mean():.3f}")
+        k1.metric("참여 팀원/도메인 수", f"{len(rows)}개 (RAGAS 완료 {len(ragas_f_vals)}개)")
+        k2.metric("RAGAS 평균 Faithfulness", f"{sum(ragas_f_vals)/len(ragas_f_vals):.3f}" if ragas_f_vals else "미측정")
+        k3.metric("RAGAS 평균 Answer Relevancy", f"{sum(ragas_ar_vals)/len(ragas_ar_vals):.3f}" if ragas_ar_vals else "미측정")
+        k4.metric("RAGAS 평균 Context Precision", f"{sum(ragas_cp_vals)/len(ragas_cp_vals):.3f}" if ragas_cp_vals else "미측정")
 
         st.dataframe(team_df, use_container_width=True, hide_index=True)
 
         if alt is not None and chart_rows:
-            st.markdown("#### 3) 도메인별 RAGAS 4대 지표 비교 차트")
+            st.markdown("#### 3) 도메인별 RAGAS 4대 지표 비교 차트 (RAGAS 측정 완료 도메인)")
             ch = (
                 alt.Chart(pd.DataFrame(chart_rows))
                 .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
@@ -2309,152 +2438,119 @@ def render_team_integration_tab() -> None:
 # ==================== MAIN ====================
 def main() -> None:
     st.set_page_config(
-        page_title="서울 주거 RAG — 실험 분석 워크벤치 & 팀 통합 대시보드 (kh)",
+        page_title="서울 주거 RAG — 실험 분석 워크벤치 (kh)",
         page_icon="🧪",
         layout="wide",
     )
-
-    st.title("🧪 서울 주거 RAG — 실험 원인 판별 워크벤치 & 팀 통합 대시보드")
-    st.caption(
-        "유비쿼터스 언어(영어+한글) 기반 · 검색/생성/거절 분리 · TP·TN·FP·FN 혼동행렬 · "
-        "4단계 깔때기 병목 판별 · 회차별 자동 리포트 · 팀원 도메인 통합 비교"
-    )
+    _inject_clean_theme()
 
     all_summaries = _load_all_local_summaries()
     all_steps = _build_history_steps(all_summaries)
 
-    # ==================== SIDEBAR ====================
+    # ==================== SIDEBAR (깔끔한 메뉴 + 최소 통제만 배치) ====================
     with st.sidebar:
-        st.header("🎛️ 워크벤치 통제 패널")
-        coach_mode = st.toggle(
-            "🎓 튜토리얼 · 7단계 코치 모드",
-            value=True,
-            help="켜 두면 상단 7단계 SOP 진행 바, 손잡이 결정표, 실행 명령어 자동 조립기, 각 탭 30초 코치 팁이 표시됩니다.",
+        st.markdown("### 🧪 서울 주거 RAG 워크벤치")
+        page = st.radio(
+            "메뉴",
+            [
+                "📊 1. 현황 요약",
+                "🧭 2. 원인 진단 & 다음 실험 선택",
+                "🔬 3. 문항별 X-Ray",
+                "📈 4. 추이 & 회차 리포트",
+                "🤝 5. 시험지(_v{n}) & 팀 통합",
+            ],
+            label_visibility="collapsed",
         )
 
-        # 1) 시험지 버전(eval_version) 격리 필터
+        st.divider()
+        st.markdown("**🎛️ 비교 대상 선택**")
         eval_versions = sorted({s["eval_version"] for s in all_steps})
-        ver_options = ["전체 시험지 (주의: 버전 혼합)", *eval_versions]
+        ver_options = ["전체 시험지 (버전 혼합)", *eval_versions]
         default_ver_idx = len(ver_options) - 1 if eval_versions else 0
         sel_eval_ver = st.selectbox(
-            "1. 시험지 버전 격리 (`eval_version`)",
+            "시험지 버전 (`eval_version`)",
             ver_options,
             index=default_ver_idx,
-            help="Step 0 철칙: 같은 시험지(_v{n})로 실행한 실험끼리만 비교해야 시스템 변경 효과가 공정하게 보입니다!",
+            help="같은 시험지(_v{n})끼리만 비교해야 시스템 변경 효과가 공정하게 보입니다.",
         )
 
-        if sel_eval_ver.startswith("전체 시험지"):
-            scoped_steps = all_steps
-        else:
-            scoped_steps = [s for s in all_steps if s["eval_version"] == sel_eval_ver]
-            st.caption(f"🔒 `{sel_eval_ver}`에서 실행한 {len(scoped_steps)}개 스텝만 공정 비교 중")
+        scoped_steps = all_steps if sel_eval_ver.startswith("전체 시험지") else [s for s in all_steps if s["eval_version"] == sel_eval_ver]
 
-        # 2) Before vs After 비교 쌍 선택
         before_s: dict | None = None
         after_s: dict | None = None
         if scoped_steps:
             step_labels = [s["step_label"] for s in scoped_steps]
-            st.divider()
-            st.markdown("**2. Before vs After 비교 쌍 선택**")
-            default_b = max(0, len(step_labels) - 2)
-            default_a = len(step_labels) - 1
-            b_lbl = st.selectbox("기준선 (Before)", step_labels, index=default_b, help="직전에 확정한 기준 실험을 고르세요.")
-            a_lbl = st.selectbox("실험군 (After)", step_labels, index=default_a, help="변수 1개를 바꿔 새로 돌린 실험을 고르세요.")
+            b_lbl = st.selectbox("기준선 (Before)", step_labels, index=max(0, len(step_labels) - 2))
+            a_lbl = st.selectbox("실험군 (After)", step_labels, index=len(step_labels) - 1)
             before_s = scoped_steps[step_labels.index(b_lbl)]
             after_s = scoped_steps[step_labels.index(a_lbl)]
 
-            n_diff, diffs = _describe_preset_diff(before_s, after_s)
-            if before_s["order"] == after_s["order"]:
-                st.info("동일 스텝을 선택 중입니다. 다른 스텝을 골라 전/후를 비교하세요.")
-            elif n_diff == 1:
-                st.success(f"✅ **단일 변인 통제 통과 (변수 1개)**\n\n`{diffs[0]}`")
-            else:
-                st.warning(f"⚠️ **복합 변수 변경 ({n_diff}개 동시)**\n\n" + "\n".join(f"- {d}" for d in diffs))
-
-        st.divider()
+        # 고급 설정·코치·내보내기는 접어 두어 사이드바 스크롤 제거
         default_target = float(after_s["summary"].get("ragas_target", 0.60)) if after_s else 0.60
-        target = st.slider(
-            "3. RAGAS 목표 임계치 (전월세 0.60 / 법령·공공 0.70)",
-            min_value=0.30,
-            max_value=0.95,
-            value=default_target,
-            step=0.05,
-            help="problem.md 공식 목표치: 전월세 0.60 이상, 공공임대·법령 0.70 이상.",
-        )
+        with st.expander("⚙️ 목표치 · 코치 팁 · 내보내기", expanded=False):
+            coach_mode = st.toggle("코치 팁 표시", value=True)
+            target = st.slider("RAGAS 목표치", 0.30, 0.95, default_target, 0.05)
+            if after_s is not None:
+                ts_tag = after_s["timestamp"]
+                st.download_button(
+                    "🌐 HTML 종합 리포트",
+                    data=_export_html(after_s, before_s, scoped_steps, target).encode("utf-8"),
+                    file_name=f"workbench_report_{ts_tag}_{after_s['mode']}.html",
+                    mime="text/html",
+                    use_container_width=True,
+                )
+                st.download_button(
+                    "📊 CSV 비교표 (Excel)",
+                    data=_build_comparison_df(after_s["summary"]).to_csv(index=False).encode("utf-8-sig"),
+                    file_name=f"summary_{ts_tag}.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                )
+                st.download_button(
+                    "📝 Markdown 리포트",
+                    data=_build_single_step_report_md(after_s, before_s, target).encode("utf-8"),
+                    file_name=f"eval_report_{ts_tag}_{after_s['mode']}.md",
+                    mime="text/markdown",
+                    use_container_width=True,
+                )
 
-        # 4) 사이드바 실시간 6단계 병목 네비게이터 (어느 탭에서나 상시 신호등 확인)
-        matrix_rows = _evaluate_decision_matrix(after_s, before_s, target)
-        st.divider()
-        st.markdown("**4. 🚦 실시간 병목 네비게이터 (1→6순)**")
-        nav_lines = [f"- {r['status_badge']} **{r['short_title']}**" for r in matrix_rows]
-        st.markdown("\n".join(nav_lines))
-        top_nav = next((r for r in matrix_rows if r["status"] == "triggered"), None) or next(
-            (r for r in matrix_rows if r["status"] == "watch"), matrix_rows[0]
-        )
-        if after_s is not None:
-            st.caption(f"🎯 최우선 공략: **{top_nav['short_title']}** → `{top_nav['recommended_preset']}`")
+    matrix_rows = _evaluate_decision_matrix(after_s, before_s, target)
 
-        # 5) 빠른 Export (선택 After 스텝 기준)
-        if after_s is not None:
-            st.divider()
-            st.markdown("**📤 리포트 내보내기 (Export)**")
-            ts_tag = after_s["timestamp"]
-            st.download_button(
-                "🌐 HTML 종합 리포트 (선그래프+분석)",
-                data=_export_html(after_s, before_s, scoped_steps, target).encode("utf-8"),
-                file_name=f"workbench_report_{ts_tag}_{after_s['mode']}.html",
-                mime="text/html",
-                use_container_width=True,
-            )
-            st.download_button(
-                "📊 CSV 비교표 (선택 파일, Excel)",
-                data=_build_comparison_df(after_s["summary"]).to_csv(index=False).encode("utf-8-sig"),
-                file_name=f"summary_{ts_tag}.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
-            st.download_button(
-                "📝 Markdown 회차 리포트",
-                data=_build_single_step_report_md(after_s, before_s, target).encode("utf-8"),
-                file_name=f"eval_report_{ts_tag}_{after_s['mode']}.md",
-                mime="text/markdown",
-                use_container_width=True,
-            )
+    # ==================== 상단 1줄 요약 바 (단일 진입 헤더) ====================
+    _render_compact_status_bar(before_s, after_s, matrix_rows)
 
-    # 7단계 SOP 코치 & 인터랙티브 의사결정 네비게이터 (코치 모드 ON일 때 상단 표시)
-    if coach_mode:
+    # ==================== 선택된 1개 페이지 렌더링 (1화면 1목적) ====================
+    if page.startswith("📊 1."):
+        if before_s is None or after_s is None:
+            st.info("`test/kh/results/summary_*.json` 파일이 아직 없습니다. `2. 원인 진단 & 다음 실험 선택`에서 `A_vector`부터 실행해 보세요.")
+        else:
+            render_decision_tab(before_s, after_s, target, coach_mode=coach_mode, matrix_rows=matrix_rows)
+
+    elif page.startswith("🧭 2."):
         _render_sop_coach_panel(scoped_steps, before_s, after_s, target, sel_eval_ver, matrix_rows)
 
-    # ==================== MAIN 6 TABS ====================
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
-        [
-            "🧭 1. 의사결정 홈 (병목 · TP/TN/FP/FN)",
-            "🔬 2. 문항별 X-Ray (불일치 · 혼동행렬)",
-            "📈 3. 회차별 랩노트 & 추이 선그래프",
-            "📝 4. 회차별 평가 분석 리포트",
-            "🧪 5. 시험지 버전(_v{n}) & 거절 트랙",
-            "🤝 6. 팀원 통합 비교 (도메인 · 120문항)",
-        ]
-    )
-
-    if before_s is None or after_s is None:
-        for t in (tab1, tab2, tab3, tab4):
-            with t:
-                st.info("`test/kh/results/summary_*.json` 파일이 아직 없습니다. 평가 스크립트를 먼저 1회 실행하세요.")
-    else:
-        with tab1:
-            render_decision_tab(before_s, after_s, target, coach_mode=coach_mode)
-        with tab2:
+    elif page.startswith("🔬 3."):
+        if before_s is None or after_s is None:
+            st.info("비교할 실행 기록이 아직 없습니다.")
+        else:
             render_xray_tab(before_s, after_s, target, coach_mode=coach_mode)
-        with tab3:
-            render_lab_history_tab(scoped_steps, target, sel_eval_ver, coach_mode=coach_mode)
-        with tab4:
-            render_per_test_report_tab(scoped_steps, target, coach_mode=coach_mode)
 
-    with tab5:
-        render_evalset_tab()
-    with tab6:
-        render_team_integration_tab()
+    elif page.startswith("📈 4."):
+        if before_s is None or after_s is None:
+            st.info("기록된 실험 스텝이 아직 없습니다.")
+        else:
+            t_hist, t_rep = st.tabs(["📈 추이 선그래프 & 랩노트", "📝 회차별 분석 리포트 & 내보내기"])
+            with t_hist:
+                render_lab_history_tab(scoped_steps, target, sel_eval_ver, coach_mode=coach_mode)
+            with t_rep:
+                render_per_test_report_tab(scoped_steps, target, coach_mode=coach_mode)
+
+    else:
+        t_eval, t_team = st.tabs(["🧪 시험지 버전(_v{n}) & 거절 트랙", "🤝 팀원 통합 비교 (도메인 · 120문항)"])
+        with t_eval:
+            render_evalset_tab()
+        with t_team:
+            render_team_integration_tab()
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ from langchain_core.documents import Document
 
 from rag_home_api.config import DATA_DIR, SHARED_DOCS_DIR, settings
 from rag_home_api.shared.core.logger import get_logger
-from rag_home_api.shared.core.vector_store import get_raw_db_connection, get_vector_store
+from rag_home_api.shared.core.vector_store import get_raw_db_connection, get_vector_store, make_db_id
 
 logger = get_logger(__name__)
 
@@ -312,13 +312,18 @@ def build_rent_index(
             )
             existing = {row[0]: (row[1] or "") for row in cur.fetchall()}
 
+    def _pk(d: Document) -> str:
+        # 기존 housing_rent_kh 호환 유지, 신규/분리 컬렉션은 전역 PK 충돌 방지를 위해 "{collection}:{chunk_id}" 강제!
+        cid = d.metadata["chunk_id"]
+        return cid if collection_name == RENT_COLLECTION_NAME else make_db_id(collection_name, cid)
+
     to_insert = [
-        d for d in docs if existing.get(d.metadata["chunk_id"]) != d.metadata["content_hash"]
+        d for d in docs if existing.get(_pk(d)) != d.metadata["content_hash"]
     ]
     total_batches = (len(to_insert) + batch_size - 1) // batch_size
     for idx in range(0, len(to_insert), batch_size):
         batch = to_insert[idx : idx + batch_size]
-        store.add_documents(batch, ids=[d.metadata["chunk_id"] for d in batch])
+        store.add_documents(batch, ids=[_pk(d) for d in batch])
         logger.info(
             "전월세 PGVector 적재 배치 %d/%d 완료 (%d건)",
             idx // batch_size + 1,

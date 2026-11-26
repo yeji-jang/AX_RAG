@@ -11,8 +11,22 @@ from rag_home_api.shared.core.vector_store import get_raw_db_connection
 
 logger = get_logger(__name__)
 
-# Kiwi 품사 태그: 일반명사(NNG), 고유명사(NNP), 의존명사(NNB), 외국어(SL), 숫자(SN), 어근(XR)
-KEEP_POS = {"NNG", "NNP", "NNB", "SL", "SN", "XR"}
+# Kiwi 품사 태그: 일반명사(NNG), 고유명사(NNP), 외국어(SL), 어근(XR)
+# - 순수 숫자(SN)와 의존명사(NNB)는 평수 숫자('10', '18')가 무관한 날짜('03-18')·월세('10만원')와
+#   충돌하는 원인이 되어 제외하고, 영숫자 코드·법정동 'N가'·법령 조문번호만 전용 정규식으로 보존한다.
+KEEP_POS = {"NNG", "NNP", "SL", "XR"}
+KO_STOPWORDS = frozenset(
+    {
+        "요즘", "보통", "얼마", "정도", "어디", "대체로", "어느", "비교", "생각",
+        "경우", "사항", "관련", "기준", "내용", "확인", "안내", "전체", "이상", "이하", "초과", "미만",
+    }
+)
+# 영문자가 최소 1개 포함된 코드만 보존 (sh_306214, 25b, 36a 등 — 순수 숫자/날짜 10, 18, 2026-03-18 배제)
+_ALPHA_CODE_RE = re.compile(r"(?=[a-z0-9_\-]*[a-z])[a-z0-9][a-z0-9_\-]{1,}")
+# 법정동 숫자 접미사 원형 보존 (성수동2가, 명륜3가, 문래동4가 등)
+_DONG_GA_RE = re.compile(r"[가-힣]{2,}\d+가")
+# 법령 조문번호 원형 보존 (제7조, 제3조의3 등)
+_LAW_ARTICLE_RE = re.compile(r"제\d+조(?:의\d+)?")
 
 
 @lru_cache(maxsize=1)
@@ -22,19 +36,25 @@ def _get_kiwi() -> Kiwi:
 
 
 def tokenize_korean_housing(text: str) -> list[str]:
-    """Kiwi 형태소(명사·숫자·영문) + 공고/주택형 코드 원형(sh_306214, 25B)을 함께 보존한다."""
+    """Kiwi 명사 형태소 + 영숫자 주택형/공고 코드(sh_306214, 25B) + 법정동 N가 + 법령 조문번호를 보존한다."""
     tokens: list[str] = []
 
-    # ① 영숫자·하이픈·언더스코어 코드 보존 (실습 2의 모델코드 분리 패턴 계승)
-    for code in re.findall(r"[a-z0-9][a-z0-9_\-]{1,}", text.lower()):
+    # ① 영문자 포함 코드 보존 (순수 숫자·날짜의 2중 추출·오폭 방지)
+    for code in _ALPHA_CODE_RE.findall(text.lower()):
         tokens.append(code)
         for sep in ("_", "-"):
             if sep in code:
-                tokens.extend(part for part in code.split(sep) if len(part) > 1)
+                tokens.extend(
+                    part for part in code.split(sep) if len(part) > 1 and any(ch.isalpha() for ch in part)
+                )
 
-    # ② 한국어 형태소 분석 ("대항력이랑" -> "대항력", "확정일자를" -> "확정일자")
+    # ② 법정동 N가 & 법령 조문번호 원형 보존
+    tokens.extend(_DONG_GA_RE.findall(text))
+    tokens.extend(_LAW_ARTICLE_RE.findall(text))
+
+    # ③ 한국어 형태소 분석 ("대항력이랑" -> "대항력", "확정일자를" -> "확정일자")
     for tok in _get_kiwi().tokenize(text):
-        if tok.tag in KEEP_POS and len(tok.form) > 1:
+        if tok.tag in KEEP_POS and len(tok.form) > 1 and tok.form not in KO_STOPWORDS:
             tokens.append(tok.form.lower())
 
     return tokens
