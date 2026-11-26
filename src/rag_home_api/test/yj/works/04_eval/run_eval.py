@@ -49,14 +49,14 @@ logger = get_logger(__name__)
 #===================================================================
 # 1. 평가 설정값 및 경로 지정
 #===================================================================
-DATASET_VER = "chunk_V1"      # 청크 버전별 폴더 (docs/04-1_eval_set/chunk_V1/)
+CHUNK_VER = "chunk_V1"        # 리포트 폴더 구분용 (평가할 컬렉션에 맞춰 chunk_V1 / chunk_V2 변경)
 SPLIT = "dev"                 # 개발/튜닝은 "dev"(10문항), 최종 고정 평가만 "test"(20문항)
 FAILURE_THRESHOLD = 0.7       # RAGAS 미달 판정 기준 점수
 MODES = ["A_vector", "B_hybrid", "C_hybrid_rerank"]
 
 BASE_DIR = Path(__file__).resolve().parents[2]  # test/yj/
-EVAL_SET_PATH = BASE_DIR / "docs" / "04-1_eval_set" / DATASET_VER / f"{SPLIT}.json"
-REPORT_DIR = BASE_DIR / "docs" / "04-2_eval_reports" / DATASET_VER    # ← DATASET_VER 추가
+EVAL_SET_PATH = BASE_DIR / "docs" / "04-1_eval_set" / f"{SPLIT}.json"
+REPORT_DIR = BASE_DIR / "docs" / "04-2_eval_reports" / CHUNK_VER
 
 # 답변 본문에 아래 표현이 들어있거나 인용 번호가 비어있으면 '근거 부족 안내(거절)'로 판정
 INSUFFICIENT_PHRASES = ("찾을 수 없습니다", "찾지 못했습니다", "정보가 없", "확인할 수 없")

@@ -2,8 +2,8 @@
 # 평가셋 빌더 (지침서 STEP 2 기준 30문항: dev 10 + test 20)
 - 입력: docs/02_chunked/공공임대_공고문_preV2_chunkV1_cs800_ov100.jsonl
 - 출력:
-    - docs/04-1_eval_set/{DATASET_VER}/dev.json  (10문항: direct 5, paraphrase_or_similar 3, unanswerable 2)
-    - docs/04-1_eval_set/{DATASET_VER}/test.json (20문항: direct 10, paraphrase_or_similar 7, unanswerable 3)
+    - docs/04-1_eval_set/dev.json  (10문항: direct 5, paraphrase_or_similar 3, unanswerable 2)
+    - docs/04-1_eval_set/test.json (20문항: direct 10, paraphrase_or_similar 7, unanswerable 3)
 """
 import json
 import random
@@ -21,8 +21,7 @@ logger = get_logger(__name__)
 #===================================================================
 # 1. 경로 및 설정
 #===================================================================
-DATASET_VER = "chunk_V1"
-OVERWRITE = False       # 이미 검수된 평가셋 덮어쓰기 방지 (새 버전은 DATASET_VER 변경 권장)
+OVERWRITE = False       # 이미 검수된 고정 평가셋 덮어쓰기 방지
 
 CHUNK_PATH = (
     Path(__file__).resolve().parents[2]
@@ -30,7 +29,7 @@ CHUNK_PATH = (
     / "02_chunked"
     / "공공임대_공고문_preV2_chunkV1_cs800_ov100.jsonl"
 )
-EVAL_DIR = Path(__file__).resolve().parents[2] / "docs" / "04-1_eval_set" / DATASET_VER
+EVAL_DIR = Path(__file__).resolve().parents[2] / "docs" / "04-1_eval_set"
 DEV_PATH = EVAL_DIR / "dev.json"
 TEST_PATH = EVAL_DIR / "test.json"
 
@@ -207,7 +206,7 @@ def _build_split(
 def build_and_save_eval_datasets() -> None:
     if not OVERWRITE and (DEV_PATH.exists() or TEST_PATH.exists()):
         raise FileExistsError(
-            f"이미 평가셋이 존재합니다({EVAL_DIR}). 새로 만들려면 DATASET_VER를 바꾸거나 OVERWRITE=True로 설정하세요."
+            f"이미 고정 평가셋이 존재합니다({EVAL_DIR}). 정말 재생성할 때만 OVERWRITE=True로 설정하세요."
         )
     EVAL_DIR.mkdir(parents=True, exist_ok=True)
     picked = sample_chunks(CHUNK_PATH, total_needed=25)
