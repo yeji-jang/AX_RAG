@@ -1,0 +1,4 @@
+# 재생성 캐시/비공개 실험 및 검색·생성 원본 로그
+out/
+results/
+execution.local.json

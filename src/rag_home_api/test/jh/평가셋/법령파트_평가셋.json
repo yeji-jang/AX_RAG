@@ -1,0 +1,1524 @@
+{
+  "part": "개인 임대차 법령 DEV·TEST",
+  "updated": "2026-11-25",
+  "format": "팀장(최기혁) dev.json 형식 + eval_category·allowed_row_ids·evidence_quotes",
+  "data": "shared/docs v1 + 법령 보강(4,985줄)",
+  "rules": [
+    "개인 활성 평가는 이 파일의 법령 DEV 10개와 법령 TEST 20개임",
+    "DEV 8+2, TEST 17+3을 유지하고 법적 쟁점·근거·필수 사실 조건을 분리함",
+    "답변 가능 문항의 근거는 수집 법령 원문 및 jh_500·jh_1000 청크로 연결함",
+    "정답표는 로컬 채점용이며 외부 API 입력·프롬프트에 포함하지 않음",
+    "외부 전송 범위 확인 전 로컬 사전검증만 수행함. TEST 기반 튜닝과 이전 점수 환산을 하지 않음"
+  ],
+  "items": [
+    {
+      "question_id": "JH-DEV-01",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "주민등록법 제16조에 따라 새 임차주택으로 이사한 경우 전입신고는 언제까지 해야 하나요?",
+      "key_facts": [
+        "새 거주지에 전입한 날부터 14일 이내"
+      ],
+      "allowed_doc_ids": [
+        "LAW_RESIDENT"
+      ],
+      "allowed_row_ids": [
+        "LAW_RESIDENT_본칙_023"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_RESIDENT_본칙_023_s500_c01",
+        "LAW_RESIDENT_본칙_023_s1000_c01"
+      ],
+      "source_location": "주민등록법 제16조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%EB%AF%BC%EB%93%B1%EB%A1%9D%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_RESIDENT_본칙_023",
+          "quote": "제16조(거주지의 이동) ①하나의 세대에 속하는 자의 전원 또는 그 일부가 거주지를 이동하면 제11조나 제12조에 따른 신고의무자가 신거주지에 전입한 날부터 14일 이내에 신거주지의 시장ㆍ군수 또는 구청장에게 전입신고(轉入申告)를 하여야 한다."
+        }
+      ],
+      "application_conditions": [
+        "새 거주지로 거주지를 이동하는 경우. 기한만 물으므로 신고 기관은 필수 정답에서 제외함"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "유지·필수 사실 축소 / 수집 조문 기준",
+      "eval_category": "answerable",
+      "issue": "전입신고 기한",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_RESIDENT_본칙_023",
+          "quote": "제16조(거주지의 이동) ①하나의 세대에 속하는 자의 전원 또는 그 일부가 거주지를 이동하면 제11조나 제12조에 따른 신고의무자가 신거주지에 전입한 날부터 14일 이내에 신거주지의 시장ㆍ군수 또는 구청장에게 전입신고(轉入申告)를 하여야 한다.",
+          "chunk_ids": [
+            "LAW_RESIDENT_본칙_023_s500_c01",
+            "LAW_RESIDENT_본칙_023_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-DEV-02",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "서울에서 주택 임대차 계약의 신고 대상이 되는 보증금·월세 기준은 무엇이고, 금액 변동 없이 기간만 연장한 갱신도 포함되나요?",
+      "key_facts": [
+        "보증금 6천만원 초과 또는 월 차임 30만원 초과",
+        "보증금과 차임의 증감 없이 기간만 연장하는 갱신은 신고 대상에서 제외"
+      ],
+      "allowed_doc_ids": [
+        "LAW_REPORT_DECREE"
+      ],
+      "allowed_row_ids": [
+        "LAW_REPORT_DECREE_본칙_006"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_REPORT_DECREE_본칙_006_s500_c01",
+        "LAW_REPORT_DECREE_본칙_006_s1000_c01"
+      ],
+      "source_location": "부동산 거래신고 등에 관한 법률 시행령 제4조의3 제1항·제2항",
+      "source_url": "https://www.law.go.kr/법령/%EB%B6%80%EB%8F%99%EC%82%B0%20%EA%B1%B0%EB%9E%98%EC%8B%A0%EA%B3%A0%20%EB%93%B1%EC%97%90%20%EA%B4%80%ED%95%9C%20%EB%B2%95%EB%A5%A0%20%EC%8B%9C%ED%96%89%EB%A0%B9",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_REPORT_DECREE_본칙_006",
+          "quote": "제4조의3(주택 임대차 계약의 신고) ① 법 제6조의2제1항 본문에서 “대통령령으로 정하는 금액을 초과하는 임대차 계약”이란 보증금이 6천만원을 초과하거나 월 차임이 30만원을 초과하는 주택 임대차 계약(계약을 갱신하는 경우로서 보증금 및 차임의 증감 없이 임대차 기간만 연장하는 계약은 제외한다)을 말한다."
+        }
+      ],
+      "application_conditions": [
+        "신고 대상 지역에 속하는 서울의 주택 임대차 계약. 경계는 초과이고 두 금액은 또는 관계임. 신고 기한과 신고 방식은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "유지·질문 범위 명확화 / 수집 조문 기준",
+      "eval_category": "answerable",
+      "issue": "임대차 신고 대상 금액 및 금액 불변 갱신 제외",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_REPORT_DECREE_본칙_006",
+          "quote": "제4조의3(주택 임대차 계약의 신고) ① 법 제6조의2제1항 본문에서 “대통령령으로 정하는 금액을 초과하는 임대차 계약”이란 보증금이 6천만원을 초과하거나 월 차임이 30만원을 초과하는 주택 임대차 계약(계약을 갱신하는 경우로서 보증금 및 차임의 증감 없이 임대차 기간만 연장하는 계약은 제외한다)을 말한다.",
+          "chunk_ids": [
+            "LAW_REPORT_DECREE_본칙_006_s500_c01",
+            "LAW_REPORT_DECREE_본칙_006_s1000_c01"
+          ]
+        },
+        {
+          "fact_index": 2,
+          "row_id": "LAW_REPORT_DECREE_본칙_006",
+          "quote": "제4조의3(주택 임대차 계약의 신고) ① 법 제6조의2제1항 본문에서 “대통령령으로 정하는 금액을 초과하는 임대차 계약”이란 보증금이 6천만원을 초과하거나 월 차임이 30만원을 초과하는 주택 임대차 계약(계약을 갱신하는 경우로서 보증금 및 차임의 증감 없이 임대차 기간만 연장하는 계약은 제외한다)을 말한다.",
+          "chunk_ids": [
+            "LAW_REPORT_DECREE_본칙_006_s500_c01",
+            "LAW_REPORT_DECREE_본칙_006_s1000_c01"
+          ]
+        }
+      ],
+      "condition_evidence": [
+        {
+          "row_id": "LAW_REPORT_DECREE_본칙_006",
+          "quote": "② 법 제6조의2제2항에서 “대통령령으로 정하는 지역”이란 특별자치시ㆍ특별자치도ㆍ시ㆍ군(광역시 및 경기도의 관할구역에 있는 군으로 한정한다)ㆍ구(자치구를 말한다)를 말한다.",
+          "chunk_ids": [
+            "LAW_REPORT_DECREE_본칙_006_s500_c01",
+            "LAW_REPORT_DECREE_본칙_006_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-DEV-03",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "민법상 임대인은 주택을 인도한 뒤 계약이 존속하는 동안 어떤 상태를 유지해야 하나요?",
+      "key_facts": [
+        "계약 존속 중 임차인이 사용·수익하는 데 필요한 상태를 유지해야 함"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_632"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_632_s500_c01",
+        "LAW_CIVIL_본칙_632_s1000_c01"
+      ],
+      "source_location": "민법 제623조",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_632",
+          "quote": "제623조(임대인의 의무) 임대인은 목적물을 임차인에게 인도하고 계약존속중 그 사용, 수익에 필요한 상태를 유지하게 할 의무를 부담한다."
+        }
+      ],
+      "application_conditions": [
+        "임대차가 존속하는 동안의 임대인 의무. 구체적 수리비·배상액은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·임대인 유지 의무 / 수집 조문 기준",
+      "eval_category": "answerable",
+      "issue": "임대인의 사용·수익 상태 유지 의무",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_632",
+          "quote": "제623조(임대인의 의무) 임대인은 목적물을 임차인에게 인도하고 계약존속중 그 사용, 수익에 필요한 상태를 유지하게 할 의무를 부담한다.",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_632_s500_c01",
+            "LAW_CIVIL_본칙_632_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-DEV-04",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임차인이 임차물의 보존에 필요한 비용을 지출했다면 민법상 임대인에게 상환을 청구할 수 있나요?",
+      "key_facts": [
+        "임차물 보존에 관한 필요비를 지출한 임차인은 임대인에게 상환을 청구할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_635"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_635_s500_c01",
+        "LAW_CIVIL_본칙_635_s1000_c01"
+      ],
+      "source_location": "민법 제626조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_635",
+          "quote": "제626조(임차인의 상환청구권) ①임차인이 임차물의 보존에 관한 필요비를 지출한 때에는 임대인에 대하여 그 상환을 청구할 수 있다."
+        }
+      ],
+      "application_conditions": [
+        "임차물 보존에 관한 필요비를 지출한 경우. 제2항의 유익비 상환 조건은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·필요비 상환 / 수집 조문 기준",
+      "eval_category": "answerable",
+      "issue": "임차인의 필요비 상환 청구",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_635",
+          "quote": "제626조(임차인의 상환청구권) ①임차인이 임차물의 보존에 관한 필요비를 지출한 때에는 임대인에 대하여 그 상환을 청구할 수 있다.",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_635_s500_c01",
+            "LAW_CIVIL_본칙_635_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-DEV-05",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임차인 과실 없이 주택 일부가 멸실되어 그 부분을 사용·수익할 수 없다면, 민법상 차임 감액을 청구할 수 있고 감액 기준은 무엇인가요?",
+      "key_facts": [
+        "사용·수익할 수 없는 부분의 비율에 따른 차임 감액을 청구할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_636"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_636_s500_c01",
+        "LAW_CIVIL_본칙_636_s1000_c01"
+      ],
+      "source_location": "민법 제627조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_636",
+          "quote": "제627조(일부멸실 등과 감액청구, 해지권) ①임차물의 일부가 임차인의 과실없이 멸실 기타 사유로 인하여 사용, 수익할 수 없는 때에는 임차인은 그 부분의 비율에 의한 차임의 감액을 청구할 수 있다."
+        }
+      ],
+      "application_conditions": [
+        "임차인의 과실 없는 일부 멸실 등으로 그 부분을 사용·수익할 수 없는 경우. 제2항의 계약 해지는 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·무과실 일부 사용불능 감액 / 수집 조문 기준",
+      "eval_category": "answerable",
+      "issue": "무과실 일부 사용불능의 차임 감액",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_636",
+          "quote": "제627조(일부멸실 등과 감액청구, 해지권) ①임차물의 일부가 임차인의 과실없이 멸실 기타 사유로 인하여 사용, 수익할 수 없는 때에는 임차인은 그 부분의 비율에 의한 차임의 감액을 청구할 수 있다.",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_636_s500_c01",
+            "LAW_CIVIL_본칙_636_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-DEV-06",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "주택임대차보호법 제7조에 따른 월세 증액청구의 법정 상한은 기존 월세의 몇 퍼센트인가요?",
+      "key_facts": [
+        "기존 월세의 20분의 1인 5%를 초과할 수 없음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_015"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_015_s500_c01",
+        "LAW_HLPA_본칙_015_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제7조 제2항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_015",
+          "quote": "② 제1항에 따른 증액청구는 약정한 차임이나 보증금의 20분의 1의 금액을 초과하지 못한다. 다만, 특별시ㆍ광역시ㆍ특별자치시ㆍ도 및 특별자치도는 관할 구역 내의 지역별 임대차 시장 여건 등을 고려하여 본문의 범위에서 증액청구의 상한을 조례로 달리 정할 수 있다. <신설 2020. 7. 31.>"
+        }
+      ],
+      "application_conditions": [
+        "제7조 제1항의 증액청구 요건이 있는 주택 임대차. 지방자치단체는 법정 상한 범위 안에서 조례로 달리 정할 수 있어 항상 5% 인상이 허용된다고 답하지 않음. 재증액 금지 기간은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "유지·증액 상한 조문 범위 명확화 / 수집 조문 기준",
+      "eval_category": "answerable",
+      "issue": "월세 증액청구 상한",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_HLPA_본칙_015",
+          "quote": "② 제1항에 따른 증액청구는 약정한 차임이나 보증금의 20분의 1의 금액을 초과하지 못한다. 다만, 특별시ㆍ광역시ㆍ특별자치시ㆍ도 및 특별자치도는 관할 구역 내의 지역별 임대차 시장 여건 등을 고려하여 본문의 범위에서 증액청구의 상한을 조례로 달리 정할 수 있다. <신설 2020. 7. 31.>",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_015_s500_c01",
+            "LAW_HLPA_본칙_015_s1000_c01"
+          ]
+        }
+      ],
+      "condition_evidence": [
+        {
+          "row_id": "LAW_HLPA_본칙_015",
+          "quote": "제7조(차임 등의 증감청구권) ① 당사자는 약정한 차임이나 보증금이 임차주택에 관한 조세, 공과금, 그 밖의 부담의 증감이나 경제사정의 변동으로 인하여 적절하지 아니하게 된 때에는 장래에 대하여 그 증감을 청구할 수 있다. 이 경우 증액청구는 임대차계약 또는 약정한 차임이나 보증금의 증액이 있은 후 1년 이내에는 하지 못한다. <개정 2020. 7. 31.>",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_015_s500_c01",
+            "LAW_HLPA_본칙_015_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-DEV-07",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임차권등기명령 신청과 그 임차권등기에 든 비용을 임대인에게 청구할 수 있나요?",
+      "key_facts": [
+        "임차권등기명령 신청과 관련 임차권등기에 든 비용을 임대인에게 청구할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_005"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_005_s500_c04",
+        "LAW_HLPA_본칙_005_s1000_c02"
+      ],
+      "source_location": "주택임대차보호법 제3조의3 제8항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_005",
+          "quote": "⑧ 임차인은 제1항에 따른 임차권등기명령의 신청과 그에 따른 임차권등기와 관련하여 든 비용을 임대인에게 청구할 수 있다."
+        }
+      ],
+      "application_conditions": [
+        "제1항의 임차권등기명령 신청 및 그에 따른 등기 관련 비용. 신청 관할·대항력·우선변제권 취득 요건은 묻지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·임차권등기 비용 청구 / 수집 조문 기준",
+      "eval_category": "answerable",
+      "issue": "임차권등기명령 신청·등기 비용 청구",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_HLPA_본칙_005",
+          "quote": "⑧ 임차인은 제1항에 따른 임차권등기명령의 신청과 그에 따른 임차권등기와 관련하여 든 비용을 임대인에게 청구할 수 있다.",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_005_s500_c04",
+            "LAW_HLPA_본칙_005_s1000_c02"
+          ]
+        }
+      ],
+      "condition_evidence": [
+        {
+          "row_id": "LAW_HLPA_본칙_005",
+          "quote": "제3조의3(임차권등기명령) ① 임대차가 끝난 후 보증금이 반환되지 아니한 경우 임차인은 임차주택의 소재지를 관할하는 지방법원ㆍ지방법원지원 또는 시ㆍ군 법원에 임차권등기명령을 신청할 수 있다. <개정 2013. 8. 13.>",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_005_s500_c01",
+            "LAW_HLPA_본칙_005_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-DEV-08",
+      "split": "dev",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "주거용으로 임대한 주택의 일부가 주거 외 목적으로 사용되는 경우에도 주택임대차보호법이 적용되나요?",
+      "key_facts": [
+        "주거용 건물의 일부가 주거 외 목적으로 사용되는 경우에도 주택임대차보호법이 적용됨"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_002"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_002_s500_c01",
+        "LAW_HLPA_본칙_002_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제2조",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_002",
+          "quote": "제2조(적용 범위) 이 법은 주거용 건물(이하 “주택”이라 한다)의 전부 또는 일부의 임대차에 관하여 적용한다. 그 임차주택(賃借住宅)의 일부가 주거 외의 목적으로 사용되는 경우에도 또한 같다."
+        }
+      ],
+      "application_conditions": [
+        "주거용 건물의 임대차이며 그 일부만 주거 외 목적으로 사용하는 경우. 전체가 주거 외 용도인 경우까지 확대하지 않음"
+      ],
+      "absence_reason": "",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·법 적용 범위 / 수집 조문 기준",
+      "eval_category": "answerable",
+      "issue": "일부 비주거 사용 주택의 법 적용",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_HLPA_본칙_002",
+          "quote": "제2조(적용 범위) 이 법은 주거용 건물(이하 “주택”이라 한다)의 전부 또는 일부의 임대차에 관하여 적용한다. 그 임차주택(賃借住宅)의 일부가 주거 외의 목적으로 사용되는 경우에도 또한 같다.",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_002_s500_c01",
+            "LAW_HLPA_본칙_002_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-DEV-09",
+      "split": "dev",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "민법에 정해진 임대주택 벽지 훼손의 제곱미터당 법정 배상액은 얼마인가요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "application_conditions": [
+        "수집 법령 원문으로 필요한 법정 수치를 확정할 수 없는 경우"
+      ],
+      "absence_reason": "수집 민법과 공유 JSONL에는 벽지 훼손의 제곱미터당 법정 단가표가 없음. 벽지와 제곱미터·㎡·단가, 제곱미터·㎡와 배상 조합을 공백 제거 후 3개 공유 JSONL 전체에서 대조해 0건임. 개별 상담사례의 비용을 법정 단가로 일반화하지 않음.",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·수집본 기준 근거 부족",
+      "eval_category": "no_evidence",
+      "issue": "수집본에 없는 법정 벽지 단가"
+    },
+    {
+      "question_id": "JH-DEV-10",
+      "split": "dev",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "부동산 거래신고 등에 관한 법률 시행령 별표 3의 주택 임대차 계약 지연신고 기간별 과태료 세부금액표를 알려주세요.",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "application_conditions": [
+        "수집 법령 원문으로 필요한 법정 수치를 확정할 수 없는 경우"
+      ],
+      "absence_reason": "수집 시행령은 제4조의3과 제20조 두 조문뿐이며 별표 3 본문을 포함하지 않음. 제20조의 별표 참조나 과태료 상한으로 지연기간별 표를 복원할 수 없음. 3개 공유 JSONL에서 지연기간과 신고 지연 과태료 조합을 공백 제거 후 대조해 세부표 부재를 확인함.",
+      "stage": "법령 확인",
+      "axis": "임대차 관련 법령",
+      "note": "신규·수집본 기준 근거 부족",
+      "eval_category": "no_evidence",
+      "issue": "수집본에 없는 신고 지연 과태료 세부표"
+    },
+    {
+      "question_id": "JH-TEST-01",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "대항력을 갖춘 주택임대차에서 집이 매매돼 새 주인이 생겼다면, 주택임대차보호법상 임대인의 지위는 누가 이어받나요?",
+      "key_facts": [
+        "임차주택의 양수인이 임대인의 지위를 승계함"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_003"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_003_s500_c02",
+        "LAW_HLPA_본칙_003_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제3조 제4항(대항력 전제: 같은 조 제1항)",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_003",
+          "quote": "임차주택의 양수인(讓受人)(그 밖에 임대할 권리를 승계한 자를 포함한다)은 임대인(賃貸人)의 지위를 승계한 것으로 본다"
+        }
+      ],
+      "application_conditions": [
+        "주택임대차보호법이 적용되고 제3조 제1항의 제삼자 대항효력이 생긴 임대차에서 임차주택이 양도된 상황",
+        "임대인 지위 승계 주체만 묻고 대항력 취득 요건은 필수 정답으로 묻지 않음"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "임차주택 양도 시 임대인 지위 승계",
+      "eval_category": "direct",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_HLPA_본칙_003",
+          "quote": "임차주택의 양수인(讓受人)(그 밖에 임대할 권리를 승계한 자를 포함한다)은 임대인(賃貸人)의 지위를 승계한 것으로 본다",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_003_s500_c02",
+            "LAW_HLPA_본칙_003_s1000_c01"
+          ]
+        }
+      ],
+      "condition_evidence": [
+        {
+          "row_id": "LAW_HLPA_본칙_003",
+          "quote": "제3조(대항력 등) ① 임대차는 그 등기(登記)가 없는 경우에도 임차인(賃借人)이 주택의 인도(引渡)와 주민등록을 마친 때에는 그 다음 날부터 제삼자에 대하여 효력이 생긴다. 이 경우 전입신고를 한 때에 주민등록이 된 것으로 본다.",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_003_s500_c01",
+            "LAW_HLPA_본칙_003_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-02",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임대차 기간은 끝났는데 보증금을 아직 못 받았어요. 법에서는 임대차관계가 끝난 것으로 보나요?",
+      "key_facts": [
+        "임차인이 보증금을 반환받을 때까지 임대차관계가 존속하는 것으로 봄"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_010"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_010_s500_c01",
+        "LAW_HLPA_본칙_010_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제4조 제2항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_010",
+          "quote": "임대차기간이 끝난 경우에도 임차인이 보증금을 반환받을 때까지는 임대차관계가 존속되는 것으로 본다"
+        }
+      ],
+      "application_conditions": [
+        "임대차 기간이 종료했으나 보증금이 반환되지 않은 상황",
+        "최소 임대차 기간이나 묵시적 갱신을 묻지 않음"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "기간 종료 후 미반환 보증금과 임대차관계 존속",
+      "eval_category": "direct",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_HLPA_본칙_010",
+          "quote": "임대차기간이 끝난 경우에도 임차인이 보증금을 반환받을 때까지는 임대차관계가 존속되는 것으로 본다",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_010_s500_c01",
+            "LAW_HLPA_본칙_010_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-03",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "주택임대차보호법에 어긋나고 임차인에게도 불리한 계약 약정은 효력이 있나요?",
+      "key_facts": [
+        "주택임대차보호법에 위반되고 임차인에게 불리한 약정은 효력이 없음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_020"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_020_s500_c01",
+        "LAW_HLPA_본칙_020_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제10조",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_020",
+          "quote": "이 법에 위반된 약정(約定)으로서 임차인에게 불리한 것은 그 효력이 없다"
+        }
+      ],
+      "application_conditions": [
+        "해당 법 위반과 임차인 불리라는 두 조건을 모두 전제함"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "임차인에게 불리한 위법 약정의 효력",
+      "eval_category": "direct",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_HLPA_본칙_020",
+          "quote": "이 법에 위반된 약정(約定)으로서 임차인에게 불리한 것은 그 효력이 없다",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_020_s500_c01",
+            "LAW_HLPA_본칙_020_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-04",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "상속인이 없는 임차인이 사망했어요. 함께 살던 사실혼 배우자가 한 달 안에 승계를 반대하지 않았다면 주택 임차인의 권리와 의무를 이어받나요?",
+      "key_facts": [
+        "그 주택에서 가정공동생활을 하던 사실상 혼인 관계의 사람이 임차인의 권리·의무를 승계함"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_019"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_019_s500_c01",
+        "LAW_HLPA_본칙_019_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제9조 제1항·제3항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_019",
+          "quote": "임차인이 상속인 없이 사망한 경우에는 그 주택에서 가정공동생활을 하던 사실상의 혼인 관계에 있는 자가 임차인의 권리와 의무를 승계한다"
+        },
+        {
+          "row_id": "LAW_HLPA_본칙_019",
+          "quote": "임차인이 사망한 후 1개월 이내에 임대인에게 제1항과 제2항에 따른 승계 대상자가 반대의사를 표시한 경우에는 그러하지 아니하다"
+        }
+      ],
+      "application_conditions": [
+        "상속인 없음·해당 주택의 공동생활·사실상 혼인 관계",
+        "사망 후 1개월 이내에 임대인에게 승계 반대의사를 표시하지 않은 경우"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "임차인 사망 시 사실혼 공동생활자의 승계",
+      "eval_category": "direct",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_HLPA_본칙_019",
+          "quote": "임차인이 상속인 없이 사망한 경우에는 그 주택에서 가정공동생활을 하던 사실상의 혼인 관계에 있는 자가 임차인의 권리와 의무를 승계한다",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_019_s500_c01",
+            "LAW_HLPA_본칙_019_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-05",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "주택 임대차 분쟁조정에서 상대방이 조정절차에 응하지 않겠다고 통지하면 신청은 어떻게 처리되고 사유도 알려주나요?",
+      "key_facts": [
+        "조정 신청을 각하함",
+        "각하 사유를 신청인에게 통지해야 함"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_032"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_032_s500_c01",
+        "LAW_HLPA_본칙_032_s1000_c01",
+        "LAW_HLPA_본칙_032_s500_c02"
+      ],
+      "source_location": "주택임대차보호법 제21조 제3항 본문·제5호",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_032",
+          "quote": "조정위원회의 위원장은 다음 각 호의 어느 하나에 해당하는 경우 신청을 각하한다. 이 경우 그 사유를 신청인에게 통지하여야 한다"
+        },
+        {
+          "row_id": "LAW_HLPA_본칙_032",
+          "quote": "피신청인이 조정절차에 응하지 아니한다는 의사를 통지한 경우"
+        }
+      ],
+      "application_conditions": [
+        "피신청인이 불응 의사를 실제로 통지한 경우",
+        "단순한 답변 지연이나 출석 일정 문의와 구분함"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "분쟁조정 피신청인 불응에 따른 각하",
+      "eval_category": "direct",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_HLPA_본칙_032",
+          "quote": "조정위원회의 위원장은 다음 각 호의 어느 하나에 해당하는 경우 신청을 각하한다. 이 경우 그 사유를 신청인에게 통지하여야 한다",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_032_s500_c01",
+            "LAW_HLPA_본칙_032_s1000_c01"
+          ]
+        },
+        {
+          "fact_index": 2,
+          "row_id": "LAW_HLPA_본칙_032",
+          "quote": "조정위원회의 위원장은 다음 각 호의 어느 하나에 해당하는 경우 신청을 각하한다. 이 경우 그 사유를 신청인에게 통지하여야 한다",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_032_s500_c01",
+            "LAW_HLPA_본칙_032_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-06",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "주택임대차 분쟁조정안을 받고 수락하려면 언제까지 어떤 방식으로 의사를 표시해야 하고, 그때까지 수락하지 않으면 어떻게 되나요?",
+      "key_facts": [
+        "수락하려면 통지받은 날부터 14일 이내에 서면으로 수락 의사를 표시해야 함",
+        "기간 안에 서면 수락하지 않으면 조정을 거부한 것으로 봄"
+      ],
+      "allowed_doc_ids": [
+        "LAW_HLPA"
+      ],
+      "allowed_row_ids": [
+        "LAW_HLPA_본칙_037"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_HLPA_본칙_037_s500_c01",
+        "LAW_HLPA_본칙_037_s1000_c01"
+      ],
+      "source_location": "주택임대차보호법 제26조 제2항",
+      "source_url": "https://www.law.go.kr/법령/%EC%A3%BC%ED%83%9D%EC%9E%84%EB%8C%80%EC%B0%A8%EB%B3%B4%ED%98%B8%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_HLPA_본칙_037",
+          "quote": "조정안을 통지받은 당사자가 통지받은 날부터 14일 이내에 수락의 의사를 서면으로 표시하지 아니한 경우에는 조정을 거부한 것으로 본다"
+        }
+      ],
+      "application_conditions": [
+        "조정위원회의 조정안을 통지받은 당사자에 대한 수락 절차"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "분쟁조정안 수락의 방식·기한·미수락 효과",
+      "eval_category": "direct",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_HLPA_본칙_037",
+          "quote": "조정안을 통지받은 당사자가 통지받은 날부터 14일 이내에 수락의 의사를 서면으로 표시하지 아니한 경우에는 조정을 거부한 것으로 본다",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_037_s500_c01",
+            "LAW_HLPA_본칙_037_s1000_c01"
+          ]
+        },
+        {
+          "fact_index": 2,
+          "row_id": "LAW_HLPA_본칙_037",
+          "quote": "조정안을 통지받은 당사자가 통지받은 날부터 14일 이내에 수락의 의사를 서면으로 표시하지 아니한 경우에는 조정을 거부한 것으로 본다",
+          "chunk_ids": [
+            "LAW_HLPA_본칙_037_s500_c01",
+            "LAW_HLPA_본칙_037_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-07",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "부동산 임대차등기에 반대하는 별도 약정이 없다면 임차인은 임대인에게 등기절차에 협력해 달라고 청구할 수 있나요?",
+      "key_facts": [
+        "반대약정이 없으면 부동산임차인은 임대인에게 임대차등기절차 협력을 청구할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_630"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_630_s500_c01",
+        "LAW_CIVIL_본칙_630_s1000_c01"
+      ],
+      "source_location": "민법 제621조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_630",
+          "quote": "부동산임차인은 당사자간에 반대약정이 없으면 임대인에 대하여 그 임대차등기절차에 협력할 것을 청구할 수 있다"
+        }
+      ],
+      "application_conditions": [
+        "당사자 사이에 반대약정이 없는 부동산 임대차",
+        "임차권등기명령의 비용이나 우선변제 요건과 구분함"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "임대차등기절차 협력 청구",
+      "eval_category": "direct",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_630",
+          "quote": "부동산임차인은 당사자간에 반대약정이 없으면 임대인에 대하여 그 임대차등기절차에 협력할 것을 청구할 수 있다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_630_s500_c01",
+            "LAW_CIVIL_본칙_630_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-08",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임대인 동의 없이 임차한 집 전체를 다른 사람에게 전대해도 되나요? 이를 위반하면 임대인이 계약을 해지할 수 있나요?",
+      "key_facts": [
+        "임대인 동의 없이 임차물을 전대할 수 없음",
+        "이를 위반하면 임대인이 계약을 해지할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_638"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_638_s500_c01",
+        "LAW_CIVIL_본칙_638_s1000_c01"
+      ],
+      "source_location": "민법 제629조 제1항·제2항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_638",
+          "quote": "임차인은 임대인의 동의없이 그 권리를 양도하거나 임차물을 전대하지 못한다"
+        },
+        {
+          "row_id": "LAW_CIVIL_본칙_638",
+          "quote": "임차인이 전항의 규정에 위반한 때에는 임대인은 계약을 해지할 수 있다"
+        }
+      ],
+      "application_conditions": [
+        "임대인 동의 없는 임차물 전체의 전대",
+        "건물 소부분 사용의 제632조 예외 상황과 구분함"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "무단 전대의 제한과 위반 효과",
+      "eval_category": "direct",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_638",
+          "quote": "임차인은 임대인의 동의없이 그 권리를 양도하거나 임차물을 전대하지 못한다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_638_s500_c01",
+            "LAW_CIVIL_본칙_638_s1000_c01"
+          ]
+        },
+        {
+          "fact_index": 2,
+          "row_id": "LAW_CIVIL_본칙_638",
+          "quote": "임차인이 전항의 규정에 위반한 때에는 임대인은 계약을 해지할 수 있다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_638_s500_c01",
+            "LAW_CIVIL_본칙_638_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-09",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임대인 동의를 받아 적법하게 전대한 집에서 전차인이 전대인에게 월세를 냈다면, 그 지급 사실로 임대인에게 대항할 수 있나요?",
+      "key_facts": [
+        "전차인은 전대인에 대한 차임 지급으로 임대인에게 대항할 수 없음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_639"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_639_s500_c01",
+        "LAW_CIVIL_본칙_639_s1000_c01"
+      ],
+      "source_location": "민법 제630조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_639",
+          "quote": "전차인은 전대인에 대한 차임의 지급으로써 임대인에게 대항하지 못한다"
+        }
+      ],
+      "application_conditions": [
+        "임대인의 동의를 얻은 적법한 전대",
+        "전대인에게 한 지급의 대항 여부만 묻고 다른 의무 범위는 묻지 않음"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "적법 전대에서 차임 지급의 대항 제한",
+      "eval_category": "direct",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_639",
+          "quote": "전차인은 전대인에 대한 차임의 지급으로써 임대인에게 대항하지 못한다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_639_s500_c01",
+            "LAW_CIVIL_본칙_639_s1000_c01"
+          ]
+        }
+      ],
+      "condition_evidence": [
+        {
+          "row_id": "LAW_CIVIL_본칙_639",
+          "quote": "제630조(전대의 효과) ①임차인이 임대인의 동의를 얻어 임차물을 전대한 때에는 전차인은 직접 임대인에 대하여 의무를 부담한다. 이 경우에 전차인은 전대인에 대한 차임의 지급으로써 임대인에게 대항하지 못한다.",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_639_s500_c01",
+            "LAW_CIVIL_본칙_639_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-10",
+      "split": "test",
+      "question_type": "direct",
+      "expected_status": "answered",
+      "question": "임대인 동의로 적법하게 전대한 뒤 원래 임대인과 임차인이 합의로 계약을 끝내면 전차인의 권리도 없어지나요?",
+      "key_facts": [
+        "임대인과 임차인의 합의 종료만으로 전차인의 권리는 소멸하지 않음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_640"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_640_s500_c01",
+        "LAW_CIVIL_본칙_640_s1000_c01"
+      ],
+      "source_location": "민법 제631조",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_640",
+          "quote": "임대인과 임차인의 합의로 계약을 종료한 때에도 전차인의 권리는 소멸하지 아니한다"
+        }
+      ],
+      "application_conditions": [
+        "임대인 동의에 따른 적법한 전대 및 원임대차의 합의 종료",
+        "해지 통고로 종료되는 제638조 상황과 구분함"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "원임대차 합의 종료와 전차인의 권리",
+      "eval_category": "direct",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_640",
+          "quote": "임대인과 임차인의 합의로 계약을 종료한 때에도 전차인의 권리는 소멸하지 아니한다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_640_s500_c01",
+            "LAW_CIVIL_본칙_640_s1000_c01"
+          ]
+        }
+      ],
+      "condition_evidence": [
+        {
+          "row_id": "LAW_CIVIL_본칙_640",
+          "quote": "제631조(전차인의 권리의 확정) 임차인이 임대인의 동의를 얻어 임차물을 전대한 경우에는 임대인과 임차인의 합의로 계약을 종료한 때에도 전차인의 권리는 소멸하지 아니한다.",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_640_s500_c01",
+            "LAW_CIVIL_본칙_640_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-11",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "임차주택에 수리가 필요하다는 걸 알게 되면 임대인에게 언제 알려야 하나요? 임대인이 이미 알고 있어도 알려야 하나요?",
+      "key_facts": [
+        "임차인은 지체 없이 임대인에게 통지해야 함",
+        "임대인이 이미 알고 있으면 통지 의무의 예외임"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_643"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_643_s500_c01",
+        "LAW_CIVIL_본칙_643_s1000_c01"
+      ],
+      "source_location": "민법 제634조",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_643",
+          "quote": "임차물의 수리를 요하거나 임차물에 대하여 권리를 주장하는 자가 있는 때에는 임차인은 지체없이 임대인에게 이를 통지하여야 한다"
+        },
+        {
+          "row_id": "LAW_CIVIL_본칙_643",
+          "quote": "임대인이 이미 이를 안 때에는 그러하지 아니하다"
+        }
+      ],
+      "application_conditions": [
+        "수리가 필요한 임차물에 대한 임차인의 통지 시기·예외",
+        "임대인의 수리 의무나 필요비 상환과 구분함"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "수리 필요에 대한 임차인의 통지 의무",
+      "eval_category": "paraphrase",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_643",
+          "quote": "임차물의 수리를 요하거나 임차물에 대하여 권리를 주장하는 자가 있는 때에는 임차인은 지체없이 임대인에게 이를 통지하여야 한다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_643_s500_c01",
+            "LAW_CIVIL_본칙_643_s1000_c01"
+          ]
+        },
+        {
+          "fact_index": 2,
+          "row_id": "LAW_CIVIL_본칙_643",
+          "quote": "임대인이 이미 이를 안 때에는 그러하지 아니하다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_643_s500_c01",
+            "LAW_CIVIL_본칙_643_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-12",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "임차인이 파산선고를 받아 민법상 해지통고로 임대차가 끝나는 경우, 당사자는 그 해지 때문에 생긴 손해를 상대방에게 배상하라고 할 수 있나요?",
+      "key_facts": [
+        "각 당사자는 상대방에게 해당 계약 해지로 생긴 손해배상을 청구하지 못함"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_646"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_646_s500_c01",
+        "LAW_CIVIL_본칙_646_s1000_c01"
+      ],
+      "source_location": "민법 제637조 제1항·제2항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_646",
+          "quote": "각 당사자는 상대방에 대하여 계약해지로 인하여 생긴 손해의 배상을 청구하지 못한다"
+        }
+      ],
+      "application_conditions": [
+        "임차인 파산선고 후 제637조 제1항에 따른 해지통고 상황",
+        "다른 계약위반에 따른 손해배상 일반론으로 확대하지 않음"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "임차인 파산 해지에 따른 배상 청구 제한",
+      "eval_category": "paraphrase",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_646",
+          "quote": "각 당사자는 상대방에 대하여 계약해지로 인하여 생긴 손해의 배상을 청구하지 못한다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_646_s500_c01",
+            "LAW_CIVIL_본칙_646_s1000_c01"
+          ]
+        }
+      ],
+      "condition_evidence": [
+        {
+          "row_id": "LAW_CIVIL_본칙_646",
+          "quote": "제637조(임차인의 파산과 해지통고) ①임차인이 파산선고를 받은 경우에는 임대차기간의 약정이 있는 때에도 임대인 또는 파산관재인은 제635조의 규정에 의하여 계약해지의 통고를 할 수 있다.",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_646_s500_c01",
+            "LAW_CIVIL_본칙_646_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-13",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "적법하게 전대한 임대차가 해지통고로 종료됐어요. 임대인이 전차인에게 종료 사유를 알리지 않고 해지를 주장할 수 있나요?",
+      "key_facts": [
+        "전차인에게 해지 사유를 통지하지 않으면 해지로 전차인에게 대항할 수 없음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_647"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_647_s500_c01",
+        "LAW_CIVIL_본칙_647_s1000_c01"
+      ],
+      "source_location": "민법 제638조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_647",
+          "quote": "임대인은 전차인에 대하여 그 사유를 통지하지 아니하면 해지로써 전차인에게 대항하지 못한다"
+        }
+      ],
+      "application_conditions": [
+        "적법 전대 및 해지통고에 따른 원임대차 종료",
+        "제631조의 합의 종료와 구분함"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "전차인에 대한 해지 사유 통지",
+      "eval_category": "paraphrase",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_647",
+          "quote": "임대인은 전차인에 대하여 그 사유를 통지하지 아니하면 해지로써 전차인에게 대항하지 못한다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_647_s500_c01",
+            "LAW_CIVIL_본칙_647_s1000_c01"
+          ]
+        }
+      ],
+      "condition_evidence": [
+        {
+          "row_id": "LAW_CIVIL_본칙_647",
+          "quote": "제638조(해지통고의 전차인에 대한 통지) ①임대차계약이 해지의 통고로 인하여 종료된 경우에 그 임대물이 적법하게 전대되었을 때에는 임대인은 전차인에 대하여 그 사유를 통지하지 아니하면 해지로써 전차인에게 대항하지 못한다.",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_647_s500_c01",
+            "LAW_CIVIL_본칙_647_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-14",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "임대인 동의를 받아 주택 사용의 편의를 위한 부속물을 붙였다면, 계약이 끝날 때 임대인에게 사 달라고 청구할 수 있나요?",
+      "key_facts": [
+        "임대차 종료 시 임대인에게 해당 부속물의 매수를 청구할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_655"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_655_s500_c01",
+        "LAW_CIVIL_본칙_655_s1000_c01"
+      ],
+      "source_location": "민법 제646조 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_655",
+          "quote": "건물 기타 공작물의 임차인이 그 사용의 편익을 위하여 임대인의 동의를 얻어 이에 부속한 물건이 있는 때에는 임대차의 종료시에 임대인에 대하여 그 부속물의 매수를 청구할 수 있다"
+        }
+      ],
+      "application_conditions": [
+        "사용 편익을 위한 부속물 및 임대인 동의",
+        "필요비 상환이나 수리비 단가 산정과 구분함"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "동의받아 설치한 부속물의 매수 청구",
+      "eval_category": "paraphrase",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_655",
+          "quote": "건물 기타 공작물의 임차인이 그 사용의 편익을 위하여 임대인의 동의를 얻어 이에 부속한 물건이 있는 때에는 임대차의 종료시에 임대인에 대하여 그 부속물의 매수를 청구할 수 있다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_655_s500_c01",
+            "LAW_CIVIL_본칙_655_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-15",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "임대인이 임대물 보존에 필요한 행위를 하려는 경우 임차인은 그 행위 자체를 거절할 수 있나요?",
+      "key_facts": [
+        "임차인은 임대인의 보존에 필요한 행위를 거절하지 못함"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_633"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_633_s500_c01",
+        "LAW_CIVIL_본칙_633_s1000_c01"
+      ],
+      "source_location": "민법 제624조",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_633",
+          "quote": "임대인이 임대물의 보존에 필요한 행위를 하는 때에는 임차인은 이를 거절하지 못한다"
+        }
+      ],
+      "application_conditions": [
+        "임대물 보존에 필요한 행위 자체에 대한 수인 의무",
+        "그로 인해 임차 목적 달성이 불가능한 경우의 해지 여부는 묻지 않음"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "임대인의 보존행위에 대한 수인 의무",
+      "eval_category": "paraphrase",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_633",
+          "quote": "임대인이 임대물의 보존에 필요한 행위를 하는 때에는 임차인은 이를 거절하지 못한다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_633_s500_c01",
+            "LAW_CIVIL_본칙_633_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-16",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "임대인이 내 의사에 반해 보존행위를 해서 임차한 목적을 달성할 수 없게 됐어요. 이 경우 계약을 해지할 수 있나요?",
+      "key_facts": [
+        "임차인은 해당 조건에서 계약을 해지할 수 있음"
+      ],
+      "allowed_doc_ids": [
+        "LAW_CIVIL"
+      ],
+      "allowed_row_ids": [
+        "LAW_CIVIL_본칙_634"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_CIVIL_본칙_634_s500_c01",
+        "LAW_CIVIL_본칙_634_s1000_c01"
+      ],
+      "source_location": "민법 제625조",
+      "source_url": "https://www.law.go.kr/법령/%EB%AF%BC%EB%B2%95",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_CIVIL_본칙_634",
+          "quote": "임차인이 이로 인하여 임차의 목적을 달성할 수 없는 때에는 계약을 해지할 수 있다"
+        }
+      ],
+      "application_conditions": [
+        "임차인 의사에 반하는 임대인 보존행위 및 그로 인한 임차 목적 달성 불가",
+        "일반 수인 의무와 별개의 목적 달성 불가 조건을 전제함"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "의사에 반하는 보존행위로 인한 해지권",
+      "eval_category": "paraphrase",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_CIVIL_본칙_634",
+          "quote": "임차인이 이로 인하여 임차의 목적을 달성할 수 없는 때에는 계약을 해지할 수 있다",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_634_s500_c01",
+            "LAW_CIVIL_본칙_634_s1000_c01"
+          ]
+        }
+      ],
+      "condition_evidence": [
+        {
+          "row_id": "LAW_CIVIL_본칙_634",
+          "quote": "제625조(임차인의 의사에 반하는 보존행위와 해지권) 임대인이 임차인의 의사에 반하여 보존행위를 하는 경우에 임차인이 이로 인하여 임차의 목적을 달성할 수 없는 때에는 계약을 해지할 수 있다.",
+          "chunk_ids": [
+            "LAW_CIVIL_본칙_634_s500_c01",
+            "LAW_CIVIL_본칙_634_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-17",
+      "split": "test",
+      "question_type": "paraphrase",
+      "expected_status": "answered",
+      "question": "이미 신고한 주택 임대차 계약의 임대료가 바뀌거나 계약이 해제되면 언제까지 변경·해제 신고를 해야 하나요?",
+      "key_facts": [
+        "변경 또는 해제가 확정된 날부터 30일 이내에 신고해야 함"
+      ],
+      "allowed_doc_ids": [
+        "LAW_REPORT"
+      ],
+      "allowed_row_ids": [
+        "LAW_REPORT_본칙_009"
+      ],
+      "allowed_chunk_ids": [
+        "LAW_REPORT_본칙_009_s500_c01",
+        "LAW_REPORT_본칙_009_s1000_c01"
+      ],
+      "source_location": "부동산 거래신고 등에 관한 법률 제6조의3 제1항",
+      "source_url": "https://www.law.go.kr/법령/%EB%B6%80%EB%8F%99%EC%82%B0%20%EA%B1%B0%EB%9E%98%EC%8B%A0%EA%B3%A0%20%EB%93%B1%EC%97%90%20%EA%B4%80%ED%95%9C%20%EB%B2%95%EB%A5%A0",
+      "evidence_quotes": [
+        {
+          "row_id": "LAW_REPORT_본칙_009",
+          "quote": "변경 또는 해제가 확정된 날부터 30일 이내에 해당 신고관청에 공동으로 신고하여야 한다"
+        }
+      ],
+      "application_conditions": [
+        "제6조의2에 따라 신고한 계약의 임대차 가격 변경 또는 해제",
+        "신규 신고 대상 금액 기준이나 금액 불변 갱신 제외를 묻지 않음"
+      ],
+      "absence_reason": "",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "신고 후 계약 변경·해제의 신고 기한",
+      "eval_category": "paraphrase",
+      "note": "신규 법령 TEST·로컬 사전검증만 수행",
+      "fact_evidence": [
+        {
+          "fact_index": 1,
+          "row_id": "LAW_REPORT_본칙_009",
+          "quote": "변경 또는 해제가 확정된 날부터 30일 이내에 해당 신고관청에 공동으로 신고하여야 한다",
+          "chunk_ids": [
+            "LAW_REPORT_본칙_009_s500_c01",
+            "LAW_REPORT_본칙_009_s1000_c01"
+          ]
+        }
+      ],
+      "condition_evidence": [
+        {
+          "row_id": "LAW_REPORT_본칙_009",
+          "quote": "제6조의3(주택 임대차 계약의 변경 및 해제 신고) ① 임대차계약당사자는 제6조의2에 따라 신고한 후 해당 주택 임대차 계약의 보증금, 차임 등 임대차 가격이 변경되거나 임대차 계약이 해제된 때에는 변경 또는 해제가 확정된 날부터 30일 이내에 해당 신고관청에 공동으로 신고하여야 한다. 다만, 임대차계약당사자 중 일방이 국가등인 경우에는 국가등이 신고하여야 한다.",
+          "chunk_ids": [
+            "LAW_REPORT_본칙_009_s500_c01",
+            "LAW_REPORT_본칙_009_s1000_c01"
+          ]
+        }
+      ]
+    },
+    {
+      "question_id": "JH-TEST-18",
+      "split": "test",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "주택임대차보호법 자료에 따르면 제 보증금 반환 소송의 승소 확률은 정확히 몇 퍼센트인가요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "application_conditions": [
+        "수집 범위에서 질문의 법정 수치 또는 개별 확정 결과를 뒷받침하지 못함"
+      ],
+      "absence_reason": "수집 법령은 개별 소송의 승소 확률을 수치로 제시하지 않으며 해당 사건의 사실·증거도 없음. 법령 조문이나 상담사례에서 일반적인 승소 확률을 생성하지 않음.",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "개별 보증금 소송의 법정 승소 확률 부재",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-TEST-19",
+      "split": "test",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "임대차가 해지됐는데 계약서와 손해내역 자료는 없습니다. 민법에 따라 이번 사건의 확정 손해배상액은 정확히 얼마인가요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "application_conditions": [
+        "수집 범위에서 질문의 법정 수치 또는 개별 확정 결과를 뒷받침하지 못함"
+      ],
+      "absence_reason": "계약서·손해 내역·원인·입증 자료가 없어 개별 사건의 확정 배상액을 수집 법령만으로 계산할 수 없음. 보편적인 법정 단가를 묻는 DEV와 달리 개별 사건의 사실 자료 부족임.",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "개별 임대차 해지 사건의 확정 배상액 산정 자료 부족",
+      "eval_category": "no_evidence"
+    },
+    {
+      "question_id": "JH-TEST-20",
+      "split": "test",
+      "question_type": "unanswerable",
+      "expected_status": "insufficient_evidence",
+      "question": "주택임대차보호법 자료만 보면 임차권등기명령 신청 후 법원이 반드시 며칠 안에 결정해야 하나요?",
+      "key_facts": [],
+      "allowed_doc_ids": [],
+      "allowed_row_ids": [],
+      "allowed_chunk_ids": [],
+      "source_location": "",
+      "evidence_quotes": [],
+      "application_conditions": [
+        "수집 범위에서 질문의 법정 수치 또는 개별 확정 결과를 뒷받침하지 못함"
+      ],
+      "absence_reason": "수집 제3조의3은 신청·절차 준용 등을 규정하지만 법원이 반드시 결정해야 하는 일수를 직접 정하지 않음. 준용된 절차 법령의 전체 본문은 수집하지 않았고 안내서의 통상 소요기간은 법정 강제 결정기한을 뒷받침하지 못함.",
+      "axis": "임대차 관련 법령",
+      "stage": "법령 확인",
+      "issue": "임차권등기명령의 법정 강제 결정 일수 근거 부족",
+      "eval_category": "no_evidence"
+    }
+  ],
+  "benchmark": "law-qa-v1",
+  "replaces_dev_eval_sha": "ce06a5d5ac03",
+  "dev_external_api_scope": "pending_user_confirmation",
+  "replaces_eval_sha": "c3d4c4ead6cb",
+  "external_api_scope": "pending_user_confirmation",
+  "execution_order": [
+    "DEV 동일 인덱스 A/B",
+    "DEV 동일 조건 C",
+    "설정·프롬프트·평가 버전 고정",
+    "TEST 20문항 최종 검증"
+  ],
+  "evaluation_state": "local_precheck_only",
+  "index_plan": {
+    "collection": "jh_1000",
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "embedding_model": "text-embedding-3-small",
+    "rebuild_performed": false,
+    "test_release": "DEV A/B 후 동일 조건 C 비교 및 설정 고정 뒤 최종 TEST 실행"
+  }
+}
