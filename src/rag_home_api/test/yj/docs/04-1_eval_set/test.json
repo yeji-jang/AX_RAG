@@ -14,7 +14,8 @@
       "SH_309337"
     ],
     "allowed_chunk_ids": [
-      "SH_309337_p006_ckV1_c01"
+      "SH_309337_p006_ckV1_c01",
+      "SH_309337_p006_ckV2_c01"
     ],
     "source_location": "SH_309337 p.6",
     "unanswerable_reason": null
@@ -33,7 +34,9 @@
       "SH_306722"
     ],
     "allowed_chunk_ids": [
-      "SH_306722_p008_ckV1_c01"
+      "SH_306722_p008_ckV1_c01",
+      "SH_306722_p008_ckV2_c01",
+      "SH_306722_p008_ckV2_c02"
     ],
     "source_location": "SH_306722 p.8",
     "unanswerable_reason": null
@@ -55,7 +58,10 @@
     "allowed_chunk_ids": [
       "SH_310107_p001_ckV1_c00",
       "SH_310107_p003_ckV1_c00",
-      "SH_310107_p004_ckV1_c00"
+      "SH_310107_p004_ckV1_c00",
+      "SH_310107_p001_ckV2_c00",
+      "SH_310107_p003_ckV2_c00",
+      "SH_310107_p004_ckV2_c00"
     ],
     "source_location": "SH_310107 p.1, p.3, p.4",
     "unanswerable_reason": null
@@ -74,7 +80,8 @@
       "LH_2015122300020024"
     ],
     "allowed_chunk_ids": [
-      "LH_2015122300020024_p001_ckV1_c01"
+      "LH_2015122300020024_p001_ckV1_c01",
+      "LH_2015122300020024_p001_ckV2_c01"
     ],
     "source_location": "LH_2015122300020024 p.1",
     "unanswerable_reason": null
@@ -94,7 +101,8 @@
       "SH_310653"
     ],
     "allowed_chunk_ids": [
-      "SH_310653_p023_ckV1_c00"
+      "SH_310653_p023_ckV1_c00",
+      "SH_310653_p023_ckV2_c00"
     ],
     "source_location": "SH_310653 p.23",
     "unanswerable_reason": null
@@ -115,7 +123,9 @@
     ],
     "allowed_chunk_ids": [
       "SH_308340_p013_ckV1_c04",
-      "SH_308340_p013_ckV1_c05"
+      "SH_308340_p013_ckV1_c05",
+      "SH_308340_p013_ckV2_c06",
+      "SH_308340_p013_ckV2_c07"
     ],
     "source_location": "SH_308340 p.13",
     "unanswerable_reason": null
@@ -136,7 +146,8 @@
     ],
     "allowed_chunk_ids": [
       "LH_2015122300020326_p002_ckV1_c04",
-      "LH_2015122300020326_p002_ckV1_c05"
+      "LH_2015122300020326_p002_ckV1_c05",
+      "LH_2015122300020326_p002_ckV2_c05"
     ],
     "source_location": "LH_2015122300020326 p.2",
     "unanswerable_reason": null
@@ -155,7 +166,8 @@
       "SH_308123"
     ],
     "allowed_chunk_ids": [
-      "SH_308123_p002_ckV1_c00"
+      "SH_308123_p002_ckV1_c00",
+      "SH_308123_p002_ckV2_c00"
     ],
     "source_location": "SH_308123 p.2",
     "unanswerable_reason": null
@@ -175,7 +187,8 @@
       "SH_305240"
     ],
     "allowed_chunk_ids": [
-      "SH_305240_p007_ckV1_c01"
+      "SH_305240_p007_ckV1_c01",
+      "SH_305240_p007_ckV2_c00"
     ],
     "source_location": "SH_305240 p.7",
     "unanswerable_reason": null
@@ -195,7 +208,8 @@
       "LH_2015122300020211"
     ],
     "allowed_chunk_ids": [
-      "LH_2015122300020211_p013_ckV1_c00"
+      "LH_2015122300020211_p013_ckV1_c00",
+      "LH_2015122300020211_p013_ckV2_c00"
     ],
     "source_location": "LH_2015122300020211 p.13",
     "unanswerable_reason": null
@@ -214,7 +228,8 @@
       "SH_310650"
     ],
     "allowed_chunk_ids": [
-      "SH_310650_p030_ckV1_c01"
+      "SH_310650_p030_ckV1_c01",
+      "SH_310650_p030_ckV2_c01"
     ],
     "source_location": "SH_310650 p.30",
     "unanswerable_reason": null
@@ -233,7 +248,8 @@
       "SH_310673"
     ],
     "allowed_chunk_ids": [
-      "SH_310673_p027_ckV1_c01"
+      "SH_310673_p027_ckV1_c01",
+      "SH_310673_p027_ckV2_c01"
     ],
     "source_location": "SH_310673 p.27",
     "unanswerable_reason": null
@@ -252,7 +268,8 @@
       "SH_298109"
     ],
     "allowed_chunk_ids": [
-      "SH_298109_p032_ckV1_c00"
+      "SH_298109_p032_ckV1_c00",
+      "SH_298109_p032_ckV2_c00"
     ],
     "source_location": "SH_298109 p.32",
     "unanswerable_reason": null
@@ -272,7 +289,8 @@
       "LH_2015122300019968"
     ],
     "allowed_chunk_ids": [
-      "LH_2015122300019968_p016_ckV1_c02"
+      "LH_2015122300019968_p016_ckV1_c02",
+      "LH_2015122300019968_p016_ckV2_c04"
     ],
     "source_location": "LH_2015122300019968 p.16",
     "unanswerable_reason": null
@@ -291,7 +309,8 @@
       "SH_299479"
     ],
     "allowed_chunk_ids": [
-      "SH_299479_p025_ckV1_c00"
+      "SH_299479_p025_ckV1_c00",
+      "SH_299479_p025_ckV2_c00"
     ],
     "source_location": "SH_299479 p.25",
     "unanswerable_reason": null
@@ -311,7 +330,8 @@
       "LH_2015122300020807"
     ],
     "allowed_chunk_ids": [
-      "LH_2015122300020807_p016_ckV1_c01"
+      "LH_2015122300020807_p016_ckV1_c01",
+      "LH_2015122300020807_p016_ckV2_c01"
     ],
     "source_location": "LH_2015122300020807 p.16",
     "unanswerable_reason": null
@@ -331,7 +351,8 @@
       "SH_301759"
     ],
     "allowed_chunk_ids": [
-      "SH_301759_p033_ckV1_c00"
+      "SH_301759_p033_ckV1_c00",
+      "SH_301759_p033_ckV2_c00"
     ],
     "source_location": "SH_301759 p.33",
     "unanswerable_reason": null
