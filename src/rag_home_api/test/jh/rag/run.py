@@ -7,8 +7,10 @@ from collections import Counter
 from types import SimpleNamespace
 from urllib.parse import urlsplit
 
-from common import (CHUNKING, MODELS, RESULTS, corpus_fingerprint, eval_sha, load_chunks,
-                    load_eval, require_external_scope, runtime_config)
+from common import (API_BASE, CHUNKING, MODELS, RESULTS, database_connection, eval_sha,
+                    law_chunks, load_chunks, load_eval, local_manifest, require_external_scope,
+                    runtime_config)
+from law_index import StoredDocumentEmbeddings, read_index
 from query_rewrite import build_query_chain, rewrite_query
 from score import retrieval_metrics, summarize
 
@@ -122,44 +124,60 @@ def generate_answer(api, model, data, canonical):
     return value
 
 
-def live_components(args):
-    # 이 검사보다 먼저 키/DB/외부 클라이언트를 만들지 않는다. 현재 평가/색인은 승인되어 있지 않다.
-    approved_fingerprint = require_external_scope(args.collection)
-    from retrieve import Retriever, apply_preset
-    apply_preset(args.preset)
-    corpus = [d for d in load_chunks(args.collection) if d.metadata["category"] == "일반 전월세 법령"]
-    if corpus_fingerprint(corpus) != approved_fingerprint:
-        raise PermissionError("승인된 색인 원문과 일치하지 않습니다.")
-    config = runtime_config()
-    ret = Retriever(args.collection, law_only=True)
-    def search(mode, query):
-        return ret.retriever(mode).invoke(query)
-    ranker = None
-    if "C" in args.modes:
-        import os
-        os.environ["HF_HUB_OFFLINE"] = "1"
+def build_reranker():
+    import os
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    try:
         from langchain_community.cross_encoders import HuggingFaceCrossEncoder
         from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
         encoder = HuggingFaceCrossEncoder(model_name=RERANK_MODEL, model_kwargs={"device": "cpu"})
-        ranker = CrossEncoderReranker(model=encoder, top_n=5)
+        return CrossEncoderReranker(model=encoder, top_n=5)
+    except Exception as exc:
+        raise ValueError(f"[RerankerUnavailable] sentence-transformers/CPU torch와 ko-reranker 로컬 캐시가 필요합니다 ({type(exc).__name__}).") from None
+
+
+def live_components(args):
+    # 승인 범위 → 팀 설정 → 실제 DB 색인 지문 → 모델 클라이언트 순서. 자동 승인은 없다.
+    approved = require_external_scope(args.collection, split=args.split, modes=args.modes,
+        preset=args.preset, rewrite=args.rewrite, generate=args.generate)
+    from retrieve import Retriever, apply_preset
+    apply_preset(args.preset)
+    config = runtime_config()
+    if (config["embedding"] != approved["embedding_model"] or
+            config["generation"] != approved["generation_model"]):
+        raise PermissionError("[RuntimeModelMismatch] 팀 모델 설정이 승인한 모델과 다릅니다.")
+    snapshot = read_index(config["connection"], args.collection, law_chunks(args.collection))
+    if snapshot["index_sha256"] != approved["index_sha256"]:
+        raise PermissionError("[IndexApprovalMismatch] 실제 DB 색인 지문이 승인값과 다릅니다.")
+    ranker = build_reranker() if "C" in args.modes else None
+    from langchain_openai import OpenAIEmbeddings
+    query_embeddings = OpenAIEmbeddings(model=config["embedding"], api_key=config["api_key"],
+        base_url=API_BASE, max_retries=0, request_timeout=55, check_embedding_ctx_length=False)
+    embeddings = StoredDocumentEmbeddings(query_embeddings, snapshot["vectors_by_text"])
+    ret = Retriever(args.collection, law_only=True, embeddings=embeddings, connection=config["connection"])
+    def search(mode, query):
+        return ret.retriever(mode).invoke(query)
     chain = generator = None
     if args.rewrite:
         from langchain.chat_models import init_chat_model
         model = init_chat_model(model=config["generation"], model_provider="openai",
-            api_key=config["api_key"], base_url="https://api.openai.com/v1",
+            api_key=config["api_key"], base_url=API_BASE,
             reasoning_effort="low", max_retries=0, timeout=55, max_completion_tokens=400)
         chain = build_query_chain(model, REWRITE_PROMPT)
     if args.generate:
         from openai import OpenAI
         from langchain_core.runnables import RunnableLambda
-        api = OpenAI(api_key=config["api_key"], base_url="https://api.openai.com/v1", max_retries=0, timeout=55)
+        api = OpenAI(api_key=config["api_key"], base_url=API_BASE, max_retries=0, timeout=55)
         generator = RunnableLambda(lambda data: generate_answer(api, config["generation"], data, ret.by_id))
     return search, ranker, chain, generator, ret.verify_documents
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--split", required=True, choices=["dev", "test", "all"])
+    parser.add_argument("--split", choices=["dev", "test", "all"])
+    inspect = parser.add_mutually_exclusive_group()
+    inspect.add_argument("--inspect-local", action="store_true", help="키/DB/API 없이 현재 평가·법령 원문 지문 출력(승인 등록 안 함)")
+    inspect.add_argument("--check-index", action="store_true", help="DB 읽기만으로 기존 법령 청크·벡터 지문 검사(API/적재/승인 등록 안 함)")
     parser.add_argument("--modes", nargs="+", choices=["A", "B", "C"], default=["A", "B"])
     parser.add_argument("--collection", choices=list(CHUNKING), default="jh_1000")
     parser.add_argument("--preset", choices=["r0", "dedupe", "route", "tok"], default="tok")
@@ -168,6 +186,21 @@ def main(argv=None):
     parser.add_argument("--execute", action="store_true", help="실제 외부 실행 요청; 평가/색인 승인 없으면 차단")
     parser.add_argument("--tag", help="선택: 새 results/<tag>.jsonl. 기존 파일은 덮지 않음")
     args = parser.parse_args(argv)
+    if args.inspect_local or args.check_index:
+        if args.execute or args.generate or args.rewrite or args.tag:
+            parser.error("색인 사전 점검은 실행/생성/리라이트/결과 저장 옵션과 함께 쓰지 않습니다.")
+        try:
+            result = local_manifest(args.collection)
+            if args.check_index:
+                snapshot = read_index(database_connection(), args.collection, law_chunks(args.collection))
+                result.update({k: v for k, v in snapshot.items() if k != "vectors_by_text"})
+                result["embedding_provenance"] = "차원만으로 임베딩 모델을 증명할 수 없음. 팀장이 적재 기록을 확인해야 함."
+            print(json.dumps({"approved": False, **result}, ensure_ascii=False))
+        except (PermissionError, ValueError) as exc:
+            parser.exit(2, f"사전 점검 실패: {exc}\n")
+        return 0
+    if args.split is None:
+        parser.error("실행/오프라인 예제에는 --split이 필요합니다.")
     if len(set(args.modes)) != len(args.modes):
         parser.error("중복 modes는 허용하지 않습니다.")
     if args.rewrite and "C" not in args.modes:
@@ -181,6 +214,8 @@ def main(argv=None):
             args.collection, rewrite=args.rewrite, generate=args.generate)
     except (PermissionError, ValueError) as exc:
         parser.exit(2, f"실행 차단: {exc}\n")
+    except Exception as exc:
+        parser.exit(2, f"실행 준비 실패: [RuntimeSetupFailed] 팀 DB/모델 환경을 확인하세요 ({type(exc).__name__}).\n")
     splits = ["dev", "test"] if args.split == "all" else [args.split]
     questions = [q for split in splits for q in load_eval(split)["items"]]
     search, ranker, chain, generator, verify = components

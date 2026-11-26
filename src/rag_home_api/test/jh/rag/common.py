@@ -6,6 +6,8 @@
 
 import hashlib
 import json
+import os
+import re
 from pathlib import Path
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -15,10 +17,8 @@ ROOT = JH.parents[3]
 DOCS = ROOT / "src" / "rag_home_api" / "shared" / "docs"
 EVAL = JH / "평가셋"
 EVAL_FILES = ["법령파트_평가셋.json", "후보풀_공공임대.json"]
-# 신규 DEV·TEST의 외부 전송 범위를 확인한 뒤 해당 해시만 추가함.
-API_APPROVED_EVALS = frozenset({"ce06a5d5ac03"})
-# (평가 바이트 해시, 컬렉션) -> 승인된 법령 청크 ID/본문 지문. 자동 등록하지 않는다.
-APPROVED_INDEXES = {}
+APPROVAL_FILE = JH / "execution.local.json"  # 팀장이 검토하여 작성, Git 제외. 자동 생성하지 않음.
+API_BASE = "https://api.openai.com/v1"
 RESULTS = JH / "results"
 CACHE = JH / "out"  # 깃 제외(.gitignore) — BM25 토큰 캐시
 
@@ -37,18 +37,36 @@ def runtime_config() -> dict:
     """외부 실행 승인 뒤에만 호출. 정적 검증/도움말은 .env/키/DB를 읽지 않는다."""
     import os
     from dotenv import load_dotenv
-    from rag_home_api.config import settings
     load_dotenv(ROOT / ".env")
     connection = os.environ.get("DATABASE_URL")
     if not connection:
-        raise ValueError("DATABASE_URL 설정이 필요합니다.")
-    return {"connection": connection, "api_key": settings.openai_api_key,
-            "embedding": settings.embedding_model, "generation": settings.llm_model}
+        raise ValueError("[RuntimeConfigMissing] DATABASE_URL 설정이 필요합니다.")
+    key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not key:
+        raise ValueError("[RuntimeConfigMissing] OPENAI_API_KEY 설정이 필요합니다.")
+    return {"connection": connection.replace("postgresql://", "postgresql+psycopg://", 1), "api_key": key,
+            "embedding": os.environ.get("EMBEDDING_MODEL", MODELS["embedding"]),
+            "generation": os.environ.get("LLM_MODEL", MODELS["generation"])}
+
+
+def database_connection() -> str:
+    """색인 사전 점검은 DB 주소만 필요하며 API 키/모델 클라이언트를 읽지 않는다."""
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+    value = os.environ.get("DATABASE_URL", "").strip()
+    if not value:
+        raise ValueError("[RuntimeConfigMissing] DATABASE_URL 설정이 필요합니다.")
+    return value
 
 
 def corpus_fingerprint(documents) -> str:
-    rows = sorted((d.metadata["chunk_id"], d.page_content) for d in documents)
-    return hashlib.sha256(json.dumps(rows, ensure_ascii=False).encode()).hexdigest()
+    rows = sorted((d.metadata["chunk_id"], d.page_content, d.metadata) for d in documents)
+    return hashlib.sha256(json.dumps(rows, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+
+def law_chunks(collection: str) -> list[Document]:
+    return [d for d in load_chunks(collection) if d.metadata["category"] == "일반 전월세 법령"
+            and d.metadata["doc_id"].startswith("LAW_")]
 
 
 def load_documents() -> list[Document]:
@@ -92,25 +110,63 @@ def load_eval(split: str) -> dict:
 
 def eval_sha() -> str:
     """평가셋 두 파일 내용의 해시 — 결과 로그에 남겨 어느 평가셋으로 돌렸는지 추적."""
+    return eval_digest()[:12]
+
+
+def eval_digest() -> str:
     h = hashlib.sha256()
     for name in EVAL_FILES:
         h.update((EVAL / name).read_bytes())
-    return h.hexdigest()[:12]
+    return h.hexdigest()
 
 
-def require_eval_api_scope(expected_eval_sha: str | None = None) -> None:
-    """새 평가셋의 미승인 전송과 이전 실험의 평가 기준 혼용을 막음."""
-    current = eval_sha()
-    if expected_eval_sha is not None and current != expected_eval_sha:
-        raise ValueError("이전 평가셋 전용 실험입니다. 현재 평가셋으로 재실행하거나 해석하지 마세요.")
-    if current not in API_APPROVED_EVALS:
-        raise PermissionError("신규 DEV·TEST 질문의 외부 API 전송 범위 확인이 필요합니다.")
+def local_manifest(collection: str) -> dict:
+    docs = law_chunks(collection)
+    return {"eval_sha": eval_sha(), "eval_sha256": eval_digest(), "collection": collection,
+            "chunking": CHUNKING[collection], "law_chunks": len(docs),
+            "corpus_sha256": corpus_fingerprint(docs), "embedding_model": MODELS["embedding"],
+            "generation_model": MODELS["generation"], "api_base": API_BASE}
 
 
-def require_external_scope(collection: str) -> str:
-    """명시 실행 옵션 외에도 현재 평가와 색인의 별도 승인이 있어야 한다."""
-    require_eval_api_scope()
-    approved = APPROVED_INDEXES.get((eval_sha(), collection))
-    if not approved:
-        raise PermissionError("현재 평가셋·색인의 명시적 실행 승인이 필요합니다.")
+def require_external_scope(collection: str, *, split: str, modes: list[str], preset: str,
+                           rewrite: bool, generate: bool) -> dict:
+    """팀장이 지정한 로컬 승인 범위를 키/DB 초기화 전에 검사한다."""
+    try:
+        approved = json.loads(APPROVAL_FILE.read_text(encoding="utf-8-sig"))
+    except FileNotFoundError:
+        raise PermissionError("[ApprovalRequired] 팀장이 승인한 execution.local.json 설정이 필요합니다.") from None
+    except (OSError, ValueError):
+        raise ValueError("[ApprovalConfigInvalid] execution.local.json을 읽을 수 없습니다.") from None
+    if not isinstance(approved, dict) or type(approved.get("version")) is not int or approved["version"] != 1:
+        raise ValueError("[ApprovalConfigInvalid] version=1인 JSON 객체가 필요합니다.")
+    if approved.get("approved") is not True:
+        raise PermissionError("[ApprovalNotGranted] 팀장의 명시적 승인이 필요합니다.")
+    required = {"eval_sha", "eval_sha256", "collection", "corpus_sha256", "index_sha256",
+                "embedding_model", "generation_model", "api_base", "splits", "modes",
+                "preset", "rewrite", "generate"}
+    if not required.issubset(approved):
+        raise ValueError("[ApprovalConfigInvalid] 로컬 승인 설정에 필수 필드가 누락됐습니다.")
+    manifest = local_manifest(collection)
+    for field in ("eval_sha", "eval_sha256", "collection", "corpus_sha256",
+                  "embedding_model", "generation_model", "api_base"):
+        if approved.get(field) != manifest[field]:
+            raise PermissionError(f"[ApprovalMismatch] {field} 승인값이 현재 자료/설정과 다릅니다.")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(approved.get("index_sha256", ""))):
+        raise ValueError("[ApprovalConfigInvalid] index_sha256 승인 지문이 필요합니다.")
+    splits = ["dev", "test"] if split == "all" else [split]
+    for field, values, valid in (("splits", splits, {"dev", "test"}),
+                                 ("modes", modes, {"A", "B", "C"})):
+        allowed = approved.get(field)
+        if (not isinstance(allowed, list) or not allowed or
+                any(not isinstance(v, str) or v not in valid for v in allowed)):
+            raise ValueError(f"[ApprovalConfigInvalid] {field} 승인 범위가 필요합니다.")
+        if not set(values).issubset(allowed):
+            raise PermissionError(f"[ApprovalScopeMismatch] {field} 요청이 승인 범위를 벗어났습니다.")
+    if approved.get("preset") != preset:
+        raise PermissionError("[ApprovalScopeMismatch] preset 요청이 승인 범위를 벗어났습니다.")
+    for field, requested in (("rewrite", rewrite), ("generate", generate)):
+        if type(approved.get(field)) is not bool:
+            raise ValueError(f"[ApprovalConfigInvalid] {field}는 true/false여야 합니다.")
+        if requested and not approved[field]:
+            raise PermissionError(f"[ApprovalScopeMismatch] {field} 실행은 승인되지 않았습니다.")
     return approved
