@@ -5,13 +5,11 @@ import hashlib
 import importlib.metadata
 import json
 import os
-import re
 import time
 from urllib.parse import urlsplit
 
 import httpx
 from langchain.chat_models import init_chat_model
-from langchain_core.prompts import PromptTemplate
 from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
 
@@ -19,6 +17,7 @@ import retrieve
 from common import DOCS, FILES, RESULTS, eval_sha, load_chunks, load_eval, require_dev_api_scope
 from rag_home_api.config import settings
 from run_c import COLLECTION, MODEL, CrossEncoderReranker, HuggingFaceCrossEncoder, evidence_rank
+from query_rewrite import build_query_chain, rewrite_query
 
 REWRITE_PROMPT = """사용자의 질문을 검색 시스템이 문서를 탐색하기 유리하도록 핵심 명사 중심의 명확한 문장으로 다시 작성하세요.
 질문의 고유명사, 날짜, 수치, 기간, 가구·자격·부정·예외·행동 조건과 묻는 내용을 그대로 보존하세요.
@@ -46,23 +45,15 @@ def prepare(questions, run_id, client):
         api_key=settings.openai_api_key, base_url="https://api.openai.com/v1",
         http_client=client, max_retries=1, timeout=55, max_completion_tokens=400,
     )
-    chain = PromptTemplate.from_template(REWRITE_PROMPT) | model
+    chain = build_query_chain(model, REWRITE_PROMPT)
     for question in questions:
         original = question["question"]
-        started = time.perf_counter()
-        fallback = None
-        try:
-            query = chain.invoke({"question": original}).content.strip()
-            protected = re.findall(r"\d+(?:[.,]\d+)*|[A-Za-z]+\d*", original)
-            if not query or any(value not in query for value in protected):
-                raise ValueError("EmptyOrMissingProtectedLiteral")
-        except Exception as exc:
-            query = original
-            fallback = type(exc).__name__
+        plan = rewrite_query(original, chain)
         row = {
             "record_type": "rewrite_plan", "run_id": run_id, "eval_sha": eval_sha(),
-            "question_id": question["question_id"], "question": original, "query_used": query,
-            "rewrite_sec": round(time.perf_counter() - started, 3), "fallback": fallback,
+            "question_id": question["question_id"], "question": original, "query_used": plan["query"],
+            "rewrite_sec": plan["transform_sec"], "fallback": plan["fallback"],
+            "raw_rewrite": plan["raw_rewrite"], "original_anchor_preserved": plan["original_anchor_preserved"],
         }
         append(row)
         print(json.dumps(row, ensure_ascii=False), flush=True)
