@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 # 1. 입력값으로 넣을 청크문서 경로 설정하고 
 #===================================================================
 PREPROCESS_VERSION = "V2"
-CHUNK_VERSION = "V1"
+CHUNK_VERSION = "V2"
 CHUNK_SIZE = 800
 CHUNK_OVERLAP  = 100
 
