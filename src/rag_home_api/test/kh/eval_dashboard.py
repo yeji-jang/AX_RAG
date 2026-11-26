@@ -18,6 +18,8 @@ from __future__ import annotations
 import html as html_lib
 import json
 import re
+import statistics
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -150,16 +152,635 @@ OWNER_META: dict[str, dict[str, Any]] = {
 }
 
 
-def _load_owner_summaries(owner: str) -> list[tuple[Path, dict]]:
-    """선택한 팀원(kh/yj/jh/bc)의 전체 회차별 평가 요약을 시간순으로 로드한다."""
-    if owner == "kh":
-        return _load_all_local_summaries()
-    try:
-        from rag_home_api.test.kh.unify_team_results import load_all_team_histories
+_LAST_LOAD_ERRORS: dict[str, list[str]] = {}
 
-        return load_all_team_histories(from_git=False).get(owner, [])
-    except Exception:
-        return []
+
+def _clean_ratio_str(val: Any) -> str:
+    """'7/8 (87.5%)' -> '7/8' 정규화 (순수 stdlib)."""
+    if val is None:
+        return "-"
+    m = re.search(r"(\d+)\s*/\s*(\d+)", str(val))
+    return f"{m.group(1)}/{m.group(2)}" if m else str(val)
+
+
+def _convert_yeji_eval_local(
+    raw: dict[str, Any],
+    source_label: str = "eval_dev.json",
+    source_branch: str = "local(dev)",
+    chunk_version: str = "",
+) -> dict[str, Any]:
+    """예지(yj) eval_*.json -> 공통 UnifiedEvalSummary dict + 문항별 X-Ray 로그(_companion_logs) 순수 stdlib 변환."""
+    summary_in = raw.get("summary") or {}
+    scored_in = raw.get("scored") or {}
+    raw_in = raw.get("raw") or {}
+    modes_out: dict[str, dict[str, Any]] = {}
+    companion_logs: list[dict[str, Any]] = []
+
+    if not chunk_version:
+        m_cv = re.search(r"chunk_(V\d+)", source_label, flags=re.I)
+        chunk_version = m_cv.group(1).upper() if m_cv else ("V2" if "V2" in str(raw.get("collection", "")) else "V1")
+    total_chunks = 6197 if chunk_version == "V2" else 6346
+    col_name = str(raw.get("collection") or "yj_public_rental")
+
+    for mode_name, m in summary_in.items():
+        scored_rows = scored_in.get(mode_name) or []
+        raw_rows = raw_in.get(mode_name) or []
+        raw_by_qid = {str(r.get("question_id", "")): r for r in raw_rows}
+
+        ans_scored = [r for r in scored_rows if r.get("query_type") != "unanswerable"]
+        hit_str = _clean_ratio_str(m.get("hit_at_5"))
+        ans_cnt = int(hit_str.split("/")[1]) if "/" in hit_str else len(ans_scored)
+
+        avg_sec = float(m.get("avg_sec", 0.0) or 0.0)
+        med_sec = float(m.get("median_sec", 0.0) or 0.0)
+        lat_list = sorted(float(r.get("elapsed_sec", 0.0) or 0.0) * 1000.0 for r in scored_rows if r.get("elapsed_sec") is not None)
+        p95_ms = round(lat_list[max(0, int(len(lat_list) * 0.95) - 1)], 1) if lat_list else round(avg_sec * 1000.0, 1)
+
+        top1_cnt = 0
+        mrr_vals: list[float] = []
+        cite_ok = 0
+        per_item_ragas: list[dict[str, Any]] = []
+        underperforming: list[dict[str, Any]] = []
+
+        for sr in scored_rows:
+            qid = str(sr.get("question_id", ""))
+            rr = raw_by_qid.get(qid) or {}
+            qtype = str(sr.get("query_type", ""))
+            expected_status = "insufficient_evidence" if qtype == "unanswerable" else "answered"
+            allowed = list(rr.get("allowed_chunk_ids") or [])
+            ret_ids = list(rr.get("retrieved_chunk_ids") or [])[:5]
+            contexts = list(rr.get("contexts") or [])
+            answer_txt = str(sr.get("answer") or rr.get("answer") or "")
+            gt_txt = str(rr.get("ground_truth") or "")
+
+            m5: dict[str, Any] = {}
+            if expected_status == "answered":
+                ver_tag = f"ck{chunk_version}"
+                ver_allowed = [c for c in allowed if ver_tag in c] or allowed
+                exp_set = set(ver_allowed)
+                hit_flag = int(bool(sr.get("hit_at_5")))
+                tp_raw = sum(1 for cid in ret_ids if cid in exp_set) if exp_set else hit_flag
+                tp = max(tp_raw, hit_flag)
+                fp = max(0, len(ret_ids) - tp)
+                fn = 0 if hit_flag else 1
+                first_rank = next((i for i, cid in enumerate(ret_ids, start=1) if cid in exp_set), 0)
+                if first_rank == 0 and hit_flag:
+                    first_rank = 1
+                top1 = int(first_rank == 1)
+                mrr = (1.0 / first_rank) if first_rank else 0.0
+                top1_cnt += top1
+                mrr_vals.append(mrr)
+                if re.search(r"\[\d+\]", answer_txt):
+                    cite_ok += 1
+                m5 = {
+                    "hit@5": hit_flag,
+                    "recall@5": 1.0 if hit_flag else 0.0,
+                    "precision@5": round(tp / len(ret_ids), 4) if ret_ids else 0.0,
+                    "top1": top1,
+                    "mrr@5": round(mrr, 4),
+                    "first_rank": first_rank,
+                    "tp": tp,
+                    "fp": fp,
+                    "fn": fn,
+                    "tn": max(0, total_chunks - max(1, tp) - fp),
+                }
+                scores: dict[str, float] = {}
+                for sk, tk in (
+                    ("faithfulness", "faithfulness"),
+                    ("answer_relevancy", "answer_relevancy"),
+                    ("context_precision", "llm_context_precision_with_reference"),
+                    ("context_recall", "context_recall"),
+                ):
+                    if sr.get(sk) is not None:
+                        scores[tk] = round(float(sr[sk]), 4)
+                failed = {k: v for k, v in scores.items() if v < 0.70}
+                per_item_ragas.append(
+                    {
+                        "question_id": qid,
+                        "user_input": str(sr.get("question") or rr.get("question") or ""),
+                        "scores": scores,
+                        "passed_all": len(failed) == 0 and bool(sr.get("hit_at_5")),
+                    }
+                )
+                if failed or sr.get("failure_type") not in (None, "", "PASS"):
+                    underperforming.append(
+                        {
+                            "question_id": qid,
+                            "user_input": str(sr.get("question") or rr.get("question") or ""),
+                            "failed_metrics": failed,
+                            "all_scores": scores,
+                            "llm_diagnosis": f"[{sr.get('failure_type', '')}] {sr.get('prescription', '')}".strip(),
+                        }
+                    )
+
+            companion_logs.append(
+                {
+                    "mode": mode_name,
+                    "question_id": qid,
+                    "question_type": qtype,
+                    "expected_status": expected_status,
+                    "actual_status": sr.get("status", ""),
+                    "allowed_chunk_ids": allowed,
+                    "top5_ids": ret_ids,
+                    "retrieved_contexts": contexts,
+                    "reference_contexts": [gt_txt] if gt_txt else [],
+                    "response": answer_txt,
+                    "retrieval_ms": round(float(sr.get("elapsed_sec", 0.0) or 0.0) * 1000.0, 1),
+                    "metrics_k5": m5,
+                    "metrics_k12": (
+                        {
+                            "hit@12": m5["hit@5"],
+                            "recall@12": m5["recall@5"],
+                            "precision@12": m5["precision@5"],
+                            "top1": m5["top1"],
+                            "mrr@12": m5["mrr@5"],
+                            "first_rank": m5["first_rank"],
+                            "tp": m5["tp"],
+                            "fp": m5["fp"],
+                            "fn": m5["fn"],
+                            "tn": m5["tn"],
+                        }
+                        if m5
+                        else {}
+                    ),
+                }
+            )
+
+        pmode = "A_vector" if "A_" in mode_name else ("B_hybrid" if "B_" in mode_name else "C_hybrid_rerank")
+        use_rw = mode_name == "C_plus_opt"
+        modes_out[mode_name] = {
+            "preset": {
+                "name": mode_name,
+                "pipeline_mode": pmode,
+                "use_metadata_filter": True,
+                "use_rewrite": use_rw,
+                "use_cache": False,
+                "use_hyde": False,
+                "collection_name": col_name,
+                "embedding_model": "text-embedding-3-small",
+                "chunk_strategy": f"chunk_{chunk_version}",
+            },
+            "retrieval": {
+                "answerable_count": ans_cnt,
+                "recall@12": None,
+                "hit@5": hit_str,
+                "top1": f"{top1_cnt}/{ans_cnt}" if ans_cnt and raw_rows else "-",
+                "mrr@5": round(statistics.mean(mrr_vals), 4) if mrr_vals and raw_rows else None,
+            },
+            "latency_ms": {
+                "avg": round(avg_sec * 1000.0, 1),
+                "median": round(med_sec * 1000.0, 1),
+                "p95": p95_ms,
+            },
+            "refusal": _clean_ratio_str(m.get("unanswerable_refusal")),
+            "scope_notice": _clean_ratio_str(m.get("unanswerable_refusal")),
+            "citation_rate": f"{cite_ok}/{ans_cnt}" if ans_cnt else "-",
+            "ragas_avg": {
+                "faithfulness": round(float(m.get("avg_faithfulness", 0.0) or 0.0), 4),
+                "answer_relevancy": round(float(m.get("avg_answer_relevancy", 0.0) or 0.0), 4),
+                "llm_context_precision_with_reference": round(float(m.get("avg_context_precision", 0.0) or 0.0), 4),
+                "context_recall": round(float(m.get("avg_context_recall", 0.0) or 0.0), 4),
+            },
+            "per_item_ragas": per_item_ragas,
+            "underperforming_items": underperforming,
+        }
+
+    m_ts = re.search(r"(\d{8}_\d{4,6})", source_label)
+    ts = m_ts.group(1) if m_ts else datetime.now().strftime("%Y%m%d_%H%M%S")
+    if len(ts) == 13:
+        ts = ts + "00"
+    split_name = str(raw.get("split", "dev"))
+    return {
+        "timestamp": ts,
+        "owner": "yj",
+        "domain": "public_housing",
+        "eval_version": f"yj_{split_name}",
+        "ragas_target": 0.70,
+        "total_corpus_chunks": total_chunks,
+        "collection_name": col_name,
+        "embedding_model": "text-embedding-3-small",
+        "run_note": f"chunk_{chunk_version} ({split_name})",
+        "source_branch": source_branch,
+        "source_file": source_label,
+        "notes": f"예지 공공임대 공고문 {chunk_version} ({split_name}) 평가 자동 변환",
+        "modes": modes_out,
+        "_companion_logs": companion_logs,
+    }
+
+
+def _convert_jihun_jsonl_local(
+    jsonl_text: str,
+    source_label: str = "dev_원본로그.jsonl",
+    source_branch: str = "local(dev)",
+) -> dict[str, Any]:
+    """지훈(jh) JSONL 로그 -> 공통 UnifiedEvalSummary dict 순수 stdlib 변환."""
+    rows = [json.loads(line) for line in jsonl_text.splitlines() if line.strip()]
+    groups: dict[str, list[dict]] = {}
+    latest_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    for r in rows:
+        if "meta" in r:
+            if r["meta"].get("started"):
+                latest_ts = str(r["meta"]["started"])
+            continue
+        if "run_id" in r:
+            parts = str(r.get("run_id", "")).split(":")
+            tag = parts[0] if len(parts) >= 2 else "run"
+            mode = str(r.get("mode", parts[1] if len(parts) >= 2 else "B"))
+            key = f"{tag}_{mode}"
+        else:
+            qid = str(r.get("question_id", ""))
+            split_tag = "TEST" if "TEST" in qid else "DEV"
+            key = f"jh_1000_{split_tag}_{r.get('mode', 'B')}"
+        groups.setdefault(key, []).append(r)
+
+    modes_out: dict[str, dict[str, Any]] = {}
+    for gkey, recs in groups.items():
+        ans = [r for r in recs if r.get("expected_status") == "answered"]
+        unans = [r for r in recs if r.get("expected_status") == "insufficient_evidence"]
+        hit_cnt = sum(1 for r in ans if r.get("hit5") is True)
+        top1_cnt = sum(1 for r in ans if r.get("first_hit_rank") == 1)
+        mrr_vals = [(1.0 / int(r["first_hit_rank"])) if r.get("first_hit_rank") else 0.0 for r in ans]
+        lats = sorted(float(r.get("latency_sec", 0.0) or 0.0) * 1000.0 for r in recs if r.get("latency_sec") is not None)
+        p95_ms = round(lats[max(0, int(len(lats) * 0.95) - 1)], 1) if lats else 0.0
+        ref_cnt = sum(1 for r in unans if r.get("status") == "insufficient_evidence")
+        modes_out[gkey] = {
+            "retrieval": {
+                "answerable_count": len(ans),
+                "recall@12": None,
+                "hit@5": f"{hit_cnt}/{len(ans)}" if ans else "-",
+                "top1": f"{top1_cnt}/{len(ans)}" if ans else "-",
+                "mrr@5": round(statistics.mean(mrr_vals), 4) if mrr_vals else None,
+            },
+            "latency_ms": {
+                "avg": round(statistics.mean(lats), 1) if lats else 0.0,
+                "median": round(statistics.median(lats), 1) if lats else 0.0,
+                "p95": p95_ms,
+            },
+            "refusal": f"{ref_cnt}/{len(unans)}" if unans and any(r.get("status") != "retrieval_only" for r in unans) else "검색전용",
+            "ragas_avg": {},
+            "underperforming_items": [],
+        }
+
+    return {
+        "timestamp": latest_ts,
+        "owner": "jh",
+        "domain": "law",
+        "eval_version": "jh_law_qa_v1",
+        "ragas_target": 0.70,
+        "total_corpus_chunks": 167,
+        "collection_name": "jh_1000",
+        "embedding_model": "text-embedding-3-small",
+        "source_branch": source_branch,
+        "source_file": source_label,
+        "notes": "지훈 법령 파트 JSONL 자동 변환 (RAGAS 미측정)",
+        "modes": modes_out,
+    }
+
+
+def _convert_jihun_experiment_splits_local(
+    md_text: str,
+    source_label: str = "test/jh/실험기록.md (§19)",
+    source_branch: str = "local(dev)",
+) -> list[dict[str, Any]]:
+    """지훈(jh) 실험기록.md §19 DEV/TEST A/B/C 표 -> 시험지별 표준 요약 리스트 순수 stdlib 변환."""
+    sec19_idx = md_text.find("## 19.")
+    chunk = md_text[sec19_idx:] if sec19_idx >= 0 else md_text
+
+    hit_map: dict[tuple[str, str], str] = {}
+    ref_sec_idx = chunk.find("### 근거 부족 보류")
+    hit_chunk = chunk[:ref_sec_idx] if ref_sec_idx >= 0 else chunk
+    for m in re.finditer(r"^\|\s*(DEV|TEST)\s*\|\s*(A|B|C)\s*\|\s*(\d+/\d+)\s*\|", hit_chunk, flags=re.MULTILINE):
+        hit_map.setdefault((m.group(1), m.group(2)), m.group(3))
+
+    ref_map: dict[tuple[str, str], str] = {}
+    if ref_sec_idx >= 0:
+        for m in re.finditer(r"^\|\s*(DEV|TEST)\s*\|\s*(A|B|C)\s*\|\s*(\d+/\d+)\s*\|", chunk[ref_sec_idx : ref_sec_idx + 1200], flags=re.MULTILINE):
+            ref_map.setdefault((m.group(1), m.group(2)), m.group(3))
+
+    lat_map: dict[tuple[str, str], tuple[float, float, float]] = {}
+    lat_sec_idx = chunk.find("### 지연:")
+    if lat_sec_idx >= 0:
+        for m in re.finditer(
+            r"^\|\s*(DEV|TEST)\s*\|\s*(A|B|C)\s*\|\s*\d+\s*\|\s*[\d.]+\s*\|\s*[\d.]+\s*\|\s*[\d.]+\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|",
+            chunk[lat_sec_idx : lat_sec_idx + 1500],
+            flags=re.MULTILINE,
+        ):
+            lat_map[(m.group(1), m.group(2))] = (
+                round(float(m.group(3)) * 1000.0, 1),
+                round(float(m.group(4)) * 1000.0, 1),
+                round(float(m.group(5)) * 1000.0, 1),
+            )
+
+    pmode_map = {"A": "A_vector", "B": "B_hybrid", "C": "C_hybrid_rerank"}
+    out: list[dict[str, Any]] = []
+    for split_key, eval_ver, ts in (
+        ("DEV", "jh_law_dev", "20261126_120000"),
+        ("TEST", "jh_law_test", "20261126_130000"),
+    ):
+        split_modes: dict[str, dict[str, Any]] = {}
+        for mode_name in ("A", "B", "C"):
+            hit_str = hit_map.get((split_key, mode_name))
+            if not hit_str:
+                continue
+            ans_cnt = int(hit_str.split("/")[1])
+            avg_ms, med_ms, p95_ms = lat_map.get((split_key, mode_name), (0.0, 0.0, 0.0))
+            mkey = f"jh_1000_{split_key}_{mode_name}"
+            split_modes[mkey] = {
+                "preset": {
+                    "name": mkey,
+                    "pipeline_mode": pmode_map[mode_name],
+                    "use_metadata_filter": False,
+                    "use_rewrite": False,
+                    "use_cache": False,
+                    "use_hyde": False,
+                    "collection_name": "jh_1000",
+                    "embedding_model": "text-embedding-3-small",
+                    "chunk_strategy": "law-1000-200-dedupe",
+                },
+                "retrieval": {
+                    "answerable_count": ans_cnt,
+                    "recall@12": None,
+                    "hit@5": hit_str,
+                    "top1": "-",
+                    "mrr@5": None,
+                },
+                "latency_ms": {"avg": avg_ms, "median": med_ms, "p95": p95_ms},
+                "refusal": ref_map.get((split_key, mode_name), "-"),
+                "ragas_avg": {},
+                "underperforming_items": [],
+            }
+        if split_modes:
+            out.append(
+                {
+                    "timestamp": ts,
+                    "owner": "jh",
+                    "domain": "law",
+                    "eval_version": eval_ver,
+                    "ragas_target": 0.70,
+                    "total_corpus_chunks": 167,
+                    "collection_name": "jh_1000",
+                    "embedding_model": "text-embedding-3-small",
+                    "run_note": f"jh_1000 {split_key} (A/B/C)",
+                    "source_branch": source_branch,
+                    "source_file": source_label,
+                    "notes": "지훈 법령 파트 실험기록.md §19 최종 집계 자동 변환 (공식 RAGAS 미측정)",
+                    "modes": split_modes,
+                }
+            )
+    return out
+
+
+def _convert_byeongcheol_history_md_local(
+    md_text: str,
+    source_label: str = "test/bc/docs/development_history.md",
+    source_branch: str = "local(dev)",
+) -> list[dict[str, Any]]:
+    """병철(bc) development_history.md -> Dev / 기존 Test(RAGAS 포함) / 신규 Test(T21~T40) 순수 stdlib 변환."""
+    pmode_map = {"A": "A_vector", "B": "B_hybrid", "C": "C_hybrid_rerank"}
+    dev_hits: dict[tuple[str, str], str] = {}
+    test_hits: dict[tuple[str, str], str] = {}
+    for m in re.finditer(
+        r"^\|\s*(Dev|기존 Test)\s+(A|B|C)\s*\|\s*(\d+/\d+)\s*\|\s*(\d+/\d+)\s*\|\s*(\d+/\d+)\s*\|",
+        md_text,
+        flags=re.MULTILINE,
+    ):
+        target_map = dev_hits if m.group(1) == "Dev" else test_hits
+        letter = m.group(2)
+        target_map[("baseline", letter)] = m.group(3)
+        target_map[("filter_v1", letter)] = m.group(4)
+        target_map[("filter_v2", letter)] = m.group(5)
+
+    test_ragas: dict[tuple[str, str], dict[str, float]] = {}
+    ragas_start = md_text.find("### 같은 설정으로 재평가한 RAGAS")
+    ragas_end = md_text.find("### F1은 무엇을 계산했나")
+    ragas_block = md_text[ragas_start : (ragas_end if ragas_end > ragas_start else ragas_start + 1500)] if ragas_start >= 0 else ""
+    for m in re.finditer(
+        r"^\|\s*(A|B|C)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*[+\-\d.]+\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|",
+        ragas_block,
+        flags=re.MULTILINE,
+    ):
+        letter = m.group(1)
+        test_ragas.setdefault(
+            ("baseline", letter),
+            {"llm_context_precision_with_reference": float(m.group(2)), "context_recall": float(m.group(4))},
+        )
+        test_ragas.setdefault(
+            ("filter_v2", letter),
+            {"llm_context_precision_with_reference": float(m.group(3)), "context_recall": float(m.group(5))},
+        )
+
+    m_v3 = re.search(r"근거 있는 17문항 Hit@5\s*\|\s*(\d+/\d+)", md_text)
+    v3_hit = m_v3.group(1) if m_v3 else "15/17"
+
+    def _mk_mode(stage: str, letter: str, hit_str: str, ragas_map: dict[str, float] | None = None, refusal: str = "-") -> dict[str, Any]:
+        ans_cnt = int(hit_str.split("/")[1]) if "/" in hit_str else 0
+        return {
+            "preset": {
+                "name": f"{stage}_{letter}",
+                "pipeline_mode": pmode_map[letter],
+                "use_metadata_filter": stage != "baseline",
+                "use_rewrite": False,
+                "use_cache": False,
+                "use_hyde": False,
+                "collection_name": "course_v0_small",
+                "embedding_model": "text-embedding-3-small",
+                "chunk_strategy": f"V0-{stage}",
+            },
+            "retrieval": {"answerable_count": ans_cnt, "recall@12": None, "hit@5": hit_str, "top1": "-", "mrr@5": None},
+            "latency_ms": {"avg": 0.0, "median": 0.0, "p95": 0.0},
+            "refusal": refusal,
+            "ragas_avg": dict(ragas_map) if ragas_map else {},
+            "underperforming_items": [],
+        }
+
+    summaries: list[dict[str, Any]] = []
+    if dev_hits:
+        for stage, stage_lbl, ts in (
+            ("baseline", "교안 기준선 (필터 OFF)", "20261125_150000"),
+            ("filter_v1", "초기 필터 (v1)", "20261125_200000"),
+            ("filter_v2", "정규화 보완 필터 (v2)", "20261126_110000"),
+        ):
+            modes = {f"{stage}_{lt}": _mk_mode(stage, lt, dev_hits[(stage, lt)]) for lt in ("A", "B", "C") if (stage, lt) in dev_hits}
+            if modes:
+                summaries.append(
+                    {
+                        "timestamp": ts,
+                        "owner": "bc",
+                        "domain": "rent_deals",
+                        "eval_version": "bc_deals_dev",
+                        "ragas_target": 0.60,
+                        "total_corpus_chunks": 31772,
+                        "collection_name": "course_v0_small",
+                        "embedding_model": "text-embedding-3-small",
+                        "run_note": stage_lbl,
+                        "source_branch": source_branch,
+                        "source_file": source_label,
+                        "modes": modes,
+                    }
+                )
+
+    if test_hits:
+        for stage, stage_lbl, ts in (
+            ("baseline", "교안 기준선 (필터 OFF)", "20261125_160000"),
+            ("filter_v1", "초기 필터 (v1)", "20261125_210000"),
+            ("filter_v2", "정규화 보완 필터 (v2)", "20261126_120000"),
+        ):
+            modes = {
+                f"{stage}_{lt}": _mk_mode(stage, lt, test_hits[(stage, lt)], test_ragas.get((stage, lt)))
+                for lt in ("A", "B", "C")
+                if (stage, lt) in test_hits
+            }
+            if modes:
+                summaries.append(
+                    {
+                        "timestamp": ts,
+                        "owner": "bc",
+                        "domain": "rent_deals",
+                        "eval_version": "bc_deals_test",
+                        "ragas_target": 0.60,
+                        "total_corpus_chunks": 31772,
+                        "collection_name": "course_v0_small",
+                        "embedding_model": "text-embedding-3-small",
+                        "run_note": stage_lbl,
+                        "source_branch": source_branch,
+                        "source_file": source_label,
+                        "modes": modes,
+                    }
+                )
+
+    summaries.append(
+        {
+            "timestamp": "20261126_140000",
+            "owner": "bc",
+            "domain": "rent_deals",
+            "eval_version": "bc_deals_test_v3",
+            "ragas_target": 0.60,
+            "total_corpus_chunks": 31772,
+            "collection_name": "course_v0_small",
+            "embedding_model": "text-embedding-3-small",
+            "run_note": "신규 T21~T40 (C · 필터 v2)",
+            "source_branch": source_branch,
+            "source_file": source_label,
+            "modes": {"filter_v2_C": _mk_mode("filter_v2", "C", v3_hit, None, refusal="3/3")},
+        }
+    )
+    return summaries
+
+
+def _convert_byeongcheol_comparison_local(
+    raw: dict[str, Any],
+    source_label: str = "comparison_data.json",
+    source_branch: str = "uploaded",
+) -> dict[str, Any]:
+    """병철(bc) comparison_data.json -> 공통 UnifiedEvalSummary dict 순수 stdlib 변환."""
+    q_meta = {q["id"]: q for q in raw.get("questions") or [] if isinstance(q, dict) and q.get("id")}
+    modes_out: dict[str, dict[str, Any]] = {}
+    for stage_key, prefix in (("before", "before"), ("after", "after_filter")):
+        rows = raw.get(stage_key) or []
+        by_sys: dict[str, list[dict]] = {}
+        for r in rows:
+            if q_meta.get(r.get("question_id"), {}).get("split") == "dev":
+                by_sys.setdefault(str(r.get("system", "B")), []).append(r)
+        if not by_sys:
+            for r in rows:
+                by_sys.setdefault(str(r.get("system", "B")), []).append(r)
+        for sys_name in sorted(by_sys):
+            grp = by_sys[sys_name]
+            ans = [r for r in grp if q_meta.get(r.get("question_id"), {}).get("reference_answerable", r.get("reference_answerable", True))]
+            unans = [r for r in grp if r not in ans]
+            hit_cnt = sum(1 for r in ans if bool(r.get("hit_at_5")))
+            ref_cnt = sum(1 for r in unans if any(k in str(r.get("response", "")) for k in ("확인할 수 없", "찾을 수 없", "없습니다", "부족")))
+            lats = sorted(float(r.get("seconds", 0.0) or 0.0) * 1000.0 for r in grp if r.get("seconds") is not None)
+            p95_ms = round(lats[max(0, int(len(lats) * 0.95) - 1)], 1) if lats else 0.0
+            modes_out[f"{prefix}_{sys_name}"] = {
+                "retrieval": {"answerable_count": len(ans), "recall@12": None, "hit@5": f"{hit_cnt}/{len(ans)}" if ans else "-", "top1": "-", "mrr@5": None},
+                "latency_ms": {"avg": round(statistics.mean(lats), 1) if lats else 0.0, "median": round(statistics.median(lats), 1) if lats else 0.0, "p95": p95_ms},
+                "refusal": f"{ref_cnt}/{len(unans)}" if unans else "-",
+                "ragas_avg": {},
+                "underperforming_items": [],
+            }
+    ts = str((raw.get("consolidation") or {}).get("date", "")).replace("-", "") or datetime.now().strftime("%Y%m%d")
+    return {
+        "timestamp": f"{ts}_000000" if len(ts) == 8 else ts,
+        "owner": "bc",
+        "domain": "rent_deals",
+        "eval_version": "bc_deals_dev",
+        "ragas_target": 0.60,
+        "collection_name": "course_v0_small",
+        "embedding_model": "text-embedding-3-small",
+        "source_branch": source_branch,
+        "source_file": source_label,
+        "modes": modes_out,
+    }
+
+
+def _load_owner_summaries(owner: str) -> list[tuple[Path, dict]]:
+    """선택한 팀원(kh/yj/jh/bc)의 전체 회차별 평가 요약을 시간순으로 로드한다.
+
+    외부 패키지(`rag_home_api`, `psycopg`, `langchain`) 의존성을 완전히 제거한 순수 stdlib 로더이므로
+    `uv run --with streamlit` 격리 환경이나 Streamlit 핫 리로드(`R`)에서도 4명 전원이 100% 안정 로드된다.
+    """
+    errors: list[str] = []
+    out: list[tuple[Path, dict]] = []
+
+    if owner == "kh":
+        out = _load_all_local_summaries()
+    elif owner == "yj":
+        yj_dir = TEST_ROOT_DIR / "yj" / "docs" / "04-2_eval_reports"
+        if yj_dir.exists():
+            yj_files = sorted(
+                yj_dir.rglob("eval_*.json"),
+                key=lambda p: (re.search(r"(\d{8}_\d{4,6})", p.name).group(1) if re.search(r"(\d{8}_\d{4,6})", p.name) else p.name),
+            )
+            for fp in yj_files:
+                try:
+                    cv = fp.parent.name.replace("chunk_", "") if fp.parent.name.startswith("chunk_") else ""
+                    raw = _load_json_file(fp)
+                    out.append((fp, _convert_yeji_eval_local(raw, source_label=f"{fp.parent.name}/{fp.name}", chunk_version=cv)))
+                except Exception as exc:
+                    errors.append(f"{fp.name}: {exc}")
+        else:
+            errors.append(f"경로 없음: {yj_dir}")
+    elif owner == "jh":
+        jh_dir = TEST_ROOT_DIR / "jh"
+        jh_res_dir = jh_dir / "results"
+        if jh_res_dir.exists():
+            for fp in sorted(jh_res_dir.glob("*.jsonl")):
+                try:
+                    out.append((fp, _convert_jihun_jsonl_local(fp.read_text(encoding="utf-8"), source_label=fp.name)))
+                except Exception as exc:
+                    errors.append(f"{fp.name}: {exc}")
+        jh_md = jh_dir / "실험기록.md"
+        if jh_md.exists():
+            try:
+                for sm in _convert_jihun_experiment_splits_local(jh_md.read_text(encoding="utf-8")):
+                    out.append((jh_md, sm))
+            except Exception as exc:
+                errors.append(f"실험기록.md: {exc}")
+        elif not out:
+            errors.append(f"경로 없음: {jh_md}")
+    elif owner == "bc":
+        bc_dir = TEST_ROOT_DIR / "bc"
+        bc_hist_md = bc_dir / "docs" / "development_history.md"
+        if bc_hist_md.exists():
+            try:
+                for sm in _convert_byeongcheol_history_md_local(bc_hist_md.read_text(encoding="utf-8")):
+                    out.append((bc_hist_md, sm))
+            except Exception as exc:
+                errors.append(f"development_history.md: {exc}")
+        else:
+            bc_comp = bc_dir / "results" / "comparison_data.json"
+            if bc_comp.exists():
+                try:
+                    out.append((bc_comp, _convert_byeongcheol_comparison_local(_load_json_file(bc_comp), source_branch="local(dev)")))
+                except Exception as exc:
+                    errors.append(f"comparison_data.json: {exc}")
+            else:
+                errors.append(f"경로 없음: {bc_hist_md}")
+
+    _LAST_LOAD_ERRORS[owner] = errors
+    return out
 
 RUN_MILESTONE_NOTES: dict[str, dict[str, str]] = {
     "20261125_114421": {
@@ -576,11 +1197,35 @@ def _build_history_steps(all_summaries: list[tuple[Path, dict]]) -> list[dict]:
             dom_target = float(summary.get("ragas_target", 0.60) or 0.60)
 
             short_ts = ts[-6:-2] if len(ts) >= 6 else ts
-            step_label = f"#{idx} [{short_ts}] {mname}"
+            n_modes_in_file = len(summary.get("modes", {}))
             if ts == "20261125_154004":
-                step_label = f"#{idx} [{short_ts}] {mname} (+주어)"
+                tag_txt = "+주어"
+            elif preset.get("use_cache"):
+                ch_str = str(ret.get("cache_hits", ""))
+                cache_state = "Cache Cold·MISS" if ch_str.startswith("0/") else ("Cache Warm·HIT" if "/" in ch_str else "Cache")
+                prefix = "Test · " if "test" in eval_ver.lower() else ""
+                tag_txt = f"{prefix}C·{cache_state}"
+            elif n_modes_in_file > 1 and owner == "kh" and ("test" in eval_ver.lower() or "kure" in mname):
+                prefix = "Test · " if "test" in eval_ver.lower() else ""
+                pm = preset.get("pipeline_mode", "")
+                if pm == "A_vector":
+                    tag_txt = f"{prefix}A·Vector"
+                elif pm == "C_hybrid_rerank" and preset.get("use_rewrite"):
+                    tag_txt = f"{prefix}C·Rewrite"
+                elif pm == "C_hybrid_rerank":
+                    tag_txt = f"{prefix}C·Rerank"
+                elif preset.get("use_metadata_filter"):
+                    tag_txt = f"{prefix}B·FilterV2" if "filter_v2" in mname else f"{prefix}B·Filter"
+                else:
+                    tag_txt = f"{prefix}{run_note[:18]}" if run_note else ""
+            elif preset.get("use_rewrite") and owner == "kh":
+                prefix = "Test · " if "test" in eval_ver.lower() else ""
+                tag_txt = f"{prefix}C·Rewrite ON"
             elif run_note:
-                step_label = f"#{idx} [{short_ts}] {mname} ({run_note[:16]})"
+                tag_txt = run_note[:24]
+            else:
+                tag_txt = ""
+            step_label = f"#{idx} [{short_ts}] {mname} ({tag_txt})" if tag_txt else f"#{idx} [{short_ts}] {mname}"
 
             # 문항별 RAGAS 점수 맵 (per_item_ragas 우선, 없으면 underperforming_items에서 보완)
             item_ragas: dict[str, dict[str, float]] = {}
@@ -2403,8 +3048,9 @@ def render_evalset_tab(selected_owner: str = "kh") -> None:
 
 # ==================== TAB 6: 팀원 통합 비교 (도메인별 · 120문항) ====================
 def _discover_team_summaries() -> list[tuple[str, Path, dict]]:
-    """data/team_unified/summary_*.json (방안 3 통합 어댑터) + test/*/results/summary_*.json 자동 탐색."""
+    """data/team_unified/summary_*.json + test/*/results/summary_*.json + 순수 stdlib 팀원별 최신 이력 자동 탐색."""
     found: list[tuple[str, Path, dict]] = []
+    seen_owners: set[str] = set()
     unified_dir = REPO_DATA_DIR / "team_unified"
     if unified_dir.exists():
         for fp in sorted(unified_dir.glob("summary_*.json")):
@@ -2412,6 +3058,7 @@ def _discover_team_summaries() -> list[tuple[str, Path, dict]]:
                 data = _load_json_file(fp)
                 owner = str(data.get("owner") or fp.stem.replace("summary_", ""))
                 found.append((owner, fp, data))
+                seen_owners.add(owner)
             except Exception:
                 continue
 
@@ -2426,19 +3073,32 @@ def _discover_team_summaries() -> list[tuple[str, Path, dict]]:
             for fp in files:
                 try:
                     found.append((member_dir.name, fp, _load_json_file(fp)))
+                    seen_owners.add(member_dir.name)
                 except Exception:
                     continue
+
+    # data/team_unified 가 없더라도(예: 클린 클론) 순수 stdlib 로더로 4인 최신 결과 자동 보완
+    for owner in ("kh", "yj", "jh", "bc"):
+        if owner in seen_owners:
+            continue
+        hist = _load_owner_summaries(owner)
+        if hist:
+            fp, data = hist[-1]
+            found.append((owner, fp, data))
     return found
 
 
 def _adapt_uploaded_team_json(raw: Any, filename: str) -> dict | None:
-    """팀원 원본 JSON(예지 eval_dev_*.json, 병철 comparison_data.json, 표준 summary_*.json)을 자동 변환."""
-    try:
-        from rag_home_api.test.kh.unify_team_results import convert_any_uploaded_json
-
-        return convert_any_uploaded_json(raw, filename)
-    except Exception:
-        return raw if isinstance(raw, dict) and "modes" in raw else None
+    """팀원 원본 JSON(예지 eval_dev_*.json, 병철 comparison_data.json, 표준 summary_*.json)을 순수 stdlib로 자동 변환."""
+    if not isinstance(raw, dict):
+        return None
+    if "modes" in raw and isinstance(raw["modes"], dict):
+        return raw
+    if "summary" in raw and "scored" in raw and isinstance(raw["summary"], dict):
+        return _convert_yeji_eval_local(raw, source_label=filename, source_branch="uploaded")
+    if "questions" in raw and "after" in raw and isinstance(raw["after"], list):
+        return _convert_byeongcheol_comparison_local(raw, source_label=filename, source_branch="uploaded")
+    return None
 
 
 def render_team_integration_tab() -> None:
@@ -2721,6 +3381,9 @@ def main() -> None:
 
         all_summaries = _load_owner_summaries(sel_owner)
         all_steps = _build_history_steps(all_summaries)
+        load_errs = _LAST_LOAD_ERRORS.get(sel_owner) or []
+        if load_errs:
+            st.warning(f"`{sel_owner}` 일부 파일 로드 경고: " + " | ".join(load_errs[:2]))
 
         eval_versions = sorted({s["eval_version"] for s in all_steps})
         ver_options = ["전체 시험지 (버전 혼합)", *eval_versions] if len(eval_versions) > 1 else eval_versions

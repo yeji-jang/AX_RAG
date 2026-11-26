@@ -12,7 +12,7 @@
 | 컬렉션 / 임베딩 | `housing_rent_kh_kure_v1` (코퍼스 6,200청크) / `nlpai-lab/KURE-v1` |
 | 청킹 / 프롬프트 | `rent-v2-11cols-src` / `rent-ans-v3-colloquial-scope` |
 | 가설 메모 (`run_note`) | STEP5-B2: Cache Warm (HIT) |
-| 직전 비교 기준선 | [`20261126_171642` · `C_rrf_25_75_k15_filter_v2_cache_kure_v1`](./11_20261126_171642_C_rrf_25_75_k15_filter_v2_cache_kure_v1.md) |
+| 직전 비교 기준선 | [`20261126_171642` · `C_rrf_25_75_k15_filter_v2_cache_kure_v1`](./11_20261126_171642_C_rrf_25_75_k15_filter_v2_cache_kure_v1_cold.md) |
 | 변경 변수 (1항목) | 프리셋 메타 동일 (프롬프트/규칙/코드 보강 재측정) |
 | 원본 근거 파일 | [`summary_rent_ab_ragas_20261126_172134.json`](../../results/summary_rent_ab_ragas_20261126_172134.json) · [`exp_rent_ab_ragas_20261126_172134.jsonl`](../../results/exp_rent_ab_ragas_20261126_172134.jsonl) |
 

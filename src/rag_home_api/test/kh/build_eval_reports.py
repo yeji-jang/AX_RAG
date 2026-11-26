@@ -248,17 +248,29 @@ def _pick_representative_mode(summary: dict[str, Any]) -> str:
 
 
 def _make_slug(summary: dict[str, Any]) -> str:
-    modes = list((summary.get("modes") or {}).keys())
+    modes_dict = summary.get("modes") or {}
+    modes = list(modes_dict.keys())
     if len(modes) == 1:
         raw = modes[0]
+        md = modes_dict[modes[0]] or {}
+        if (md.get("preset") or {}).get("use_cache"):
+            ch = str((md.get("retrieval") or {}).get("cache_hits", ""))
+            if ch.startswith("0/"):
+                raw = f"{raw}_cold"
+            elif "/" in ch:
+                raw = f"{raw}_warm"
     elif len(modes) == 2 and modes == ["A_vector", "B_hybrid_rrf"]:
         raw = "3gu_A_B"
     elif len(modes) == 5:
         raw = "25gu_5modes_AB_filter"
-    elif len(modes) == 3 and all("kure_v1" in m for m in modes):
+    elif len(modes) == 3 and all(m.startswith("B_rrf_") and "kure_v1" in m for m in modes):
         raw = "kure_B_weight_sweep_3modes"
-    elif len(modes) == 2 and all("k15" in m for m in modes):
+    elif len(modes) == 2 and all(m.startswith("B_rrf_") and "k15" in m for m in modes):
         raw = "kure_B_fix_k15_2modes"
+    elif len(modes) == 3 and any(m.startswith("A_") for m in modes) and any(m.startswith("C_") for m in modes):
+        raw = "A_B_filterV2_C_rerank_3modes"
+    elif len(modes) == 2 and any("rewrite" in m for m in modes) and any("cache" in m for m in modes):
+        raw = "C_rewrite_vs_cache_cold_2modes"
     else:
         raw = f"{len(modes)}modes_{modes[0]}" if modes else "empty"
     return re.sub(r"[^a-zA-Z0-9_\-]", "_", raw)[:48].strip("_")

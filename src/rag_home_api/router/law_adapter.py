@@ -87,6 +87,7 @@ class LawDomainAdapter:
             law_only=True,
             embeddings=stored_emb,
             connection=dsn,
+            law_documents=docs,
         )
         self._openai_client = OpenAI(
             api_key=settings.openai_api_key,
