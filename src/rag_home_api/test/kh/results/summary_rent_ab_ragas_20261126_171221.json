@@ -1,0 +1,178 @@
+{
+  "timestamp": "20261126_171221",
+  "owner": "kh",
+  "domain": "rent",
+  "eval_version": "kh_rent_dev_v2",
+  "eval_path": "C:\\Users\\417no\\Documents\\ax_project\\rag\\src\\rag_home_api\\test\\kh\\eval\\kh_rent_dev_v2.json",
+  "collection_name": "housing_rent_kh_kure_v1",
+  "embedding_model": "nlpai-lab/KURE-v1",
+  "total_corpus_chunks": 6200,
+  "run_note": "STEP5-A: Query Rewrite ON",
+  "ragas_target": 0.6,
+  "modes": {
+    "C_rrf_25_75_k15_filter_v2_rewrite_kure_v1": {
+      "preset": {
+        "name": "C_rrf_25_75_k15_filter_v2_rewrite_kure_v1",
+        "pipeline_mode": "C_hybrid_rerank",
+        "top_k": 5,
+        "candidate_k": 12,
+        "bm25_weight": 0.25,
+        "vector_weight": 0.75,
+        "rrf_k": 15,
+        "use_metadata_filter": true,
+        "use_rewrite": true,
+        "use_cache": false,
+        "use_hyde": false,
+        "collection_name": "housing_rent_kh_kure_v1",
+        "embedding_model": "nlpai-lab/KURE-v1",
+        "chunk_strategy": "rent-v2-11cols-src",
+        "prompt_version": "rent-ans-v3-colloquial-scope",
+        "cache_ttl_seconds": 3600
+      },
+      "retrieval": {
+        "answerable_count": 8,
+        "recall@12": 1.0,
+        "hit@5": "8/8",
+        "top1": "8/8",
+        "mrr@5": 1.0,
+        "filter_applied": "10/10 (fallback=0)",
+        "cache_hits": "0/10",
+        "hyde_isolated": "10/10"
+      },
+      "latency_ms": {
+        "avg": 7110.8,
+        "median": 4556.0,
+        "p95": 10272.1
+      },
+      "refusal": "2/2",
+      "scope_notice": "2/2",
+      "citation_rate": "8/8",
+      "ragas_avg": {
+        "faithfulness": 0.9167,
+        "answer_relevancy": 0.6812,
+        "llm_context_precision_with_reference": 1.0,
+        "context_recall": 1.0
+      },
+      "per_item_ragas": [
+        {
+          "question_id": "RENT-KH-DEV2-01",
+          "user_input": "서울 동대문구 청량리동 단독·다가구 원룸건물에서 10평 이하 월세방은 보통 보증금이랑 월세가 얼마 정도고, 요즘 거래는 얼마나 자주 이뤄지나요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.776,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-DEV2-02",
+          "user_input": "서울 성북구 종암동에서 단독·다가구 주택 10~18평 정도 되는 소형이나 투룸 월세를 구하면 보통 보증금이랑 월세가 얼마쯤이고, 건물은 대체로 몇 년식인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.696,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-DEV2-03",
+          "user_input": "마천동 아파트 중에 10평 안 되는 작은 원룸 크기는 요즘 보증금이랑 월세가 보통 얼마 정도 하나요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.649,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-DEV2-04",
+          "user_input": "요즘 양재동 단독/다가구 원룸건물의 10~18평 투룸이나 소형 집은 보증금 걸고 다달이 내는 월세가 보통 얼마 정도고, 거래는 얼마나 자주 이뤄지나요?",
+          "scores": {
+            "faithfulness": 0.333,
+            "answer_relevancy": 0.66,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-DEV2-05",
+          "user_input": "강남구 신사동 단독·다가구 주택 10평 이하 원룸 월세와 은평구 응암동 오피스텔 10평 이하 원룸 전세를 비교하면, 요즘 보증금과 매달 나가는 주거비 부담은 어디가 덜하고 거래는 어디가 더 활발한가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.836,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-DEV2-06",
+          "user_input": "서울 연희동이랑 용산구 갈월동에서 10~18평 정도 되는 빌라 투룸이나 소형 집을 보증금 걸고 다달이 월세 내는 조건으로 구하면, 요즘 보통 시세가 어디가 더 비싼가요? 건물은 대체로 어느 동네가 덜 낡고 연식이 나은 편인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.609,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-DEV2-07",
+          "user_input": "성수동2가에서 단독이나 다가구 원룸건물의 10평 이하 작은 원룸을 전세로 구하면 요즘 보증금만 얼마나 생각해야 할까요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.712,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-DEV2-08",
+          "user_input": "신혼부부 둘이 살 집을 알아보는데, 금천구 시흥동에 20평대 이상 넓은 빌라 전세는 요즘 보통 얼마 정도 하고 대체로 몇 년식이 많나요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.511,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": false
+        }
+      ],
+      "underperforming_items": [
+        {
+          "question_id": "RENT-KH-DEV2-04",
+          "user_input": "요즘 양재동 단독/다가구 원룸건물의 10~18평 투룸이나 소형 집은 보증금 걸고 다달이 내는 월세가 보통 얼마 정도고, 거래는 얼마나 자주 이뤄지나요?",
+          "failed_metrics": {
+            "faithfulness": 0.333
+          },
+          "all_scores": {
+            "faithfulness": 0.333,
+            "answer_relevancy": 0.66,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 생성·인용 오류** — 정답 컨텍스트가 Top-k에 그대로 포함되어 있어 검색 누락이나 순위 실패가 아닙니다. 생성답변은 월세 중앙값 62만 원과 거래 237건은 맞게 답했지만, 질문의 보증금 정보인 **중앙값 3,000만 원**을 빠뜨렸습니다.\n\n**개선안**\n1. **프롬프트:** 보증금·월세·거래 건수처럼 질문의 각 요구 항목을 답변 전 점검하는 체크리스트를 적용하고, 누락된 항목이 있으면 보완하도록 지시합니다.\n2. **코드:** 질문에서 요구한 필드와 답변에 포함된 필드를 대조해 `보증금`, `월세`, `거래 건수` 중 누락이 있으면 재생성하도록 검증합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV2-08",
+          "user_input": "신혼부부 둘이 살 집을 알아보는데, 금천구 시흥동에 20평대 이상 넓은 빌라 전세는 요즘 보통 얼마 정도 하고 대체로 몇 년식이 많나요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.511
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.511,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 생성·인용 오류** — 정답 컨텍스트가 Top-k에 그대로 있어 청킹·검색 누락이나 순위 실패로 보기 어렵습니다. 답변은 핵심 수치인 보증금 중앙값과 건축 연도 중앙값은 맞췄지만, 질문의 ‘20평대 이상’에 대응하는 면적 중앙값(72.46㎡)과 건축 연도 범위(1980~2024년식)를 빠뜨렸습니다. 이 누락이 낮은 답변 관련성에 영향을 줬을 수 있습니다.\n\n**개선안 2가지**\n1. **프롬프트:** 질문의 각 항목(전세가·면적·건축 연도)에 답하고, 컨텍스트에 범위가 있으면 중앙값과 함께 범위도 제시하도록 지시합니다.\n2. **코드:** 답변 생성 전 질문 항목별 필수 필드를 점검해 누락 시 보완 생성합니다. 현재 검색 컨텍스트가 정답과 일치하므로 청킹은 우선 변경할 필요가 없습니다."
+        }
+      ]
+    }
+  }
+}

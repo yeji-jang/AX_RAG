@@ -30,6 +30,7 @@ logger = get_logger(__name__)
 KH_DIR = Path(__file__).resolve().parent
 KH_EVAL_DIR = KH_DIR / "eval"
 KH_RESULTS_DIR = KH_DIR / "results"
+KH_REPORTS_DIR = KH_DIR / "reports"
 
 RENT_COLLECTION_NAME = "housing_rent_kh"
 RENT_INDEX_VERSION = "rent-v2-11cols-src"
