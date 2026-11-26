@@ -56,7 +56,7 @@ class PublicRentalChunkMetadata(PublicRentalNoticeMetadata) :
     - PublicRentalNoticeMetadata의 10개 필드 + 청크 정보
     """
     chunk_id : str = Field(
-        description="청크 고유 ID, {페이지ID}_c{순번 2자리}")
+        description="청크 고유 ID, {페이지ID}_{청크버전}_c{순번 2자리}")
 
     chunk_index : int = Field(
         description="문서 내 청크 순번")
