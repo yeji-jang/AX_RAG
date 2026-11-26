@@ -1,4 +1,4 @@
-"""교안의 수동 조건을 PGVector와 로컬 BM25에 동일하게 적용한다."""
+"""검색 조건을 검증하고 PGVector와 로컬 BM25에 동일하게 적용한다."""
 import math
 import operator
 from numbers import Real
@@ -8,21 +8,6 @@ NUMBER_FIELDS = {'deposit_manwon', 'monthly_rent_manwon', 'area_m2',
                  'area_pyeong', 'floor', 'build_year'}
 OPERATORS = {'$eq': operator.eq, '$lt': operator.lt, '$lte': operator.le,
              '$gt': operator.gt, '$gte': operator.ge}
-
-MANUAL_DEV_FILTERS = {
-    'D01': {'region_dong': '신림동', 'lease_type': '월세',
-            'deposit_manwon': {'$lte': 500}, 'monthly_rent_manwon': {'$lte': 45},
-            'area_pyeong': {'$gte': 5}},
-    'D02': {'region_dong': '봉천동', 'housing_type': '오피스텔', 'lease_type': '월세',
-            'deposit_manwon': {'$lte': 1000}, 'monthly_rent_manwon': {'$lte': 70},
-            'build_year': {'$gte': 2018}, 'area_pyeong': {'$gte': 5}},
-    'D03': {'region_dong': '남현동', 'housing_type': '연립다세대', 'lease_type': '전세',
-            'deposit_manwon': {'$lte': 25000}, 'area_pyeong': {'$gte': 8}},
-    'D04': {'region_gu': '관악구', 'housing_type': '아파트', 'lease_type': '월세',
-            'deposit_manwon': {'$lte': 5000}, 'monthly_rent_manwon': {'$lte': 120},
-            'area_pyeong': {'$gte': 15}, 'floor': {'$gte': 5}},
-}
-
 
 def finite_number(value):
     return isinstance(value, Real) and not isinstance(value, bool) and math.isfinite(value)

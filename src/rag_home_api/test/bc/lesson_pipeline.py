@@ -1,18 +1,15 @@
 """교안 2·3·5장의 LangChain 구성 요소로 RAG를 연결한다."""
 
 import os
-import sys
 from pathlib import Path
 from functools import lru_cache
 from copy import deepcopy
 
 ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT))
-os.environ['RAGAS_DO_NOT_TRACK'] = 'true'
-os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
-os.environ['HF_HOME'] = str(ROOT / '.local/huggingface_course')
-os.environ['TOKENIZERS_PARALLELISM'] = 'false'
-os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
+os.environ.setdefault('HF_HUB_DISABLE_TELEMETRY', '1')
+os.environ.setdefault('HF_HOME', str(ROOT / '.local/huggingface_course'))
+os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
+os.environ.setdefault('PYTORCH_ENABLE_MPS_FALLBACK', '1')
 
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
@@ -27,8 +24,12 @@ from langchain_core.runnables import RunnableLambda
 from langchain_openai import OpenAIEmbeddings
 from langchain_postgres import PGVector
 
-from structural_chunk_v0 import DEFAULT_CSV_PATH, PROJECT_ROOT
-from metadata_filters import validate_filter, matches_filter
+if __package__:
+    from .structural_chunk_v0 import DEFAULT_CSV_PATH, PROJECT_ROOT
+    from .metadata_filters import validate_filter, matches_filter
+else:  # 기존 파일 직접 실행 경로도 지원한다.
+    from structural_chunk_v0 import DEFAULT_CSV_PATH, PROJECT_ROOT
+    from metadata_filters import validate_filter, matches_filter
 
 load_dotenv(PROJECT_ROOT / '.env')
 MODELS = {'small': 'text-embedding-3-small', 'large': 'text-embedding-3-large'}
@@ -57,10 +58,12 @@ def vector_store(version='v0', size='small'):
 
 
 def documents(version='v0'):
-    if version == 'v0':
-        from structural_chunk_v0 import chunk_csv
+    if version != 'v0':
+        raise ValueError('현재 서비스는 V0 청크만 지원합니다.')
+    if __package__:
+        from .structural_chunk_v0 import chunk_csv
     else:
-        from structural_chunk_v1 import chunk_csv
+        from structural_chunk_v0 import chunk_csv
     return [Document(id=doc.id, page_content=doc.page_content,
                      metadata={**doc.metadata, 'chunk_id': doc.id}) for doc in chunk_csv(DEFAULT_CSV_PATH)]
 

@@ -7,7 +7,25 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from run_filtered_dev import ROOT, PROJECT_ROOT, CSV_PATH, csv_hashes, read_inputs, sha256, write_json
+ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = ROOT.parents[3]
+CSV_PATH = PROJECT_ROOT / 'src/rag_home_api/shared/docs/서울_전월세_최근1년_관악구.csv'
+
+
+def sha256(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def csv_hashes():
+    data = CSV_PATH.read_bytes()
+    return {'raw': hashlib.sha256(data).hexdigest(),
+            'lf': hashlib.sha256(data.replace(b'\r\n', b'\n')).hexdigest()}
+
+
+def write_json(path, value, mode='w'):
+    with path.open(mode, encoding='utf-8') as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2, allow_nan=False)
+        stream.write('\n')
 
 
 def fingerprint(docs):
@@ -22,11 +40,13 @@ def fingerprint(docs):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--stage', choices=('check', 'index'), default='check')
-    parser.add_argument('--output', type=Path, default=ROOT / 'results/index_v0_small')
+    parser.add_argument('--output', type=Path, default=ROOT / '.local/index_v0_small')
     parser.add_argument('--resume', action='store_true', help='같은 청크 해시의 중단된 적재만 재개')
     args = parser.parse_args()
-    read_inputs()  # 원본 검증. 정답표는 임베딩에 포함하지 않는다.
-    from lesson_pipeline import documents, save_documents
+    if __package__:
+        from .lesson_pipeline import documents, save_documents
+    else:
+        from lesson_pipeline import documents, save_documents
     docs = documents('v0')
     chunk_hash = fingerprint(docs)
     print(f'V0: {len(docs):,} chunks / SHA-256 {chunk_hash}', flush=True)
@@ -53,7 +73,6 @@ def main():
             'code_lf_sha256': {name: hashlib.sha256((ROOT / name).read_bytes().replace(b'\r\n', b'\n')).hexdigest()
                                for name in code_names},
             'lock_sha256': sha256(PROJECT_ROOT / 'uv.lock'),
-            'authorization': '2026-11-25 사용자 요청: 새 Windows DB에 동일 데이터로 임베딩',
         }, 'x')
     write_json(status_path, {'status': 'running'})
     try:

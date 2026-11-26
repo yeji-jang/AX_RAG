@@ -1,0 +1,5 @@
+# 현재 Mac 실행 환경의 추가 의존성. 루트 uv.lock에는 포함되어 있지 않다.
+# Python 3.13 환경에서 팀 플랫폼에 맞는 torch 설치를 먼저 확인한다.
+sentence-transformers==6.3.0
+torch==2.15.0
+transformers==5.24.1
