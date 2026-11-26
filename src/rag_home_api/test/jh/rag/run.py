@@ -138,7 +138,7 @@ def build_reranker():
 
 def live_components(args):
     # 승인 범위 → 팀 설정 → 실제 DB 색인 지문 → 모델 클라이언트 순서. 자동 승인은 없다.
-    approved = require_external_scope(args.collection, split=args.split, modes=args.modes,
+    approved, documents = require_external_scope(args.collection, split=args.split, modes=args.modes,
         preset=args.preset, rewrite=args.rewrite, generate=args.generate)
     from retrieve import Retriever, apply_preset
     apply_preset(args.preset)
@@ -146,7 +146,7 @@ def live_components(args):
     if (config["embedding"] != approved["embedding_model"] or
             config["generation"] != approved["generation_model"]):
         raise PermissionError("[RuntimeModelMismatch] 팀 모델 설정이 승인한 모델과 다릅니다.")
-    snapshot = read_index(config["connection"], args.collection, law_chunks(args.collection))
+    snapshot = read_index(config["connection"], args.collection, documents)
     if snapshot["index_sha256"] != approved["index_sha256"]:
         raise PermissionError("[IndexApprovalMismatch] 실제 DB 색인 지문이 승인값과 다릅니다.")
     ranker = build_reranker() if "C" in args.modes else None
@@ -154,7 +154,8 @@ def live_components(args):
     query_embeddings = OpenAIEmbeddings(model=config["embedding"], api_key=config["api_key"],
         base_url=API_BASE, max_retries=0, request_timeout=55, check_embedding_ctx_length=False)
     embeddings = StoredDocumentEmbeddings(query_embeddings, snapshot["vectors_by_text"])
-    ret = Retriever(args.collection, law_only=True, embeddings=embeddings, connection=config["connection"])
+    ret = Retriever(args.collection, law_only=True, embeddings=embeddings,
+                    connection=config["connection"], law_documents=documents)
     def search(mode, query):
         return ret.retriever(mode).invoke(query)
     chain = generator = None
@@ -190,9 +191,10 @@ def main(argv=None):
         if args.execute or args.generate or args.rewrite or args.tag:
             parser.error("색인 사전 점검은 실행/생성/리라이트/결과 저장 옵션과 함께 쓰지 않습니다.")
         try:
-            result = local_manifest(args.collection)
+            documents = law_chunks(args.collection)
+            result = local_manifest(args.collection, documents=documents)
             if args.check_index:
-                snapshot = read_index(database_connection(), args.collection, law_chunks(args.collection))
+                snapshot = read_index(database_connection(), args.collection, documents)
                 result.update({k: v for k, v in snapshot.items() if k != "vectors_by_text"})
                 result["embedding_provenance"] = "차원만으로 임베딩 모델을 증명할 수 없음. 팀장이 적재 기록을 확인해야 함."
             print(json.dumps({"approved": False, **result}, ensure_ascii=False))
