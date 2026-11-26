@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]  # src/rag_home_api/config.py → 프
 DATA_DIR = ROOT / "data"
 EVAL_DIR = ROOT / "eval"
 RESULTS_DIR = ROOT / "results"
-
+SHARED_DOCS_DIR = ROOT / "src" / "rag_home_api" / "shared" / "docs"
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ROOT / ".env", extra="ignore")
@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-6-luna"
     rerank_model: str = "gpt-6-luna"
     embedding_model: str = "text-embedding-3-small"
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/rag_db"
+    collection_name: str = "seoul_housing_unified"
+    index_version: str = "idx-v3-c600-o100-table"  # 구조적 표 보존 + 공고 구분자 + 풍부한 Prefix
 
-
+    # 검색 B (Hybrid RRF) 가중치·상수 (dev 10문항으로만 튜닝 후 고정)
+    bm25_weight: float = 0.55
+    vector_weight: float = 0.45
+    rrf_k: int = 60
+    
 settings = Settings()

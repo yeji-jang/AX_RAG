@@ -1,27 +1,59 @@
-# Python-generated files
+# ---- Python / 빌드 / 테스트 캐시 ----
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
 build/
 dist/
 wheels/
-*.egg-info
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# Virtual environments
-.venv
+# ---- 가상환경 ----
+.venv/
+venv/
 
+# ---- 환경변수 · 비밀정보 (절대 커밋 금지) ----
 .env
-# ---- 아래는 feat/cjh 추가 ----
 .env.*
 !.env.example
+*.pem
+*.key
+
+# ---- 노트북 · IDE · OS · 프론트엔드 ----
 .ipynb_checkpoints/
 node_modules/
 .next/
 .vscode/
+.idea/
 Thumbs.db
+Desktop.ini
+.DS_Store
 
-# 수집 원본·색인 (재생성: uv run python -m rag_home_api.collect.<모듈>)
+# ---- 수집 원본 · 로컬 색인 · 재생성 가능 산출물 ----
+# 재생성: uv run python -m rag_home_api.collect.<모듈> / build_unified_index(rebuild=True)
 data/raw/
 data/index/
+data/chunk_manifest*.jsonl
+data/cache/
 
-# 개인 작업 지침
+# ---- 로컬 캐시 DB · 로그 · 모델 캐시 ----
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.log
+logs/
+.cache/
+
+# ---- 개인 임시 실험 결과 (공식 results/final/, 팀원별 results/members/ 는 Git 추적 유지) ----
+results/scratch/
+
+# ---- 개인 AI 작업 지침 ----
 CLAUDE.md
+.cursor/
+.gemini/
