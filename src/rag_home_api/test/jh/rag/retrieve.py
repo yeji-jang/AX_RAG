@@ -94,10 +94,10 @@ class Retriever:
                                     connection if connection is not None else config["connection"]),
                                     collection_name=collection, use_jsonb=True,
                                     create_extension=not law_only)  # 법령 CLI는 사전검증한 기존 색인만 사용
-        law_chunks = [c for c in self.chunks if c.metadata["category"] in CONFIG["law_categories"]]
+        law_category_chunks = [c for c in self.chunks if c.metadata["category"] in CONFIG["law_categories"]]
         # 범위(all / law)마다 검색기를 하나씩 만듦. BM25Retriever에는 거르기 기능이 없어서 법령·가이드 청크로 따로 만듦
         self.bm25 = {"all": self._bm25(self.chunks),
-                     "law": self._bm25(law_chunks) if CONFIG["route"] and not law_only else None}
+                     "law": self._bm25(law_category_chunks) if CONFIG["route"] and not law_only else None}
         if law_only:
             self.bm25["law_statutes"] = self.bm25["all"]
         self.retrievers = {}  # 방식(A/B)별 최종 검색기

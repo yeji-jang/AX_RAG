@@ -85,6 +85,7 @@ class LawDomainAdapter:
         self._retriever = jh_retrieve.Retriever(
             self.collection_name,
             law_only=True,
+            law_documents=docs,
             embeddings=stored_emb,
             connection=dsn,
         )
