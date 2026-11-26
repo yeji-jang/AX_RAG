@@ -27,10 +27,10 @@ TEAM_COLLECTIONS: dict[str, dict[str, str]] = {
     },
     "public_housing": {
         "standard": "rag_notice_v1",
-        "current": "yj_preV2_chunkV1_cs800_ov100",
+        "current": "yj_public_rental",
         "owner": "yj",
         "embedding_model": UNIFIED_EMBEDDING_MODEL,
-        "description": "공공임대·청년안심주택 모집 공고문 (800/100)",
+        "description": "공공임대·청년안심주택 모집 공고문 (단일 컬렉션, chunk_version=V2, 6,197청크)",
     },
     "rent_stats": {
         "standard": "rag_rent_stats_v1",
