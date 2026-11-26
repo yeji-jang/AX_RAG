@@ -88,19 +88,7 @@ Document 객체이므로 본문과 metadata를 추출해 직렬화해야 한다.
 
 - **`실험기록.md`: 팀 공유용 실험 기록. 일정·설정·변경·결과·판단 순으로 정리**
 - **먼저 읽기 — `docs/development_history.md`: 버전·단계별 변경 코드와 수치 변화를 한곳에 정리한 종합 이력**
-- `docs/runtime_measurement_analysis.md`: T21~T40 실행 결과·채점 오류 복구·미적중 분석
-
-- `docs/context_precision_audit.md`: Context Precision 1.0 검증, T16 판정 차이, 추가 실환경 측정 명령
-- `docs/ragas_comparison_analysis.md`: 완료된 RAGAS 실측·초기 대비 변화·질문별 분석
-
-- `docs/ragas_execution_analysis.md`: 실제 RAGAS 실행 중단 원인과 수정·재개 방법
-- `docs/caching_and_quality_comparison.md`: 캐싱 구현, 검색 지표 비교, 조건 추출·필터·정규화 상세
-- `docs/caching_selection.md`: 필수 최적화로 캐싱을 선택하는 이유와 최소 구현·확인 계획
-- `docs/AX_RAG_comparison_20261125.md`: 필터·정규화·시제 변경의 방법과 수치 비교
-
 - `docs/embedding_comparison_report.md`: 임베딩·청킹 비교 기록
-- `docs/hit5_analysis_and_improvement.md`: 검색 실패 원인과 개선 방향
-- `docs/filter_evaluation.md`: 조건 필터 개선 결과와 당시 실행 기록
 - `docs/abc_evaluation_questions.md`, `docs/abc_test_questions_v3.md`: 평가 질문 설명
 - `eval/*.json`: 평가 질문 원본
 
