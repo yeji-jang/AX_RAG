@@ -25,7 +25,15 @@ logger = get_logger(__name__)
 #===================================================================
 # 1. 입력값으로 넣을 청크문서 경로 설정하고 
 #===================================================================
-CHUNK_FILE = "공공임대_공고문_preV2_chunkV1_cs800_ov100.jsonl"
+PREPROCESS_VERSION = "V2"
+CHUNK_VERSION = "V2"
+CHUNK_SIZE = 800
+CHUNK_OVERLAP  = 100
+
+
+CHUNK_FILE = f"공공임대_공고문_pre{PREPROCESS_VERSION}_chunk{CHUNK_VERSION}_cs{CHUNK_SIZE}_ov{CHUNK_OVERLAP}.jsonl"
+
+
 BATCH_SIZE = 200          # Postgres 요청 인자 수 한도(65,535) 때문에 나눠서 저장
 TEST_LIMIT = None     
 
