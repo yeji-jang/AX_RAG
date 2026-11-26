@@ -24,7 +24,7 @@ from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_postgres import PGVector
 
-from common import load_chunks, runtime_config
+from common import law_chunks, load_chunks, runtime_config
 
 CONFIG = {
     "k": 5,  # 최종 상위 k (Hit@5)
@@ -77,13 +77,14 @@ def route(question: str) -> str:
 
 
 class Retriever:
-    def __init__(self, collection: str, law_only: bool = False, *, embeddings=None, connection=None):
+    def __init__(self, collection: str, law_only: bool = False, *, embeddings=None, connection=None,
+                 law_documents=None):
         self.collection = collection
         self.law_only = law_only
-        self.chunks = load_chunks(collection)
         if law_only:
-            self.chunks = [d for d in self.chunks if d.metadata["category"] == "일반 전월세 법령"
-                           and d.metadata["doc_id"].startswith("LAW_")]
+            self.chunks = law_chunks(collection) if law_documents is None else law_documents
+        else:
+            self.chunks = load_chunks(collection)
         self.by_id = {c.metadata["chunk_id"]: c for c in self.chunks}
         if embeddings is None or connection is None:
             config = runtime_config()

@@ -1,9 +1,3 @@
-"""공통: 경로·청크 불러오기·평가셋.
-
-청크는 PGVector에 저장할 때(chunktest.ipynb 1~5단계)와 같은 방법으로 JSONL을 다시 잘라 만든다.
-→ 같은 입력·같은 설정이면 결과가 같으므로, BM25와 PGVector가 같은 청크 ID를 쓴다.
-"""
-
 import hashlib
 import json
 import os
@@ -120,8 +114,8 @@ def eval_digest() -> str:
     return h.hexdigest()
 
 
-def local_manifest(collection: str) -> dict:
-    docs = law_chunks(collection)
+def local_manifest(collection: str, *, documents=None) -> dict:
+    docs = law_chunks(collection) if documents is None else documents
     return {"eval_sha": eval_sha(), "eval_sha256": eval_digest(), "collection": collection,
             "chunking": CHUNKING[collection], "law_chunks": len(docs),
             "corpus_sha256": corpus_fingerprint(docs), "embedding_model": MODELS["embedding"],
@@ -129,7 +123,7 @@ def local_manifest(collection: str) -> dict:
 
 
 def require_external_scope(collection: str, *, split: str, modes: list[str], preset: str,
-                           rewrite: bool, generate: bool) -> dict:
+                           rewrite: bool, generate: bool) -> tuple[dict, list[Document]]:
     """팀장이 지정한 로컬 승인 범위를 키/DB 초기화 전에 검사한다."""
     try:
         approved = json.loads(APPROVAL_FILE.read_text(encoding="utf-8-sig"))
@@ -146,7 +140,8 @@ def require_external_scope(collection: str, *, split: str, modes: list[str], pre
                 "preset", "rewrite", "generate"}
     if not required.issubset(approved):
         raise ValueError("[ApprovalConfigInvalid] 로컬 승인 설정에 필수 필드가 누락됐습니다.")
-    manifest = local_manifest(collection)
+    documents = law_chunks(collection)
+    manifest = local_manifest(collection, documents=documents)
     for field in ("eval_sha", "eval_sha256", "collection", "corpus_sha256",
                   "embedding_model", "generation_model", "api_base"):
         if approved.get(field) != manifest[field]:
@@ -169,4 +164,4 @@ def require_external_scope(collection: str, *, split: str, modes: list[str], pre
             raise ValueError(f"[ApprovalConfigInvalid] {field}는 true/false여야 합니다.")
         if requested and not approved[field]:
             raise PermissionError(f"[ApprovalScopeMismatch] {field} 실행은 승인되지 않았습니다.")
-    return approved
+    return approved, documents
