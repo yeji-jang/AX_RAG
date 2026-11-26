@@ -1,7 +1,7 @@
 # 서울 주거 RAG 팀 통합 규약서 (방안 3: 어댑터 선통합 + 멀티컬렉션·라우터 결합)
 
-> 작성: 최기혁 (`kh`) · 기준일: 2026-11-26  
-> 대상 브랜치: `dev`, `feat/yeji`, `feat/cjh`, `feat/SBC-rag-pipeline`, `feat/kihyeok`
+> 작성: 최기혁 (`kh`) · 기준일: 2026-11-27 (통합 실증·검증 완료 반영)  
+> 대상 브랜치: `dev` (PR #15~#20 통합 완료), `feat/yeji-chatbot` (PR #21 `찾아줘 홈즈` Streamlit 챗봇 UI), `feat/kihyeok`
 
 ---
 
@@ -20,18 +20,20 @@
 
 ## 2. PGVector 컬렉션 & PK(`e.id`) 충돌 방지 규약
 
-### 2-1. 임베딩 모델 통일
-- 통합 PGVector DB(`rag_db`)의 기본 임베딩 모델은 전원 **`text-embedding-3-small` (1,536차원)** 으로 통일한다.
-- `text-embedding-3-large` (3,072차원) 또는 로컬 한국어 임베딩(`KURE-v1`, 1,024차원)은 반드시 별도 비교 실험 컬렉션으로만 운용하고 통합 DB 기본 컬렉션과 섞지 않는다.
+### 2-1. 임베딩 모델 통일 & 멀티 컬렉션 공존 원칙
+- 통합 PGVector DB(`rag_db`)의 기본 공용 임베딩 모델은 **`text-embedding-3-small` (1,536차원)** 으로 통일한다.
+- 한국어 특화 로컬 임베딩(`nlpai-lab/KURE-v1`, 1,024차원) 등 이종 차원 모델은 반드시 **독립 컬렉션(`housing_rent_kh_kure_v1`)**으로 분리 적재하여 1,536차원 컬렉션과 차원 충돌 없이 공존시킨다.
 
-### 2-2. 도메인별 컬렉션 레지스트리 (`shared/core/vector_store.py`)
+### 2-2. 도메인별 컬렉션 레지스트리 (`shared/core/vector_store.py` & `router/`)
 
-| 도메인 키 (`domain`) | 담당자 | 통합 표준명 (`standard`) | 현재 브랜치 컬렉션명 (`current`) | 임베딩 | 담당 데이터 |
+| 도메인 키 (`domain`) | 담당자 | 통합 표준명 (`standard`) | 현재 확정 컬렉션명 (`current` / 활성) | 임베딩 | 담당 데이터 (단일 DB 실측 청크 수) |
 | :--- | :---: | :--- | :--- | :---: | :--- |
-| `law` | 지훈 (`jh`) | `rag_law_v1` | `jh_1000` | `3-small` | 주택임대차 법령·가이드 (1000/200) |
-| `public_housing` | 예지 (`yj`) | `rag_notice_v1` | `yj_preV2_chunkV1_cs800_ov100` | `3-small` | 공공임대·청년안심 모집공고 (800/100) |
-| `rent_stats` | 최기혁 (`kh`) | `rag_rent_stats_v1` | `housing_rent_kh` | `3-small` | 서울 25구 전월세 시세 요약 블록 (6,200청크) |
-| `rent_deals` | 병철 (`bc`) | `rag_rent_deals_v1` | `course_v1_small` | `3-small` | 전월세 개별 거래 조건 필터 검색 (1행=1청크) |
+| `law` | 최지훈 (`jh`) | `rag_law_v1` | `jh_1000` | `3-small` (1,536d) | 주택임대차 법령·가이드 (`1000/200`, **167청크**) |
+| `public_housing` | 장예지 (`yj`) | `rag_notice_v1` | `yj_public_rental` | `3-small` (1,536d) | 공공임대·청년안심 모집공고 (`chunkV2`, **6,197청크**) |
+| `rent_stats` | 최기혁 (`kh`) | `rag_rent_stats_v1` | `housing_rent_kh` *(공통 기준)*<br>**`housing_rent_kh_kure_v1`** *(어댑터 활성)* | `3-small` (1,536d)<br>**`KURE-v1` (1,024d)** | 서울 25구 전월세 시세 요약 블록 (**6,200청크** × 2) |
+| `rent_deals` | 선병철 (`bc`) | `rag_rent_deals_v1` | `course_v0_small` | `3-small` (1,536d) | 관악구 전월세 개별 조건 필터 검색 (`V0`, **31,772청크**) |
+
+> 단일 PostgreSQL(PGVector) 공존 실측(2026-11-26): 위 5개 도메인 컬렉션 + 공통 파일럿(`seoul_housing_unified`, 216청크) = **총 6개 컬렉션 · 50,752행 · 고유 PK 50,752개 · 컬렉션 간 PK 충돌 `0건`** 검증 완료.
 
 ### 2-3. 전역 PK(`langchain_pg_embedding.id`) 필수 규칙
 LangChain `PGVector`는 모든 컬렉션이 단일 테이블 `langchain_pg_embedding`을 공유하므로, 적재 시 반드시 아래 공통 함수를 사용해 **컬렉션 접두어를 PK에 포함**한다.
@@ -40,8 +42,8 @@ LangChain `PGVector`는 모든 컬렉션이 단일 테이블 `langchain_pg_embed
 from rag_home_api.shared.core.vector_store import make_db_id
 
 db_id = make_db_id(collection_name, chunk_id)
-# 예: "housing_rent_kh:RENT_강남구_신사동_단독다가구_월세_33이하"
-# 예: "yj_preV2_chunkV1_cs800_ov100:SH_308944_p024_chunkV1_c01"
+# 예: "housing_rent_kh_kure_v1:RENT_강남구_신사동_단독다가구_월세_33이하"
+# 예: "yj_public_rental:SH_308944_p024_chunkV2_c01"
 ```
 
 ---
@@ -103,9 +105,9 @@ uv run --with streamlit streamlit run src/rag_home_api/test/kh/eval_dashboard.py
 
 ---
 
-## 5. 팀원별 5분 통합 체크리스트
+## 5. 팀원별 통합 완료 현황 (2026-11-27 기준)
 
-- **예지 (`yj`)**: 이미 `make_db_id` PK 규약·RAGAS JSON 규격 완비 ✅ → `public_housing` 핸들러 래퍼 10줄(`RAGResponse` 반환)만 연결!
-- **지훈 (`jh`)**: `law_router.py` 분류 규칙을 공용 `domain_router.py`에 반영 완료 ✅ → `jh_1000` 적재 시 `make_db_id` 확인 + 법령 핸들러를 `router.register("law", ...)`로 연결 + 최종 평가 시 RAGAS 4지표 JSON 1회 저장!
-- **병철 (`bc`)**: 통합 DB에는 `course_v1_small` (`text-embedding-3-small`) 기준 적재 + `make_db_id` 확인 → `rent_deals` 핸들러를 `router.register("rent_deals", ...)`로 연결 + 최종 평가 시 RAGAS 4지표 JSON 1회 저장!
-- **최기혁 (`kh`)**: `housing_rent_kh` `rent_stats` 핸들러 연결 + `unify_team_results.py`·Streamlit 통합 비교 관리 + `dev_v2` 튜닝 및 `test` 20문항 최종 성적표 확정!
+- [x] **장예지 (`yj` · `public_housing`)**: `make_db_id` PK 규약·RAGAS JSON 완비 + `yj_public_rental` (`chunkV2`, 6,197청크) 단일 DB 적재 + `router/public_housing_adapter.py` 무수정 연결 + 통합 라우터 기반 **`찾아줘 홈즈` Streamlit 챗봇 UI (PR #21)** 완성!
+- [x] **최지훈 (`jh` · `law`)**: `law_router.py` 분류 규칙을 공용 `domain_router.py`에 반영 + `jh_1000` (167청크) `make_db_id` 적재 및 `--check-index` PASS + `router/law_adapter.py` 무수정 연결(PR #19 초기화 수정 · PR #21 중복 인자 핫픽스 검수 완료)!
+- [x] **선병철 (`bc` · `rent_deals`)**: `course_v0_small` (`V0`, 31,772청크) 단일 DB 적재 + `router/rent_deals_adapter.py` 무수정 연결 + 기존 `test` (`Hit@5 17/17 · CP/CR 1.000`) 및 신규 `test_v3` (`15/17`) 확정!
+- [x] **최기혁 (`kh` · `rent_stats` · 통합 관리)**: `housing_rent_kh_kure_v1` (`KURE-v1`, 6,200청크) `router/rent_stats_adapter.py` 연결 + STEP 6 봉인 `test` 확정(`C+Rewrite RAGAS 0.9435 · Cache Warm 0.3ms`) + **단일 DB `50,752행` PK 충돌 0건 · 18문항 4도메인 라이브 스모크 `18/18 (100%)` · 120문항 평가셋 무결성 `120/120` · Streamlit Pure-Stdlib 4인 워크벤치(83스텝)** 검증 완료!
