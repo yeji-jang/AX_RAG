@@ -54,7 +54,7 @@ CHUNK_VERSION = "V2"          # 평가할 청킹 버전 ("V1" / "V2") — 검색
 SEARCH_FILTERS = {"chunk_version": CHUNK_VERSION}
 
 CHUNK_VER = f"chunk_{CHUNK_VERSION}"
-SPLIT = "dev"                 # 개발/튜닝은 "dev"(10문항), 최종 고정 평가만 "test"(20문항)
+SPLIT = "test"                 # 개발/튜닝은 "dev"(10문항), 최종 고정 평가만 "test"(20문항)
 FAILURE_THRESHOLD = 0.7       # RAGAS 미달 판정 기준 점수
 
 MODES = [
