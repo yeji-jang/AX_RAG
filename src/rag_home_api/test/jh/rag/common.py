@@ -6,23 +6,19 @@
 
 import hashlib
 import json
-import os
-
-from dotenv import load_dotenv
+from pathlib import Path
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from rag_home_api.config import ROOT, settings
-
-load_dotenv(ROOT / ".env")  # OPENAI_API_KEY·DATABASE_URL (값은 출력하지 않음)
-DB_URL = os.environ["DATABASE_URL"]
-
-JH = ROOT / "src" / "rag_home_api" / "test" / "jh"
+JH = Path(__file__).resolve().parents[1]
+ROOT = JH.parents[3]
 DOCS = ROOT / "src" / "rag_home_api" / "shared" / "docs"
 EVAL = JH / "평가셋"
 EVAL_FILES = ["법령파트_평가셋.json", "후보풀_공공임대.json"]
 # 신규 DEV·TEST의 외부 전송 범위를 확인한 뒤 해당 해시만 추가함.
 API_APPROVED_EVALS = frozenset({"ce06a5d5ac03"})
+# (평가 바이트 해시, 컬렉션) -> 승인된 법령 청크 ID/본문 지문. 자동 등록하지 않는다.
+APPROVED_INDEXES = {}
 RESULTS = JH / "results"
 CACHE = JH / "out"  # 깃 제외(.gitignore) — BM25 토큰 캐시
 
@@ -34,7 +30,25 @@ CHUNKING = {
     "jh_1000": {"chunk_size": 1000, "chunk_overlap": 200, "tag": "s1000"},
 }
 
-MODELS = {"embedding": settings.embedding_model}
+MODELS = {"embedding": "text-embedding-3-small", "generation": "gpt-6-luna"}
+
+
+def runtime_config() -> dict:
+    """외부 실행 승인 뒤에만 호출. 정적 검증/도움말은 .env/키/DB를 읽지 않는다."""
+    import os
+    from dotenv import load_dotenv
+    from rag_home_api.config import settings
+    load_dotenv(ROOT / ".env")
+    connection = os.environ.get("DATABASE_URL")
+    if not connection:
+        raise ValueError("DATABASE_URL 설정이 필요합니다.")
+    return {"connection": connection, "api_key": settings.openai_api_key,
+            "embedding": settings.embedding_model, "generation": settings.llm_model}
+
+
+def corpus_fingerprint(documents) -> str:
+    rows = sorted((d.metadata["chunk_id"], d.page_content) for d in documents)
+    return hashlib.sha256(json.dumps(rows, ensure_ascii=False).encode()).hexdigest()
 
 
 def load_documents() -> list[Document]:
@@ -93,6 +107,10 @@ def require_eval_api_scope(expected_eval_sha: str | None = None) -> None:
         raise PermissionError("신규 DEV·TEST 질문의 외부 API 전송 범위 확인이 필요합니다.")
 
 
-def require_dev_api_scope(expected_eval_sha: str | None = None) -> None:
-    """이전 DEV 실행기에서 사용하는 승인 검사 이름을 유지함."""
-    require_eval_api_scope(expected_eval_sha)
+def require_external_scope(collection: str) -> str:
+    """명시 실행 옵션 외에도 현재 평가와 색인의 별도 승인이 있어야 한다."""
+    require_eval_api_scope()
+    approved = APPROVED_INDEXES.get((eval_sha(), collection))
+    if not approved:
+        raise PermissionError("현재 평가셋·색인의 명시적 실행 승인이 필요합니다.")
+    return approved

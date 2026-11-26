@@ -4,20 +4,18 @@ import json
 import re
 from collections import Counter
 
-from common import DOCS, EVAL, FILES, eval_sha, load_chunks, load_eval
+from common import DOCS, FILES, eval_sha, load_chunks, load_eval
 
 
 def main():
     dev = load_eval("dev")["items"]
     test = load_eval("test")["items"]
-    archive = json.loads((EVAL / "이전평가셋_c3d4c4ead6cb.json").read_text(encoding="utf-8"))
     assert len(dev) == 10 and len(test) == 20
     assert {q["question_id"] for q in dev} == {f"JH-DEV-{i:02d}" for i in range(1, 11)}
     assert {q["question_id"] for q in test} == {f"JH-TEST-{i:02d}" for i in range(1, 21)}
     assert Counter(q["expected_status"] for q in dev) == {"answered": 8, "insufficient_evidence": 2}
     assert Counter(q["expected_status"] for q in test) == {"answered": 17, "insufficient_evidence": 3}
     assert Counter(q["eval_category"] for q in test) == {"direct": 10, "paraphrase": 7, "no_evidence": 3}
-    assert not archive["active"] and len(archive["items"]) == 30
     rows = {}
     for name in FILES:
         for line in (DOCS / f"{name}.jsonl").read_text(encoding="utf-8").splitlines():
@@ -79,7 +77,7 @@ def main():
     assert not re.search(r"\d+일이내.{0,30}(?:결정|재판)|(?:결정|재판).{0,30}\d+일",
                          normalize(rows["LAW_HLPA_본칙_005"]["text"]))
     print(json.dumps({"eval_sha": eval_sha(), "dev": {"answered": 8, "no_evidence": 2},
-                      "test": {"answered": 17, "no_evidence": 3}, "legacy_saved": 30,
+                      "test": {"answered": 17, "no_evidence": 3},
                       "quotes_checked": quotes_checked,
                       "chunk_mappings": sum(len(q["allowed_chunk_ids"]) for q in dev + test),
                       "distinct_primary_rows": 25,

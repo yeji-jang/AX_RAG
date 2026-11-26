@@ -24,7 +24,7 @@ from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_postgres import PGVector
 
-from common import DB_URL, MODELS, load_chunks
+from common import load_chunks, runtime_config
 
 CONFIG = {
     "k": 5,  # 최종 상위 k (Hit@5)
@@ -77,7 +77,7 @@ def route(question: str) -> str:
 
 
 class Retriever:
-    def __init__(self, collection: str, law_only: bool = False):
+    def __init__(self, collection: str, law_only: bool = False, *, embeddings=None, connection=None):
         self.collection = collection
         self.law_only = law_only
         self.chunks = load_chunks(collection)
@@ -85,8 +85,12 @@ class Retriever:
             self.chunks = [d for d in self.chunks if d.metadata["category"] == "일반 전월세 법령"
                            and d.metadata["doc_id"].startswith("LAW_")]
         self.by_id = {c.metadata["chunk_id"]: c for c in self.chunks}
-        self.embeddings = OpenAIEmbeddings(model=MODELS["embedding"])
-        self.vectorstore = PGVector(embeddings=self.embeddings, connection=DB_URL,
+        if embeddings is None or connection is None:
+            config = runtime_config()
+        self.embeddings = embeddings if embeddings is not None else OpenAIEmbeddings(
+            model=config["embedding"], api_key=config["api_key"])
+        self.vectorstore = PGVector(embeddings=self.embeddings, connection=(
+                                    connection if connection is not None else config["connection"]),
                                     collection_name=collection, use_jsonb=True)  # 연결만 — pre_delete_collection 쓰지 않음
         law_chunks = [c for c in self.chunks if c.metadata["category"] in CONFIG["law_categories"]]
         # 범위(all / law)마다 검색기를 하나씩 만듦. BM25Retriever에는 거르기 기능이 없어서 법령·가이드 청크로 따로 만듦

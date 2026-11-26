@@ -4,7 +4,7 @@ import time
 
 from langchain_core.prompts import PromptTemplate
 
-# 기존 run_rewrite_c.py의 규칙을 사용하며 원질문 앵커를 추가해 조건 소실을 막는다.
+# 기존 실험의 조건 보존 규칙. 검색문에 원질문 앵커를 남긴다.
 def rewrite_query(question, chain):
     started = time.perf_counter()
     fallback = None
