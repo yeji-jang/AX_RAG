@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 #===================================================================
 # 1. 경로 및 설정
 #===================================================================
-DATASET_VER = "first"   # run_eval.py의 DATASET_VER와 동일한 버전 폴더 사용
+DATASET_VER = "chunk_V1"
 OVERWRITE = False       # 이미 검수된 평가셋 덮어쓰기 방지 (새 버전은 DATASET_VER 변경 권장)
 
 CHUNK_PATH = (
