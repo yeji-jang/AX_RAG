@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-6-luna"
     rerank_model: str = "gpt-6-luna"
     embedding_model: str = "text-embedding-3-small"
-    database_url: str
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/rag_db"
     collection_name: str = "seoul_housing_unified"
     index_version: str = "idx-v3-c600-o100-table"  # 구조적 표 보존 + 공고 구분자 + 풍부한 Prefix
 
