@@ -118,6 +118,7 @@ def split_and_enrich(
             meta = PublicRentalChunkMetadata(
                 **doc.metadata,
                 chunk_id=chunk_id,
+                chunk_version=CHUNK_VERSION,
                 chunk_index=idx,
                 content_hash=compute_sha256(content),  # prefix 포함 본문 기준
             )
