@@ -9,7 +9,7 @@
 > 같은 원본 교안 코드 재실행, 초기 필터 및 후속 정규화 결과는 비교 HTML에 구분했다.
 
 > 관련 보고서: [embedding_comparison_report.md](./embedding_comparison_report.md)  
-> 관련 실험 코드: [structural_chunk_v0.py](../structural_chunk_v0.py) · [check_metadata_filter.py](../check_metadata_filter.py)
+> 관련 실험 코드: [structural_chunk_v0.py](../structural_chunk_v0.py) · `check_metadata_filter.py`(현재 삭제됨)
 
 ---
 
@@ -121,7 +121,7 @@ Dev 직접 검색 4문항(`D01`~`D04`)에 대해 메타데이터 필터 적용 �
      ORDER BY distance, chunk_id
      LIMIT 5;
      ```
-   - **방식 B (`PGVector` 사용 시):** [check_metadata_filter.py](../check_metadata_filter.py)처럼 `store.similarity_search(query, k=5, filter=...)`에 추출된 딕셔너리 전달
+   - **방식 B (`PGVector` 사용 시):** `check_metadata_filter.py`(현재 삭제됨)처럼 `store.similarity_search(query, k=5, filter=...)`에 추출된 딕셔너리 전달
 4. **실전 함정 3가지 방어**
    - **건물명(`building_name`)은 하드 필터(`=`)에서 제외:** `"e편한세상 1단지"` vs `"e편한세상1단지"`처럼 띄어쓰기·표기가 다를 수 있으므로, 지역·유형·예산 필터로 먼저 좁힌 뒤 **Vector 유사도** 또는 **`ILIKE` 부분 일치**로 상위에 올리는 것이 안전합니다.
    - **본문 전체 BM25 제거:** 메타데이터 필터가 동/유형/전월세를 100% 걸러주므로, 전체 문서를 BM25로 섞으면 노이즈만 생깁니다. 필터 후 **Vector 검색만** 쓰거나 후보 20개에 Reranker만 붙이는 편이 정확합니다.
