@@ -120,10 +120,9 @@ AX_RAG/
     ├── ui/                                    # 찾아줘 홈즈 4도메인 통합 Streamlit 챗봇 UI
     │   ├── holmes_chat.py                     # 멀티턴 대화형 상담 · 공공임대 3유형(근거확인/부족/없음) · 출처/근거 화면
     │   └── assets/                            # 3D 홈즈 마스코트 · 아바타 이미지
-    ├── nextjs_ui/                             # 구해줘 홈즈 Next.js 15 캐릭터 대화형 UI + FastAPI 브리지
+    ├── nextjs_ui/                             # 서울 주거 탐색 Next.js 15 대화형 UI + FastAPI 브리지
     │   ├── api_server.py                      # 4도메인 라우터 · 멀티턴 맥락 보완 · 3유형 판별 FastAPI 서버
-    │   ├── scripts/prepare_assets.py          # 3D 캐릭터 투명 PNG 변환 스크립트
-    │   ├── public/                            # 서울 야경 인트로 · 돋보기 컷인 · 8종 캐릭터 투명 PNG
+    │   ├── scripts/prepare_assets.py          # 로컬 커스텀 캐릭터 투명 PNG 변환 유틸리티
     │   └── src/components/                    # SeoulHeroIntro · ChatWorkspace · ChatBubble · SampleQuestionGrid
     ├── shared/
     │   ├── core/                              # 공용 로거 · PGVector 연결 팩토리(make_db_id)
@@ -152,15 +151,13 @@ cp .env.example .env
 
 > PostgreSQL에 `pgvector` 확장이 활성화되어 있어야 합니다 (`CREATE EXTENSION IF NOT EXISTS vector;`).
 
-### 2. 구해줘 홈즈 Next.js 캐릭터 대화형 UI 실행 *(Next.js 15 + FastAPI)*
-서울 야경 인트로(코난 뒷모습 호버 시 뒤돌아 첫 질문 안내)와 **4개 도메인별 캐릭터 말풍선 대화방**(공공임대 `코난` · 임대차 법령 `홍장미` · 전월세 조건 `유미란` · 25구 시세 `브라운 박사`)을 제공합니다.
-- **실시간 4단계 추리 스테퍼**: 검색 대기 중 `생각코난 → 코난 돋보기 탐색 컷인 → 3D 코난` 단계별 진행 표시
+### 2. 서울 주거 탐색 Next.js 대화형 UI 실행 *(Next.js 15 + FastAPI)*
+인터랙티브 인트로 화면과 **4개 도메인별 대화형 말풍선 UI**(공공임대 · 임대차 법령 · 전월세 조건 · 서울 25구 시세)를 제공합니다.
+- **실시간 4단계 추리 스테퍼**: RAG 검색·리랭킹 대기 중 단계별 진행 상태 시각화
 - **공공임대 3가지 질문 유형 UI**: ① `근거 확인`*(멀티턴 이어묻기 · 내 조건 원클릭 신청 가능 체크)* ② `근거 부족`*(SH·LH·마이홈·서울주거포털 공식 사이트 + 대체 질문 유도)* ③ `근거 없음`*(환각 방지 모름 안내 + 가능 질문 추천)*
-- **편의 기능**: `3줄 요약` / `표로 보기` / `쉽게 풀어서` 원클릭 변환, 탐정 사건 수첩(스크랩), 마크다운 표·인용 배지
+- **편의 기능**: `3줄 요약` / `표로 보기` / `쉽게 풀어서` 원클릭 변환, 답변 스크랩 수첩, 마크다운 표·인용 배지
 
-<div align="center">
-  <img src="src/rag_home_api/nextjs_ui/public/scenes/seoul_skyline.jpg" alt="구해줘 홈즈 서울 야경 인트로 배경" width="820" />
-</div>
+> 저작권 보호를 위해 로컬 시연용 캐릭터/배경 이미지는 공개 저장소(`.gitignore`)에서 제외되어 있습니다.
 
 ```bash
 # 터미널 1: FastAPI 4도메인 RAG 백엔드 서버 (포트 8000)
@@ -262,9 +259,13 @@ uv run python -m rag_home_api.test.kh.unify_team_results --from-git
 
 - [문제 정의 및 데이터 범위 (`problem.md`)](src/rag_home_api/shared/docs/problem.md)
 - [4인 통합 아키텍처 규약서 (`team_integration_spec.md`)](docs/team_integration_spec.md)
-- [구해줘 홈즈 Next.js 캐릭터 대화형 UI 실행 가이드 (`nextjs_ui/README.md`)](src/rag_home_api/nextjs_ui/README.md)
+- [서울 주거 탐색 Next.js 대화형 UI 실행 가이드 (`nextjs_ui/README.md`)](src/rag_home_api/nextjs_ui/README.md)
 - [공공임대 공고문 최종 평가·실패 분석 보고서 (`yj/docs/report.md`)](src/rag_home_api/test/yj/docs/report.md)
 - [주택임대차 법령 인계 및 실험 기록 (`jh/README_법령PR.md`)](src/rag_home_api/test/jh/README_법령PR.md)
 - [전월세 거래 탐색 개발 이력 (`bc/docs/development_history.md`)](src/rag_home_api/test/bc/docs/development_history.md)
 - [서울 25구 시세 STEP 7 실패 분석 & 4인 통합 실증 (`kh/reports/STEP7_실패분석_및_vNext_개선설계.md`)](src/rag_home_api/test/kh/reports/STEP7_실패분석_및_vNext_개선설계.md)
 - [서울 25구 시세 전체 실험 기록 (`kh/실험기록.md`)](src/rag_home_api/test/kh/실험기록.md) · [18회차 리포트 인덱스 (`kh/reports/README.md`)](src/rag_home_api/test/kh/reports/README.md)
+
+---
+
+> *본 저장소는 비상업적 교육·연구 목적의 팀 프로젝트 산출물입니다.*
