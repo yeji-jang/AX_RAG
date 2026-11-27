@@ -85,9 +85,9 @@ class LawDomainAdapter:
         self._retriever = jh_retrieve.Retriever(
             self.collection_name,
             law_only=True,
+            law_documents=docs,
             embeddings=stored_emb,
             connection=dsn,
-            law_documents=docs,
         )
         self._openai_client = OpenAI(
             api_key=settings.openai_api_key,

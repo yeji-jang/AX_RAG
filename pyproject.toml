@@ -36,6 +36,7 @@ dependencies = [
     "rank-bm25>=0.2.2",
     "requests>=2.34.2",
     "selenium>=4.53.0",
+    "streamlit>=1.40",
     "uvicorn>=0.54.0",
 ]
 
