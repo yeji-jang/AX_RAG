@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+
+# 저작권 보호를 위해 로컬 시연용 캐릭터·배경 이미지는 공개 저장소에서 제외
+asset/
+public/characters/
+public/scenes/

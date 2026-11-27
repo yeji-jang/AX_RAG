@@ -9,6 +9,8 @@
 ![LangChain](https://img.shields.io/badge/LangChain-1.5+-1C3C3C?style=flat-square)
 ![PGVector](https://img.shields.io/badge/Vector_DB-PostgreSQL_%2B_pgvector-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 ![RAGAS](https://img.shields.io/badge/Eval-RAGAS_0.4.4-FF6B6B?style=flat-square)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Next.js](https://img.shields.io/badge/UI-Next.js_15-000000?style=flat-square&logo=next.js&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Workbench-Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
 
 *흩어져 있고 읽기 어려운 공고문·법령·실거래 데이터를 출처와 함께 정확하게 답하고, 근거가 없으면 솔직하게 거절합니다.*
@@ -116,8 +118,12 @@ AX_RAG/
     │   ├── rent_deals_adapter.py              # [병철] 개별 거래 조건 어댑터
     │   └── rent_stats_adapter.py              # [기혁] 25구 시세 통계 어댑터
     ├── ui/                                    # 찾아줘 홈즈 4도메인 통합 Streamlit 챗봇 UI
-    │   ├── holmes_chat.py                     # 4도메인 탭 · 테마별 추천 질문 · 출처/근거 화면
+    │   ├── holmes_chat.py                     # 멀티턴 대화형 상담 · 공공임대 3유형(근거확인/부족/없음) · 출처/근거 화면
     │   └── assets/                            # 3D 홈즈 마스코트 · 아바타 이미지
+    ├── nextjs_ui/                             # 서울 주거 탐색 Next.js 15 대화형 UI + FastAPI 브리지
+    │   ├── api_server.py                      # 4도메인 라우터 · 멀티턴 맥락 보완 · 3유형 판별 FastAPI 서버
+    │   ├── scripts/prepare_assets.py          # 로컬 커스텀 캐릭터 투명 PNG 변환 유틸리티
+    │   └── src/components/                    # SeoulHeroIntro · ChatWorkspace · ChatBubble · SampleQuestionGrid
     ├── shared/
     │   ├── core/                              # 공용 로거 · PGVector 연결 팩토리(make_db_id)
     │   ├── schemas/                           # 공통 응답 계약 (rag_contract.py)
@@ -145,11 +151,30 @@ cp .env.example .env
 
 > PostgreSQL에 `pgvector` 확장이 활성화되어 있어야 합니다 (`CREATE EXTENSION IF NOT EXISTS vector;`).
 
-### 2. 찾아줘 홈즈 챗봇 실행 (실행 인터페이스 · Streamlit)
-질문을 입력하면 4도메인 라우터가 담당 도메인으로 보내고, 답변·출처·상태(답변 / 근거 부족 / 지원 범위 밖 / 오류)를 한 화면에 보여 줍니다.
+### 2. 서울 주거 탐색 Next.js 대화형 UI 실행 *(Next.js 15 + FastAPI)*
+인터랙티브 인트로 화면과 **4개 도메인별 대화형 말풍선 UI**(공공임대 · 임대차 법령 · 전월세 조건 · 서울 25구 시세)를 제공합니다.
+- **실시간 4단계 추리 스테퍼**: RAG 검색·리랭킹 대기 중 단계별 진행 상태 시각화
+- **공공임대 3가지 질문 유형 UI**: ① `근거 확인`*(멀티턴 이어묻기 · 내 조건 원클릭 신청 가능 체크)* ② `근거 부족`*(SH·LH·마이홈·서울주거포털 공식 사이트 + 대체 질문 유도)* ③ `근거 없음`*(환각 방지 모름 안내 + 가능 질문 추천)*
+- **편의 기능**: `3줄 요약` / `표로 보기` / `쉽게 풀어서` 원클릭 변환, 답변 스크랩 수첩, 마크다운 표·인용 배지
+
+> 저작권 보호를 위해 로컬 시연용 캐릭터/배경 이미지는 공개 저장소(`.gitignore`)에서 제외되어 있습니다.
+
+```bash
+# 터미널 1: FastAPI 4도메인 RAG 백엔드 서버 (포트 8000)
+uv run uvicorn rag_home_api.nextjs_ui.api_server:app --port 8000
+
+# 터미널 2: Next.js 15 프론트엔드 (Node.js 20 LTS+ 필요)
+cd src/rag_home_api/nextjs_ui
+npm install
+npm run dev          # 개발 모드 (Turbopack, http://localhost:3000)
+# 프로덕션 모드: npm run build && npm run start
+```
+
+### 3. 찾아줘 홈즈 Streamlit 챗봇 실행 *(경량 실행 인터페이스)*
+질문을 입력하면 4도메인 라우터가 담당 도메인으로 보내고, 멀티턴 대화형 답변·출처·공공임대 3유형(근거 확인 / 근거 부족 / 근거 없음)과 오류 격리 상태를 한 화면에 보여 줍니다.
 
 <div align="center">
-  <img src="src/rag_home_api/ui/assets/chatbot_ui.png" alt="찾아줘 홈즈 챗봇 UI 미리보기" width="820" />
+  <img src="src/rag_home_api/ui/assets/chatbot_ui.png" alt="찾아줘 홈즈 Streamlit 챗봇 UI 미리보기" width="820" />
 </div>
 
 ```bash
@@ -158,7 +183,7 @@ uv run streamlit run src/rag_home_api/ui/holmes_chat.py
 ```
 > 실제 답변에는 `.env`의 `OPENAI_API_KEY`와 4개 컬렉션이 적재된 PostgreSQL(`DATABASE_URL`)이 필요합니다. DB에 연결되지 않으면 앱은 멈추지 않고 `error` 상태로 표시합니다.
 
-### 3. 4도메인 통합 라우터 실행 (Python)
+### 4. 4도메인 통합 라우터 실행 (Python)
 ```python
 from rag_home_api.router import build_default_team_router
 
@@ -167,12 +192,12 @@ resp = router.invoke("집주인이 월세를 올리려고 하는데 법적으로
 print(resp.status, resp.domain, resp.answer)
 ```
 
-### 4. 4인 통합 분석 워크벤치 실행 (Streamlit)
+### 5. 4인 통합 분석 워크벤치 실행 (Streamlit)
 ```bash
 uv run --with streamlit streamlit run src/rag_home_api/test/kh/eval_dashboard.py
 ```
 
-### 5. 파트별 개별 실행 예시
+### 6. 파트별 개별 실행 예시
 
 <details>
 <summary><b>🏠 공공임대 공고문 (yj) — 청킹 · 적재 · 평가 실행</b></summary>
@@ -234,8 +259,13 @@ uv run python -m rag_home_api.test.kh.unify_team_results --from-git
 
 - [문제 정의 및 데이터 범위 (`problem.md`)](src/rag_home_api/shared/docs/problem.md)
 - [4인 통합 아키텍처 규약서 (`team_integration_spec.md`)](docs/team_integration_spec.md)
+- [서울 주거 탐색 Next.js 대화형 UI 실행 가이드 (`nextjs_ui/README.md`)](src/rag_home_api/nextjs_ui/README.md)
 - [공공임대 공고문 최종 평가·실패 분석 보고서 (`yj/docs/report.md`)](src/rag_home_api/test/yj/docs/report.md)
 - [주택임대차 법령 인계 및 실험 기록 (`jh/README_법령PR.md`)](src/rag_home_api/test/jh/README_법령PR.md)
 - [전월세 거래 탐색 개발 이력 (`bc/docs/development_history.md`)](src/rag_home_api/test/bc/docs/development_history.md)
 - [서울 25구 시세 STEP 7 실패 분석 & 4인 통합 실증 (`kh/reports/STEP7_실패분석_및_vNext_개선설계.md`)](src/rag_home_api/test/kh/reports/STEP7_실패분석_및_vNext_개선설계.md)
 - [서울 25구 시세 전체 실험 기록 (`kh/실험기록.md`)](src/rag_home_api/test/kh/실험기록.md) · [18회차 리포트 인덱스 (`kh/reports/README.md`)](src/rag_home_api/test/kh/reports/README.md)
+
+---
+
+> *본 저장소는 비상업적 교육·연구 목적의 팀 프로젝트 산출물입니다.*

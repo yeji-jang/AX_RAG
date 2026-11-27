@@ -1,0 +1,234 @@
+@font-face {
+  font-family: "Paperlogy";
+  src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2")
+    format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Paperlogy";
+  src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2")
+    format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Paperlogy";
+  src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2")
+    format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SUIT";
+  src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_suit@1.0/SUIT-Regular.woff2")
+    format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "SUIT";
+  src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_suit@1.0/SUIT-Medium.woff2")
+    format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "SUIT";
+  src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_suit@1.0/SUIT-SemiBold.woff2")
+    format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "SUIT";
+  src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_suit@1.0/SUIT-Bold.woff2")
+    format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #ffffff;
+  --canvas: #f8f8f6;
+  --line: #e7e7e2;
+  --ink: #18181b;
+  --body: #27272a;
+  --muted: #71717a;
+}
+
+html,
+body {
+  font-family: "SUIT", var(--font-gowun), -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", sans-serif;
+  color: var(--ink);
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: "Paperlogy", "SUIT", var(--font-gowun), sans-serif;
+}
+
+.font-friendly {
+  font-family: var(--font-gowun), "SUIT", sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(113, 113, 122, 0.45);
+}
+
+/* Clean, human editorial typography inside character speech bubbles */
+.holmes-prose {
+  font-family: "SUIT", var(--font-gowun), sans-serif;
+  font-size: 15px;
+  line-height: 1.84;
+  letter-spacing: -0.01em;
+  color: #27272a;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.holmes-prose p {
+  margin-bottom: 0.8rem;
+}
+.holmes-prose p:last-child {
+  margin-bottom: 0;
+}
+
+.holmes-prose blockquote {
+  margin: 0 0 0.95rem 0;
+  padding: 0.65rem 0.95rem;
+  border-left: 2.5px solid #18181b;
+  background: #f8f8f6;
+  border-radius: 0 8px 8px 0;
+  color: #18181b;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.7;
+}
+.holmes-prose blockquote p {
+  margin-bottom: 0;
+}
+
+.holmes-prose h2,
+.holmes-prose h3,
+.holmes-prose h4 {
+  font-family: "Paperlogy", "SUIT", sans-serif;
+  margin-top: 1.05rem;
+  margin-bottom: 0.4rem;
+  font-size: 14px;
+  font-weight: 700;
+  color: #18181b;
+  letter-spacing: -0.01em;
+}
+
+.holmes-prose ul,
+.holmes-prose ol {
+  margin: 0.35rem 0 0.9rem 1.25rem;
+  line-height: 1.8;
+}
+.holmes-prose ul {
+  list-style-type: disc;
+}
+.holmes-prose ol {
+  list-style-type: decimal;
+}
+.holmes-prose li {
+  margin-bottom: 0.35rem;
+  color: #27272a;
+}
+.holmes-prose li:last-child {
+  margin-bottom: 0;
+}
+.holmes-prose li::marker {
+  color: #a1a1aa;
+}
+
+.holmes-prose strong {
+  font-weight: 700;
+  color: #09090b;
+}
+
+.holmes-prose code {
+  display: inline-block;
+  background: #f4f4f5;
+  color: #3f3f46;
+  border: 1px solid #e4e4e7;
+  border-radius: 4px;
+  padding: 0 5px;
+  margin: 0 1px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: 1px;
+}
+
+.holmes-prose hr {
+  margin: 0.95rem 0;
+  border: none;
+  border-top: 1px solid #ecece8;
+}
+
+.holmes-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.85rem 0 1rem;
+  font-size: 13.5px;
+  line-height: 1.55;
+  border-top: 1.5px solid #27272a;
+  border-bottom: 1px solid #e4e4e7;
+}
+.holmes-prose th {
+  background: #fafaf9;
+  color: #18181b;
+  font-weight: 700;
+  text-align: left;
+  padding: 9px 11px;
+  border-bottom: 1px solid #d4d4d8;
+}
+.holmes-prose td {
+  padding: 8px 11px;
+  border-bottom: 1px solid #f0f0ee;
+  color: #3f3f46;
+}
+.holmes-prose tr:last-child td {
+  border-bottom: none;
+}
+
+.bubble-tail-left::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 22px;
+  width: 13px;
+  height: 13px;
+  background: inherit;
+  border-left: 1px solid #e7e7e2;
+  border-bottom: 1px solid #e7e7e2;
+  transform: rotate(45deg);
+}
