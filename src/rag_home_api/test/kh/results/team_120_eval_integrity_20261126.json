@@ -1,0 +1,49 @@
+{
+  "total_merged_items": 120,
+  "unique_question_ids": 120,
+  "duplicate_ids": [],
+  "schema_issues": [],
+  "bc_test_v3_bonus_count": 20,
+  "per_owner": {
+    "kh": {
+      "domain": "rent_stats",
+      "total": 30,
+      "dev": 10,
+      "test": 20,
+      "answered": 25,
+      "unanswerable": 5,
+      "has_ref": 30,
+      "has_allowed": 25
+    },
+    "yj": {
+      "domain": "public_housing",
+      "total": 30,
+      "dev": 10,
+      "test": 20,
+      "answered": 25,
+      "unanswerable": 5,
+      "has_ref": 30,
+      "has_allowed": 25
+    },
+    "jh": {
+      "domain": "law",
+      "total": 30,
+      "dev": 10,
+      "test": 20,
+      "answered": 25,
+      "unanswerable": 5,
+      "has_ref": 0,
+      "has_allowed": 25
+    },
+    "bc": {
+      "domain": "rent_deals",
+      "total": 30,
+      "dev": 10,
+      "test": 20,
+      "answered": 25,
+      "unanswerable": 5,
+      "has_ref": 30,
+      "has_allowed": 0
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# 로컬 DB 백업·모델 캐시·호출 기록
+.local/
+__pycache__/
+*.py[cod]
+results/
+out/
+# 개인 측정 도구. 서비스 실행 의존성이 아니다.
+/compare_saved_quality.py
+/measure_runtime.py

@@ -1,0 +1,294 @@
+{
+  "timestamp": "20261126_200757",
+  "owner": "kh",
+  "domain": "rent",
+  "eval_version": "kh_rent_test",
+  "eval_path": "C:\\Users\\417no\\Documents\\ax_project\\rag\\src\\rag_home_api\\test\\kh\\eval\\kh_rent_test.json",
+  "collection_name": "housing_rent_kh_kure_v1",
+  "embedding_model": "nlpai-lab/KURE-v1",
+  "total_corpus_chunks": 6200,
+  "run_note": "STEP6-Test: C+Cache(Warm HIT)",
+  "ragas_target": 0.6,
+  "modes": {
+    "C_rrf_25_75_k15_filter_v2_cache_kure_v1": {
+      "preset": {
+        "name": "C_rrf_25_75_k15_filter_v2_cache_kure_v1",
+        "pipeline_mode": "C_hybrid_rerank",
+        "top_k": 5,
+        "candidate_k": 12,
+        "bm25_weight": 0.25,
+        "vector_weight": 0.75,
+        "rrf_k": 15,
+        "use_metadata_filter": true,
+        "use_rewrite": false,
+        "use_cache": true,
+        "use_hyde": false,
+        "collection_name": "housing_rent_kh_kure_v1",
+        "embedding_model": "nlpai-lab/KURE-v1",
+        "chunk_strategy": "rent-v2-11cols-src",
+        "prompt_version": "rent-ans-v3-colloquial-scope",
+        "cache_ttl_seconds": 3600
+      },
+      "retrieval": {
+        "answerable_count": 17,
+        "recall@12": 0.9412,
+        "hit@5": "17/17",
+        "top1": "17/17",
+        "mrr@5": 1.0,
+        "filter_applied": "17/20 (fallback=0)",
+        "cache_hits": "20/20",
+        "hyde_isolated": "20/20"
+      },
+      "latency_ms": {
+        "avg": 0.3,
+        "median": 0.3,
+        "p95": 0.4
+      },
+      "refusal": "3/3",
+      "scope_notice": "3/3",
+      "citation_rate": "17/17",
+      "ragas_avg": {
+        "faithfulness": 0.9146,
+        "answer_relevancy": 0.7384,
+        "llm_context_precision_with_reference": 1.0,
+        "context_recall": 0.9216
+      },
+      "per_item_ragas": [
+        {
+          "question_id": "RENT-KH-TEST-01",
+          "user_input": "최근 1년간 서울 영등포구 영등포동4가의 연립다세대 월세 중 전용면적 33㎡ 이하(원룸급) 실거래에서 보증금과 월세의 중앙값은 각각 얼마인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.872,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-02",
+          "user_input": "최근 1년간 성북구 삼선동1가의 단독다가구 주택 중 월세, 전용면적 33㎡ 이하 실거래에서 보증금과 월세 중앙값은 각각 얼마인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.894,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-03",
+          "user_input": "최근 1년간 동대문구 용두동의 연립다세대 중 전세 계약이며 전용면적 33㎡ 이하인 실거래는 총 몇 건이고, 보증금 중앙값은 얼마인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.887,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-04",
+          "user_input": "최근 1년간 서울 서대문구 합동의 33~60㎡ 소형 오피스텔 월세 실거래에서 보증금과 월세 중앙값은 각각 얼마인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.941,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-05",
+          "user_input": "최근 1년간 서울 서초구 서초동의 33~60㎡ 단독다가구 전세 실거래에서 보증금 중앙값과 거래 건수는 얼마인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.92,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-06",
+          "user_input": "최근 1년간 서울 강남구 삼성동의 연립다세대 중 전세 계약이며 전용면적 33㎡ 이하(원룸급)인 실거래를 보면, 보증금 중앙값과 거래 건수는 각각 얼마인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.866,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-07",
+          "user_input": "최근 1년간 노원구 월계동의 단독다가구 주택 중 월세 계약이며 전용면적 33~60㎡인 매물의 보증금과 월세 중앙값은 각각 얼마인가요?",
+          "scores": {
+            "faithfulness": 0.333,
+            "answer_relevancy": 0.865,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-TEST-08",
+          "user_input": "최근 1년간 체결된 서울 전월세 실거래 기준으로, 성동구 송정동 아파트 월세 33~60㎡와 동작구 사당동 오피스텔 전세 33㎡ 이하를 비교해 주세요. 두 유형의 보증금 중앙값은 각각 얼마이며 차이는 얼마인가요? 또 건축연도 중앙값은 어느 쪽이 몇 년 더 최근인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.833,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-09",
+          "user_input": "최근 1년간 서울에서 마포구 상암동의 오피스텔 월세 33㎡ 이하 거래와 구로구 고척동의 단독다가구 월세 60㎡ 초과 거래를 비교해 주세요. 두 조건의 보증금·월세 중앙값 차이는 얼마이고, 건축연도 중앙값은 어느 쪽이 더 최근인가요?",
+          "scores": {
+            "faithfulness": 0.714,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 0.333
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-TEST-10",
+          "user_input": "최근 1년간 체결된 실거래를 기준으로, 중구 회현동1가의 연립다세대 전세 33㎡ 이하와 강동구 천호동의 단독다가구 월세 33~60㎡를 비교해 주세요. 두 유형의 보증금 중앙값과 월세 중앙값 차이는 얼마이며, 건축연도 중앙값은 어떻게 다른가요?",
+          "scores": {
+            "faithfulness": 0.5,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 0.333
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-TEST-11",
+          "user_input": "강서구 가양동에서 빌라 중 매달 월세 없이 보증금만 내는 원룸급 작은 집은 최근 1년간 실거래 기준 보증금 중앙값이 얼마고, 보통 몇 년식인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.622,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-12",
+          "user_input": "최근 실거래 기준으로 송파구 장지동에 있는 아파트 중 월세 없이 보증금만 내는 전세, 넓은 중대형 집(60㎡ 초과)은 보증금 중앙값이 얼마고 몇 년쯤 지어진 집들인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.766,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-13",
+          "user_input": "최근 1년간 종로구 효제동에서 오피스텔 중 매달 월세를 내는, 전용면적 33㎡ 이하의 원룸급 작은 집을 보면 보증금 중앙값과 건축 연식은 어떻게 돼?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.817,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-14",
+          "user_input": "최근 실거래 기준으로 은평구 불광동의 빌라 중 다달이 월세를 내는 33~60㎡ 정도의 소형·투룸급 집은 보증금이 보통 얼마이고, 집은 대체로 언제 지어진 편인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.717,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-15",
+          "user_input": "최근 1년간 실거래 기준으로 용산구 효창동과 용산구 용산동2가의 연립다세대 전세 중 33㎡ 이하 원룸급 매물을 비교해 주세요. 두 지역의 보증금 중앙값은 각각 얼마이며, 어느 쪽이 얼마나 높나요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.825,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-16",
+          "user_input": "최근 1년간 금천구 시흥동의 전세 오피스텔 33~60㎡와 금천구 가산동의 전세 연립다세대 33㎡ 이하 실거래를 비교해 주세요. 두 조건의 보증금 중앙값과 면적 중앙값은 각각 얼마이며, 어느 조건의 보증금 중앙값이 더 높나요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.797,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        },
+        {
+          "question_id": "RENT-KH-TEST-17",
+          "user_input": "최근 1년간 실거래 기준으로 도봉구 쌍문동의 60㎡ 초과 아파트 월세와 도봉구 창동의 33~60㎡ 오피스텔 전세를 비교해 주세요. 두 조건의 보증금 중앙값과 월세 중앙값은 각각 얼마이며, 어느 조건이 보증금 중앙값이 더 높나요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.932,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "passed_all": true
+        }
+      ],
+      "underperforming_items": [
+        {
+          "question_id": "RENT-KH-TEST-07",
+          "user_input": "최근 1년간 노원구 월계동의 단독다가구 주택 중 월세 계약이며 전용면적 33~60㎡인 매물의 보증금과 월세 중앙값은 각각 얼마인가요?",
+          "failed_metrics": {
+            "faithfulness": 0.333
+          },
+          "all_scores": {
+            "faithfulness": 0.333,
+            "answer_relevancy": 0.865,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 1.0
+          },
+          "llm_diagnosis": "**분류: 생성·인용 오류** — 다만 답변 내용은 정답 컨텍스트와 일치하고 출처도 제시되어 있어, 실제 생성 오류보다는 faithfulness 점수 산정의 오탐 가능성이 큽니다. 검색 컨텍스트 누락이나 순위 실패는 아닙니다.\n\n1. **코드·평가 개선:** RAGAS가 뽑은 주장과 근거 문장을 함께 기록해 점수가 낮은 원인을 확인하고, 통계값·단위·기간이 근거에 직접 대응하는지 검증하세요.\n2. **프롬프트·청킹 개선:** 답변은 근거에 있는 수치만 쓰고 출처를 해당 주장에 붙이도록 지시하세요. 통계 요약과 기간·필터 조건은 하나의 청크로 묶어 근거 연결을 명확히 하세요."
+        },
+        {
+          "question_id": "RENT-KH-TEST-09",
+          "user_input": "최근 1년간 서울에서 마포구 상암동의 오피스텔 월세 33㎡ 이하 거래와 구로구 고척동의 단독다가구 월세 60㎡ 초과 거래를 비교해 주세요. 두 조건의 보증금·월세 중앙값 차이는 얼마이고, 건축연도 중앙값은 어느 쪽이 더 최근인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "context_recall": 0.333
+          },
+          "all_scores": {
+            "faithfulness": 0.714,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 0.333
+          },
+          "llm_diagnosis": "**원인 분류: 청킹·검색 누락**\n\nTop-k에 구로구 고척동 조건은 있지만, 마포구 상암동 **오피스텔·월세·33㎡ 이하**의 정답 컨텍스트는 없습니다. 대신 33~60㎡ 자료가 검색되어 생성 모델이 마포구 조건의 자료가 없다고 답한 것으로 보입니다.\n\n**개선안 2가지**\n1. **검색 코드:** 지역·동, 주택유형, 거래유형, 면적 구간을 구조화된 메타데이터 필터로 적용하고, 질문의 두 조건을 각각 검색한 뒤 결과를 합치세요. 면적 구간은 `≤33㎡`와 `33~60㎡`를 혼동하지 않도록 경계 조건도 명시합니다.\n2. **청킹·프롬프트:** 조건별 요약 통계를 하나의 독립 청크로 저장해 필터 조합과 중앙값이 함께 검색되게 하세요. 프롬프트에는 한 조건의 근거가 검색되지 않았을 때 “자료가 없다”고 단정하지 말고, 필요한 근거가 누락됐다고 응답하도록 지시합니다."
+        },
+        {
+          "question_id": "RENT-KH-TEST-10",
+          "user_input": "최근 1년간 체결된 실거래를 기준으로, 중구 회현동1가의 연립다세대 전세 33㎡ 이하와 강동구 천호동의 단독다가구 월세 33~60㎡를 비교해 주세요. 두 유형의 보증금 중앙값과 월세 중앙값 차이는 얼마이며, 건축연도 중앙값은 어떻게 다른가요?",
+          "failed_metrics": {
+            "faithfulness": 0.5,
+            "answer_relevancy": 0.0,
+            "context_recall": 0.333
+          },
+          "all_scores": {
+            "faithfulness": 0.5,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 1.0,
+            "context_recall": 0.333
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락** — 강동구 조건은 정확히 검색됐지만, 중구의 정답인 **33㎡ 이하** 컨텍스트 대신 **33~60㎡**의 다른 조건이 검색됐습니다. 정답 컨텍스트가 Top-k에 없어 순위 실패보다는 검색 누락이 주원인입니다.\n\n1. **검색 코드:** 질문을 두 지역·유형별로 분리하고, 구·동·주택유형·계약유형·면적 구간을 메타데이터로 정확히 필터링하세요. 특히 `33㎡ 이하`와 `33~60㎡`를 별도 조건으로 처리해 잘못된 면적 구간이 대체 검색되지 않도록 합니다.\n2. **청킹·프롬프트:** 각 조건 조합의 통계를 독립 청크로 만들고 면적 경계와 기준 기간을 명시하세요. 프롬프트에는 “요청 조건과 다른 면적 구간의 자료를 부재 근거로 삼지 말고, 양쪽 조건이 모두 일치하는 컨텍스트에서만 비교”하도록 지시합니다."
+        }
+      ]
+    }
+  }
+}

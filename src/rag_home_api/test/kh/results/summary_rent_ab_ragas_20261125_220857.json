@@ -1,0 +1,278 @@
+{
+  "timestamp": "20261125_220857",
+  "owner": "kh",
+  "domain": "rent",
+  "eval_version": "kh_rent_dev_v2",
+  "eval_path": "C:\\Users\\417no\\Documents\\ax_project\\rag\\src\\rag_home_api\\test\\kh\\eval\\kh_rent_dev_v2.json",
+  "collection_name": "housing_rent_kh",
+  "embedding_model": "text-embedding-3-small",
+  "total_corpus_chunks": 6200,
+  "run_note": "R1: A_vector 바닥 기준선 (dev_v2)",
+  "ragas_target": 0.6,
+  "modes": {
+    "A_vector": {
+      "preset": {
+        "name": "A_vector",
+        "pipeline_mode": "A_vector",
+        "top_k": 5,
+        "candidate_k": 12,
+        "bm25_weight": 0.55,
+        "vector_weight": 0.45,
+        "rrf_k": 60,
+        "use_metadata_filter": false,
+        "use_rewrite": false,
+        "use_cache": false,
+        "use_hyde": false,
+        "collection_name": "housing_rent_kh",
+        "embedding_model": "text-embedding-3-small",
+        "chunk_strategy": "rent-v2-11cols-src",
+        "prompt_version": "rent-ans-v2-subject",
+        "cache_ttl_seconds": 3600
+      },
+      "retrieval": {
+        "answerable_count": 8,
+        "recall@12": 0.1875,
+        "hit@5": "1/8",
+        "top1": "0/8",
+        "mrr@5": 0.0625,
+        "filter_applied": "0/10 (fallback=0)",
+        "cache_hits": "0/10",
+        "hyde_isolated": "10/10"
+      },
+      "latency_ms": {
+        "avg": 546.9,
+        "median": 332.5,
+        "p95": 632.4
+      },
+      "refusal": "2/2",
+      "scope_notice": "1/2",
+      "citation_rate": "8/8",
+      "ragas_avg": {
+        "faithfulness": 0.95,
+        "answer_relevancy": 0.0,
+        "llm_context_precision_with_reference": 0.0625,
+        "context_recall": 0.0
+      },
+      "per_item_ragas": [
+        {
+          "question_id": "RENT-KH-DEV2-01",
+          "user_input": "서울 동대문구 청량리동 단독·다가구 원룸건물에서 10평 이하 월세방은 보통 보증금이랑 월세가 얼마 정도고, 요즘 거래는 얼마나 자주 이뤄지나요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-DEV2-02",
+          "user_input": "서울 성북구 종암동에서 단독·다가구 주택 10~18평 정도 되는 소형이나 투룸 월세를 구하면 보통 보증금이랑 월세가 얼마쯤이고, 건물은 대체로 몇 년식인가요?",
+          "scores": {
+            "faithfulness": 0.8,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-DEV2-03",
+          "user_input": "마천동 아파트 중에 10평 안 되는 작은 원룸 크기는 요즘 보증금이랑 월세가 보통 얼마 정도 하나요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-DEV2-04",
+          "user_input": "요즘 양재동 단독/다가구 원룸건물의 10~18평 투룸이나 소형 집은 보증금 걸고 다달이 내는 월세가 보통 얼마 정도고, 거래는 얼마나 자주 이뤄지나요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-DEV2-05",
+          "user_input": "강남구 신사동 단독·다가구 주택 10평 이하 원룸 월세와 은평구 응암동 오피스텔 10평 이하 원룸 전세를 비교하면, 요즘 보증금과 매달 나가는 주거비 부담은 어디가 덜하고 거래는 어디가 더 활발한가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-DEV2-06",
+          "user_input": "서울 연희동이랑 용산구 갈월동에서 10~18평 정도 되는 빌라 투룸이나 소형 집을 보증금 걸고 다달이 월세 내는 조건으로 구하면, 요즘 보통 시세가 어디가 더 비싼가요? 건물은 대체로 어느 동네가 덜 낡고 연식이 나은 편인가요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 0.0
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-DEV2-07",
+          "user_input": "성수동2가에서 단독이나 다가구 원룸건물의 10평 이하 작은 원룸을 전세로 구하면 요즘 보증금만 얼마나 생각해야 할까요?",
+          "scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "passed_all": false
+        },
+        {
+          "question_id": "RENT-KH-DEV2-08",
+          "user_input": "신혼부부 둘이 살 집을 알아보는데, 금천구 시흥동에 20평대 이상 넓은 빌라 전세는 요즘 보통 얼마 정도 하고 대체로 몇 년식이 많나요?",
+          "scores": {
+            "faithfulness": 0.8,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "passed_all": false
+        }
+      ],
+      "underperforming_items": [
+        {
+          "question_id": "RENT-KH-DEV2-01",
+          "user_input": "서울 동대문구 청량리동 단독·다가구 원룸건물에서 10평 이하 월세방은 보통 보증금이랑 월세가 얼마 정도고, 요즘 거래는 얼마나 자주 이뤄지나요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락** — Top-k에 청량리동·단독다가구 자료가 없고, 다른 지역·주택 유형의 문서만 검색됐습니다. 생성답변은 제공된 컨텍스트에 근거해 답변을 보류했으므로 생성·인용 오류로 보기 어렵습니다.\n\n1. **검색 코드 개선:** `구=동대문구`, `동=청량리동`, `주택유형=단독다가구`, `거래유형=월세`, `면적≤33㎡`를 메타데이터 필터로 적용하고, 필터 결과가 없을 때만 유사도 검색으로 대체하세요.\n2. **청킹·색인 개선:** 요약 문서마다 지역·주택유형·면적·기간을 독립 메타데이터로 저장하고, 청량리동 자료가 해당 필터로 검색되는지 회귀 테스트하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV2-02",
+          "user_input": "서울 성북구 종암동에서 단독·다가구 주택 10~18평 정도 되는 소형이나 투룸 월세를 구하면 보통 보증금이랑 월세가 얼마쯤이고, 건물은 대체로 몇 년식인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 0.8,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락**\n\n정답 컨텍스트의 핵심인 종암동 단독·다가구 월세 **33~60㎡** 요약이 검색 결과에 없고, 대신 **33㎡ 이하** 통계가 검색됐습니다. 따라서 생성 모델은 잘못 검색된 범위를 근거로 답변을 보류한 것으로 보입니다.\n\n1. **검색 코드:** 검색 전에 동·주택 유형·거래 유형·면적 범위를 필터링하고, 질의의 10~18평을 33~60㎡로 변환해 해당 통계 청크를 우선 검색하세요.\n2. **청킹·메타데이터:** 면적 구간별 요약을 각각 독립 청크로 만들고 `동`, `주택 유형`, `거래 유형`, `면적 최소·최대`를 메타데이터로 저장하세요. 프롬프트에는 검색된 면적 구간이 질문 범위와 다르면 그 통계로 답하지 말고 재검색하도록 명시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV2-03",
+          "user_input": "마천동 아파트 중에 10평 안 되는 작은 원룸 크기는 요즘 보증금이랑 월세가 보통 얼마 정도 하나요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락** — Top-k에 마천동 아파트 자료가 없고 다른 구·동 및 주택유형 자료만 검색됐습니다. 정답 컨텍스트 자체가 검색 결과에 없어 순위 실패보다는 검색 누락이며, 생성 답변은 제공된 컨텍스트에 근거해 보류한 것으로 보입니다.\n\n1. **검색 코드·메타데이터 필터 개선:** 질문에서 `마천동`, `아파트`, `월세`, `10평 미만`을 추출해 구·동·주택유형·거래유형·면적 조건으로 필터링하고, 조건이 맞는 문서가 없을 때만 유사 검색으로 확장하세요.\n2. **청킹·프롬프트 개선:** 지역·주택유형·거래유형·면적 구간별 요약을 한 청크로 유지하고 각 필드를 메타데이터로 색인하세요. 프롬프트에는 답변 전 검색 결과의 지역·유형이 질문과 일치하는지 확인하도록 지시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV2-04",
+          "user_input": "요즘 양재동 단독/다가구 원룸건물의 10~18평 투룸이나 소형 집은 보증금 걸고 다달이 내는 월세가 보통 얼마 정도고, 거래는 얼마나 자주 이뤄지나요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락** — Top-k에 정답 컨텍스트가 없고, 양재동이라는 위치만 비슷한 연립다세대·33㎡ 이하 자료가 검색됐습니다. 생성답변은 제공된 컨텍스트의 불일치를 지적하고 답변을 보류했으므로 생성·인용 오류로 보기는 어렵습니다.\n\n1. **검색 코드 개선:** 질의에서 지역·건물 유형·거래 유형·면적을 추출해 `양재동 / 단독다가구 / 월세 / 33~60㎡` 메타데이터 필터를 우선 적용하세요. 투룸·소형 등 표현은 면적 조건으로 정규화하고, 필터 뒤 유사도 검색을 수행합니다.\n2. **청킹·프롬프트 개선:** 통계 요약을 지역·건물 유형·거래 유형·면적대별 독립 청크로 저장하고 해당 조건을 메타데이터에도 넣으세요. 프롬프트에는 **건물 유형이나 면적대가 다른 자료로 대체하지 말고, 조건이 맞는 컨텍스트가 없을 때만 답변을 보류하라**고 명시합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV2-05",
+          "user_input": "강남구 신사동 단독·다가구 주택 10평 이하 원룸 월세와 은평구 응암동 오피스텔 10평 이하 원룸 전세를 비교하면, 요즘 보증금과 매달 나가는 주거비 부담은 어디가 덜하고 거래는 어디가 더 활발한가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락.** 정답에 필요한 신사동 단독·다가구 월세와 응암동 오피스텔 전세 컨텍스트가 Top-k에 없고, 다른 동네·주택 유형의 자료만 검색됐습니다. 검색된 근거만으로 비교를 보류한 생성답변은 주된 원인이 아닙니다.\n\n1. **검색 코드:** 질문을 두 조건으로 나눠 검색하고, 동·주택 유형·임대 유형·면적을 메타데이터 필터로 적용하세요. 두 조건의 근거가 모두 검색되지 않으면 필터를 점검해 재검색하도록 합니다.\n2. **청킹·프롬프트:** 거래 요약을 조건별 독립 청크로 만들고 동네·주택 유형·임대 유형·기간을 메타데이터로 붙이세요. 프롬프트에는 양쪽 조건의 통계 근거가 모두 있을 때만 비교하도록 명시합니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV2-06",
+          "user_input": "서울 연희동이랑 용산구 갈월동에서 10~18평 정도 되는 빌라 투룸이나 소형 집을 보증금 걸고 다달이 월세 내는 조건으로 구하면, 요즘 보통 시세가 어디가 더 비싼가요? 건물은 대체로 어느 동네가 덜 낡고 연식이 나은 편인가요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.5,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락**\n\n정답에 필요한 연희동 근거가 검색 결과에 없고, 대신 면적 조건과 맞지 않는 용문동 원룸 자료가 포함됐습니다. 갈월동 자료는 검색되어 답변에 정확히 사용됐으므로 생성·인용 오류라기보다 검색 범위·조건 매칭 문제입니다.\n\n**개선안 2가지**\n1. **검색 코드·프롬프트:** 비교 질문을 연희동과 갈월동으로 나눠 각각 검색하고, 동네별 근거가 모두 확보됐는지 확인하세요. 부족한 쪽은 해당 구·동 메타데이터 필터를 적용해 재검색하고, 33~60㎡ 조건도 검색 필터에 반영합니다.\n2. **청킹:** 동네·주택 유형·월세/전세·면적 구간별 통계 요약을 각각 독립 청크로 저장하고, `구/동/유형/면적` 메타데이터를 붙이세요. 그러면 연희동의 소형 연립다세대 월세 요약이 용문동 원룸 자료에 밀리거나 혼동될 가능성을 줄일 수 있습니다."
+        },
+        {
+          "question_id": "RENT-KH-DEV2-07",
+          "user_input": "성수동2가에서 단독이나 다가구 원룸건물의 10평 이하 작은 원룸을 전세로 구하면 요즘 보증금만 얼마나 생각해야 할까요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 1.0,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락** — Top-k에 성수동2가 자료가 없고, 지역·주택유형·계약유형도 모두 다릅니다. 생성답변은 검색된 자료에 근거해 “확인할 수 없음”이라고 했으므로 주된 원인은 생성·인용이 아니라 검색 단계입니다.\n\n1. **검색 코드·쿼리 개선:** 주소, 주택유형, 계약유형, 면적을 필터 조건으로 구조화해 `성동구·성수동2가 / 단독다가구 / 전세 / 33㎡ 이하` 자료를 우선 검색하세요. 필터 결과가 없을 때만 유사 검색으로 완화하고, 결과의 메타데이터를 검증하세요.\n2. **청킹·프롬프트 개선:** 지역·유형·계약·면적별 통계 요약을 한 청크로 유지하고 각 필드를 메타데이터로 저장하세요. 프롬프트에는 질문 조건과 일치하는 청크가 없을 때만 “자료 없음”이라고 답하도록 명시하세요."
+        },
+        {
+          "question_id": "RENT-KH-DEV2-08",
+          "user_input": "신혼부부 둘이 살 집을 알아보는데, 금천구 시흥동에 20평대 이상 넓은 빌라 전세는 요즘 보통 얼마 정도 하고 대체로 몇 년식이 많나요?",
+          "failed_metrics": {
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "all_scores": {
+            "faithfulness": 0.8,
+            "answer_relevancy": 0.0,
+            "llm_context_precision_with_reference": 0.0,
+            "context_recall": 0.0
+          },
+          "llm_diagnosis": "**분류: 청킹·검색 누락** — 정답 컨텍스트인 시흥동 **60㎡ 초과(중대형)** 자료가 Top-k에 없고, 대신 33~60㎡ 소형 자료와 다른 구의 자료가 검색됐습니다. 생성답변은 검색된 자료만으로 판단해 답변을 보류한 것으로 보입니다.\n\n1. **검색 코드·쿼리 정규화:** “20평대 이상”을 ㎡로 환산해 면적 조건(약 66㎡ 이상)을 검색 필터에 반영하고, 시흥동·연립다세대·전세 조건도 메타데이터 필터로 고정하세요.  \n2. **청킹·프롬프트 개선:** 면적 구간별 요약을 별도 청크로 유지하고 `60㎡ 초과(중대형)` 같은 구간명을 검색 가능한 메타데이터로 저장하세요. 프롬프트에는 요청 면적과 검색된 구간이 맞지 않으면 “자료 없음”으로 단정하지 말고 해당 구간 자료를 재검색하도록 지시하세요."
+        }
+      ]
+    }
+  }
+}
