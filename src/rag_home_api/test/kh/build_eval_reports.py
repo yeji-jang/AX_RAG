@@ -314,6 +314,7 @@ def _judge_verdict(
     ra = cur_m.get("ragas_avg") or {}
     ref_rate = _ratio_rate(cur_m.get("refusal"))
     lat_med = float((cur_m.get("latency_ms") or {}).get("median") or 0.0)
+    lat_p95 = float((cur_m.get("latency_ms") or {}).get("p95") or 0.0)
     passed_ragas = sum(1 for k, _ in RAGAS_KEYS if k in ra and float(ra[k]) >= target)
     has_ragas = bool(ra)
 
@@ -326,12 +327,21 @@ def _judge_verdict(
     cur_rm = _ragas_mean(cur_m)
     prev_rm = _ragas_mean(prev_m)
     d_rm = (cur_rm - prev_rm) if (cur_rm is not None and prev_rm is not None) else 0.0
+    prev_lat_med = float((prev_m.get("latency_ms") or {}).get("median") or 0.0)
 
     ref_ok = (ref_rate is None) or (ref_rate >= 0.70)
     lat_ok = lat_med < 10_000.0
 
     if not ref_ok or not lat_ok:
         return "❌ 기각 (Discard)", f"안전 게이트 미달 (거절률={cur_m.get('refusal')}, 지연={lat_med:.1f}ms)"
+
+    if d_rec12 <= 0.0 and d_mrr5 <= 0.0 and d_rm <= 0.0 and (
+        lat_p95 >= 10_000.0 or (prev_lat_med > 0.0 and lat_med > prev_lat_med * 1.5)
+    ):
+        return (
+            "❌ 기각 (Discard)",
+            f"검색·RAGAS 이득 없이 지연 악화 (median {prev_lat_med:.1f}→{lat_med:.1f}ms, p95 {lat_p95:.1f}ms)",
+        )
 
     if d_rec12 < -0.05 and d_mrr5 <= 0.02 and d_rm <= 0.02:
         return "❌ 기각 (Discard)", f"후보 회수율 하락 (Recall@12 {d_rec12:+.4f}) 대비 순위·RAGAS 이득 부족"
@@ -878,7 +888,8 @@ def _write_reports_index(entries: list[dict[str, Any]], reports_dir: Path = KH_R
     lines: list[str] = [
         "# 서울 전월세 RAG 개별 평가 리포트 인덱스 (`test/kh`)",
         "",
-        "> 종합 연구 스토리와 포렌식 분석은 [`../실험기록.md`](../실험기록.md)를, 아래 각 링크는 회차별 **문항 상세 · 적용 필터 · LLM 미달 진단(`llm_diagnosis`) · 거절 응답 전문**을 담고 있습니다.",
+        "> 종합 연구 스토리와 포렌식 분석은 [`../실험기록.md`](../실험기록.md)를, **STEP 7 실패 분석 & 차기 버전(vNext) 개선 설계**는 [`./STEP7_실패분석_및_vNext_개선설계.md`](./STEP7_실패분석_및_vNext_개선설계.md)를 참고하세요.",
+        "> 아래 각 링크는 회차별 **문항 상세 · 적용 필터 · LLM 미달 진단(`llm_diagnosis`) · 거절 응답 전문**을 담고 있습니다.",
         f"> 총 **{len(entries)}회차** 자동 집계 · 재생성 명령: `uv run python -m rag_home_api.test.kh.build_eval_reports`",
         "",
     ]

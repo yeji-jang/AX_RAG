@@ -15,16 +15,21 @@
 
 from __future__ import annotations
 
+import base64
 import html as html_lib
+import io
 import json
+import math
 import re
 import statistics
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 try:
     import altair as alt
@@ -132,19 +137,19 @@ OWNER_META: dict[str, dict[str, Any]] = {
         "eval_dir": KH_EVAL_DIR,
     },
     "yj": {
-        "label": "예지 (yj · 공공임대 공고문 · 목표 0.70)",
+        "label": "장예지 (yj · 공공임대 공고문 · 목표 0.70)",
         "domain": "public_housing",
         "target": 0.70,
         "eval_dir": TEST_ROOT_DIR / "yj" / "docs" / "04-1_eval_set",
     },
     "jh": {
-        "label": "지훈 (jh · 주택임대차 법령 · 목표 0.70)",
+        "label": "최지훈 (jh · 주택임대차 법령 · 목표 0.70)",
         "domain": "law",
         "target": 0.70,
         "eval_dir": TEST_ROOT_DIR / "jh" / "평가셋",
     },
     "bc": {
-        "label": "병철 (bc · 전월세 조건탐색 · 목표 0.60)",
+        "label": "선병철 (bc · 전월세 조건탐색 · 목표 0.60)",
         "domain": "rent_deals",
         "target": 0.60,
         "eval_dir": TEST_ROOT_DIR / "bc" / "eval",
@@ -1592,6 +1597,537 @@ def _build_svg_line_chart(
     )
 
 
+_SVG_FONT = "'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
+
+
+def _short_step_tick(step: dict) -> str:
+    """발표용 그래프 X축 라벨을 간결하게 줄인다."""
+    mode = str(step.get("mode") or "")
+    ts = str(step.get("timestamp") or "")
+    tag = f"#{step.get('order', '')}"
+    short_map = [
+        ("cache", "C+Cache (Warm)" if float(step.get("lat_median") or 999) < 10.0 else "C+Cache (Cold)"),
+        ("rewrite", "C+Rewrite"),
+        ("rerank", "C (Rerank)"),
+        ("filter_v2", "B+FilterV2"),
+        ("filter_kure", "B+FilterV1"),
+        ("k15", "FIX B (k15)"),
+        ("55_45_kure", "B 55:45 (KURE)"),
+        ("50_50_kure", "B 50:50 (KURE)"),
+        ("25_75_kure", "B 25:75 (KURE)"),
+        ("10_90_kure", "B 10:90 (KURE)"),
+        ("vector_kure", "A (KURE-v1)"),
+        ("a_vector", "A (Vector)"),
+        ("70_30_filter", "B 70:30+Filter"),
+        ("80_20", "B 80:20"),
+        ("70_30", "B 70:30"),
+        ("55_45", "B 55:45"),
+    ]
+    low = mode.lower()
+    for needle, nice in short_map:
+        if needle in low:
+            return f"{tag} {nice}"
+    clean = mode if len(mode) <= 18 else mode[:17] + "…"
+    return f"{tag} {clean}" if tag != "#" else (clean or ts)
+
+
+def _build_standalone_svg_line_chart(
+    steps: list[dict],
+    series: list[tuple[str, str, str]],
+    title: str,
+    subtitle: str = "",
+    target: float | None = None,
+    width: int = 1240,
+    height: int = 480,
+) -> str:
+    """발표 자료(PPT/HTML/PNG 3x)용 완전 자립형 흰 배경 고해상도 SVG 선 그래프."""
+    if not steps:
+        return ""
+    pl, pr, pt, pb = 76, 68, 108, 104
+    cw, ch = width - pl - pr, height - pt - pb
+    n = len(steps)
+
+    def x_pos(i: int) -> float:
+        return pl + (cw * i / max(1, n - 1)) if n > 1 else pl + cw / 2
+
+    def y_pos(v: float) -> float:
+        return pt + ch * (1.0 - min(max(v, 0.0), 1.0))
+
+    grid: list[str] = []
+    for tick in (0.0, 0.2, 0.4, 0.6, 0.8, 1.0):
+        y = y_pos(tick)
+        dash = ' stroke-dasharray="4,4"' if tick > 0 else ""
+        stroke = "#cbd5e1" if tick == 0 else "#e2e8f0"
+        grid.append(
+            f'<line x1="{pl}" y1="{y:.1f}" x2="{width - pr}" y2="{y:.1f}" stroke="{stroke}" stroke-width="1.2"{dash} />'
+            f'<text x="{pl - 12}" y="{y + 4.5:.1f}" text-anchor="end" font-size="13" font-weight="600" fill="#64748b">{tick:.1f}</text>'
+        )
+
+    t_svg = ""
+    if target is not None:
+        yt = y_pos(target)
+        t_svg = (
+            f'<line x1="{pl}" y1="{yt:.1f}" x2="{width - pr}" y2="{yt:.1f}" stroke="#dc2626" stroke-width="2" stroke-dasharray="8,5" />'
+            f'<rect x="{width - pr - 98}" y="{yt - 24:.1f}" width="96" height="21" rx="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1" />'
+            f'<text x="{width - pr - 50}" y="{yt - 9.5:.1f}" text-anchor="middle" font-size="12" font-weight="700" fill="#dc2626">목표 {target:.2f}</text>'
+        )
+
+    x_lbls: list[str] = []
+    for i, s in enumerate(steps):
+        xi = x_pos(i)
+        tick_txt = _short_step_tick(s)
+        x_lbls.append(
+            f'<line x1="{xi:.1f}" y1="{pt + ch}" x2="{xi:.1f}" y2="{pt + ch + 6}" stroke="#94a3b8" stroke-width="1.2" />'
+            f'<text x="{xi:.1f}" y="{pt + ch + 22}" text-anchor="end" transform="rotate(-24 {xi:.1f} {pt + ch + 22})" '
+            f'font-size="12.5" font-weight="600" fill="#334155">{html_lib.escape(tick_txt)}</text>'
+        )
+
+    # 상단 범례 (가로 균등 배치)
+    leg_items: list[str] = []
+    leg_x = pl
+    leg_y = 74
+    for _, label, color in series:
+        short_lbl = label.split("(")[0].strip()
+        leg_items.append(
+            f'<circle cx="{leg_x + 6}" cy="{leg_y - 4}" r="6" fill="{color}" />'
+            f'<text x="{leg_x + 18}" y="{leg_y}" font-size="13.5" font-weight="700" fill="#1e293b">{html_lib.escape(short_lbl)}</text>'
+        )
+        leg_x += max(175, len(short_lbl) * 9 + 46)
+
+    paths: list[str] = []
+    end_labels: list[tuple[float, float, str, str]] = []
+    for s_idx, (key, label, color) in enumerate(series):
+        pts = [(x_pos(i), y_pos(float(s.get(key, 0.0))), float(s.get(key, 0.0))) for i, s in enumerate(steps)]
+        d = " ".join(f"{'M' if i == 0 else 'L'}{x:.1f},{y:.1f}" for i, (x, y, _) in enumerate(pts))
+        paths.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />')
+        for idx_p, (x, y, val) in enumerate(pts):
+            paths.append(
+                f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5.5" fill="{color}" stroke="#ffffff" stroke-width="2" />'
+            )
+            if n <= 7 and idx_p != n - 1:
+                dy = -12 if (s_idx % 2 == 0) else 19
+                paths.append(
+                    f'<text x="{x:.1f}" y="{y + dy:.1f}" text-anchor="middle" font-size="11" font-weight="700" fill="{color}">{val:.2f}</text>'
+                )
+        lx, ly, lval = pts[-1]
+        end_labels.append((ly, lx, f"{lval:.3f}", color))
+
+    # 우측 최종값 라벨 충돌 회피
+    end_labels.sort(key=lambda t: t[0])
+    placed_y: list[float] = []
+    for ly, lx, txt, color in end_labels:
+        cy = ly + 4
+        for py in placed_y:
+            if abs(cy - py) < 16:
+                cy = py + 16
+        placed_y.append(cy)
+        paths.append(
+            f'<text x="{lx + 11:.1f}" y="{cy:.1f}" text-anchor="start" font-size="13" font-weight="800" fill="{color}">{txt}</text>'
+        )
+
+    sub_svg = (
+        f'<text x="{pl}" y="52" font-size="13" font-weight="500" fill="#64748b">{html_lib.escape(subtitle)}</text>'
+        if subtitle
+        else ""
+    )
+    return (
+        f'<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
+        f'style="font-family:{_SVG_FONT};background:#ffffff;">'
+        f'<rect x="1" y="1" width="{width - 2}" height="{height - 2}" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" />'
+        f'<text x="{pl}" y="32" font-size="20" font-weight="800" fill="#0f172a">{html_lib.escape(title)}</text>'
+        f'{sub_svg}{"".join(leg_items)}{"".join(grid)}{t_svg}{"".join(paths)}{"".join(x_lbls)}'
+        f'</svg>'
+    )
+
+
+def _build_standalone_svg_bar_compare(
+    before_s: dict,
+    after_s: dict,
+    title: str,
+    subtitle: str = "",
+    target: float | None = None,
+    width: int = 1240,
+    height: int = 510,
+) -> str:
+    """발표용 Before vs After 8대 핵심 지표 막대 비교 SVG (상승폭 Δ 배지 포함)."""
+    metrics = [
+        ("recall12", "Recall@12", "ret"),
+        ("hit5_rate", "Hit@5", "ret"),
+        ("top1_rate", "Top1", "ret"),
+        ("mrr5", "MRR@5", "ret"),
+        ("f", "Faithfulness", "ragas"),
+        ("ar", "Answer Rel.", "ragas"),
+        ("cp", "Context Prec.", "ragas"),
+        ("cr", "Context Rec.", "ragas"),
+    ]
+    pl, pr, pt, pb = 72, 40, 118, 108
+    cw, ch = width - pl - pr, height - pt - pb
+
+    def y_pos(v: float) -> float:
+        return pt + ch * (1.0 - min(max(v, 0.0), 1.0))
+
+    grid: list[str] = []
+    for tick in (0.0, 0.2, 0.4, 0.6, 0.8, 1.0):
+        y = y_pos(tick)
+        dash = ' stroke-dasharray="4,4"' if tick > 0 else ""
+        stroke = "#cbd5e1" if tick == 0 else "#e2e8f0"
+        grid.append(
+            f'<line x1="{pl}" y1="{y:.1f}" x2="{width - pr}" y2="{y:.1f}" stroke="{stroke}" stroke-width="1.2"{dash} />'
+            f'<text x="{pl - 12}" y="{y + 4.5:.1f}" text-anchor="end" font-size="13" font-weight="600" fill="#64748b">{tick:.1f}</text>'
+        )
+
+    t_svg = ""
+    if target is not None:
+        yt = y_pos(target)
+        t_svg = (
+            f'<line x1="{pl}" y1="{yt:.1f}" x2="{width - pr}" y2="{yt:.1f}" stroke="#dc2626" stroke-width="2" stroke-dasharray="8,5" />'
+            f'<text x="{width - pr - 4}" y="{yt - 7:.1f}" text-anchor="end" font-size="12" font-weight="700" fill="#dc2626">RAGAS 목표 {target:.2f}</text>'
+        )
+
+    # 검색 4종 / RAGAS 4종 중앙 구분선
+    mid_x = pl + cw * 0.5
+    div_svg = (
+        f'<line x1="{mid_x:.1f}" y1="{pt - 14}" x2="{mid_x:.1f}" y2="{pt + ch + 46}" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5,5" />'
+        f'<text x="{pl + cw * 0.25:.1f}" y="{pt - 18}" text-anchor="middle" font-size="13" font-weight="800" fill="#1d4ed8">검색 지표 (Retrieval)</text>'
+        f'<text x="{pl + cw * 0.75:.1f}" y="{pt - 18}" text-anchor="middle" font-size="13" font-weight="800" fill="#047857">생성·근거 지표 (RAGAS)</text>'
+    )
+
+    group_w = cw / len(metrics)
+    bar_w = min(38.0, group_w * 0.30)
+    gap = 6.0
+    bars: list[str] = []
+    for i, (key, label, kind) in enumerate(metrics):
+        cx = pl + group_w * (i + 0.5)
+        bv = float(before_s.get(key, 0.0) or 0.0)
+        av = float(after_s.get(key, 0.0) or 0.0)
+        dv = av - bv
+        a_col = "#2563eb" if kind == "ret" else "#059669"
+
+        bx = cx - bar_w - gap / 2
+        ax = cx + gap / 2
+        by = y_pos(bv)
+        ay = y_pos(av)
+        bh = max(2.0, pt + ch - by)
+        ah = max(2.0, pt + ch - ay)
+
+        bars.append(
+            f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bar_w:.1f}" height="{bh:.1f}" rx="5" fill="#94a3b8" />'
+            f'<text x="{bx + bar_w / 2:.1f}" y="{by - 6:.1f}" text-anchor="middle" font-size="11.5" font-weight="700" fill="#64748b">{bv:.3f}</text>'
+            f'<rect x="{ax:.1f}" y="{ay:.1f}" width="{bar_w:.1f}" height="{ah:.1f}" rx="5" fill="{a_col}" />'
+            f'<text x="{ax + bar_w / 2:.1f}" y="{ay - 6:.1f}" text-anchor="middle" font-size="12" font-weight="800" fill="{a_col}">{av:.3f}</text>'
+            f'<text x="{cx:.1f}" y="{pt + ch + 24}" text-anchor="middle" font-size="13" font-weight="700" fill="#1e293b">{html_lib.escape(label)}</text>'
+        )
+        d_col = "#15803d" if dv > 0.001 else ("#b91c1c" if dv < -0.001 else "#64748b")
+        d_bg = "#dcfce7" if dv > 0.001 else ("#fee2e2" if dv < -0.001 else "#f1f5f9")
+        bars.append(
+            f'<rect x="{cx - 32:.1f}" y="{pt + ch + 32}" width="64" height="20" rx="10" fill="{d_bg}" />'
+            f'<text x="{cx:.1f}" y="{pt + ch + 46}" text-anchor="middle" font-size="11.5" font-weight="800" fill="{d_col}">{dv:+.3f}</text>'
+        )
+
+    b_lbl = _short_step_tick(before_s)
+    a_lbl = _short_step_tick(after_s)
+    legend = (
+        f'<rect x="{pl}" y="68" width="14" height="14" rx="3" fill="#94a3b8" />'
+        f'<text x="{pl + 20}" y="80" font-size="13.5" font-weight="700" fill="#475569">Before: {html_lib.escape(b_lbl)}</text>'
+        f'<rect x="{pl + 340}" y="68" width="14" height="14" rx="3" fill="#2563eb" />'
+        f'<rect x="{pl + 357}" y="68" width="14" height="14" rx="3" fill="#059669" />'
+        f'<text x="{pl + 378}" y="80" font-size="13.5" font-weight="800" fill="#0f172a">After: {html_lib.escape(a_lbl)}</text>'
+    )
+    footer_txt = (
+        f"RAGAS 평균: {before_s['ragas_mean']:.4f} → {after_s['ragas_mean']:.4f} ({after_s['ragas_mean'] - before_s['ragas_mean']:+.4f})   |   "
+        f"지연 중앙값: {before_s['lat_median']:.1f}ms → {after_s['lat_median']:.1f}ms   |   "
+        f"거절률: {before_s['refusal_str']} → {after_s['refusal_str']}"
+    )
+    footer = (
+        f'<rect x="{pl}" y="{height - 38}" width="{cw}" height="28" rx="8" fill="#f8fafc" stroke="#e2e8f0" />'
+        f'<text x="{pl + cw / 2:.1f}" y="{height - 19}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#334155">{html_lib.escape(footer_txt)}</text>'
+    )
+    sub_svg = (
+        f'<text x="{pl}" y="52" font-size="13" font-weight="500" fill="#64748b">{html_lib.escape(subtitle)}</text>'
+        if subtitle
+        else ""
+    )
+    return (
+        f'<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
+        f'style="font-family:{_SVG_FONT};background:#ffffff;">'
+        f'<rect x="1" y="1" width="{width - 2}" height="{height - 2}" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" />'
+        f'<text x="{pl}" y="32" font-size="20" font-weight="800" fill="#0f172a">{html_lib.escape(title)}</text>'
+        f'{sub_svg}{legend}{"".join(grid)}{t_svg}{div_svg}{"".join(bars)}{footer}'
+        f'</svg>'
+    )
+
+
+def _build_standalone_svg_latency_chart(
+    steps: list[dict],
+    title: str,
+    subtitle: str = "",
+    width: int = 1240,
+    height: int = 0,
+) -> str:
+    """발표용 지연시간 중앙값(Median ms) 가로 막대 비교 SVG (로그 스케일로 0.3ms 캐시와 5,184ms 동시 시각화)."""
+    valid = [s for s in steps if s.get("has_lat", True)]
+    if not valid:
+        return ""
+    row_h = 44
+    pt, pb, pl, pr = 86, 44, 240, 175
+    if height <= 0:
+        height = max(320, pt + pb + len(valid) * row_h)
+    cw = width - pl - pr
+    max_log = max(math.log10(max(float(s.get("lat_median") or 0.1), 0.1) + 1.0) for s in valid) or 1.0
+
+    rows_svg: list[str] = []
+    for i, s in enumerate(valid):
+        med = float(s.get("lat_median") or 0.0)
+        p95 = float(s.get("lat_p95") or 0.0)
+        y = pt + i * row_h
+        frac = math.log10(max(med, 0.1) + 1.0) / max_log
+        bw = max(14.0, cw * frac)
+        if med < 10.0:
+            col, badge = "#059669", " ⚡ Cache HIT"
+        elif med < 500.0:
+            col, badge = "#2563eb", ""
+        elif med < 3000.0:
+            col, badge = "#d97706", ""
+        else:
+            col, badge = "#dc2626", ""
+        med_str = f"{med:.1f} ms" if med < 1000.0 else f"{med / 1000.0:.2f} s"
+        p95_str = f" (p95 {p95:.1f}ms)" if p95 < 1000.0 else f" (p95 {p95 / 1000.0:.2f}s)"
+        rows_svg.append(
+            f'<text x="{pl - 14}" y="{y + 21}" text-anchor="end" font-size="13" font-weight="700" fill="#1e293b">{html_lib.escape(_short_step_tick(s))}</text>'
+            f'<rect x="{pl}" y="{y + 6}" width="{cw}" height="24" rx="6" fill="#f1f5f9" />'
+            f'<rect x="{pl}" y="{y + 6}" width="{bw:.1f}" height="24" rx="6" fill="{col}" />'
+            f'<text x="{pl + bw + 10:.1f}" y="{y + 22}" font-size="13" font-weight="800" fill="{col}">{html_lib.escape(med_str + p95_str + badge)}</text>'
+        )
+
+    sub_svg = (
+        f'<text x="36" y="54" font-size="13" font-weight="500" fill="#64748b">{html_lib.escape(subtitle)}</text>'
+        if subtitle
+        else ""
+    )
+    return (
+        f'<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
+        f'style="font-family:{_SVG_FONT};background:#ffffff;">'
+        f'<rect x="1" y="1" width="{width - 2}" height="{height - 2}" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" />'
+        f'<text x="36" y="34" font-size="20" font-weight="800" fill="#0f172a">{html_lib.escape(title)}</text>'
+        f'{sub_svg}{"".join(rows_svg)}'
+        f'<text x="{pl}" y="{height - 14}" font-size="11.5" fill="#64748b">※ 막대 길이는 log10(ms+1) 스케일 (0.3ms 캐시와 5,000ms+ 리라이트를 한 화면에 비교)</text>'
+        f'</svg>'
+    )
+
+
+def _render_svg_png_export_pair(
+    svg_str: str,
+    file_stem: str,
+    key_prefix: str,
+    png_scale: int = 3,
+) -> None:
+    """추가 패키지 없이 [원본 SVG 저장] + [브라우저 Canvas 3x 고해상도 PNG 저장] 버튼을 나란히 렌더링."""
+    if not svg_str:
+        return
+    c1, c2 = st.columns(2)
+    with c1:
+        st.download_button(
+            "📐 SVG 저장 (벡터 · 무한확대)",
+            data=svg_str.encode("utf-8"),
+            file_name=f"{file_stem}.svg",
+            mime="image/svg+xml",
+            key=f"dl_svg_{key_prefix}",
+            use_container_width=True,
+        )
+    with c2:
+        b64 = base64.b64encode(svg_str.encode("utf-8")).decode("ascii")
+        safe_fn = re.sub(r"[^a-zA-Z0-9_\-]", "_", file_stem)
+        btn_id = f"png_btn_{re.sub(r'[^a-zA-Z0-9_]', '_', key_prefix)}"
+        html_btn = f"""
+        <div style="margin:0;padding:0;">
+          <button id="{btn_id}" style="
+            width:100%;height:38.5px;border-radius:8px;border:1px solid #cbd5e1;
+            background:#0f172a;color:#ffffff;font-weight:700;font-size:13.5px;
+            cursor:pointer;font-family:{_SVG_FONT};transition:opacity .15s;
+          " onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
+            📸 고해상도 PNG ({png_scale}x) 저장
+          </button>
+        </div>
+        <script>
+        (function() {{
+          const btn = document.getElementById("{btn_id}");
+          if (!btn) return;
+          btn.addEventListener("click", function() {{
+            const b64 = "{b64}";
+            const bin = atob(b64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            const svgText = new TextDecoder("utf-8").decode(bytes);
+            const blob = new Blob([svgText], {{type: "image/svg+xml;charset=utf-8"}});
+            const url = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = function() {{
+              const scale = {png_scale};
+              const canvas = document.createElement("canvas");
+              canvas.width = img.width * scale;
+              canvas.height = img.height * scale;
+              const ctx = canvas.getContext("2d");
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.scale(scale, scale);
+              ctx.drawImage(img, 0, 0);
+              URL.revokeObjectURL(url);
+              canvas.toBlob(function(pngBlob) {{
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(pngBlob);
+                a.download = "{safe_fn}_{png_scale}x.png";
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {{ URL.revokeObjectURL(a.href); a.remove(); }}, 500);
+              }}, "image/png");
+            }};
+            img.src = url;
+          }});
+        }})();
+        </script>
+        """
+        components.html(html_btn, height=44)
+
+
+def _build_chart_bundle_zip(charts: list[tuple[str, str, str]]) -> bytes:
+    """발표용 그래프 SVG 팩 + 1클릭 일괄 3x PNG 변환 HTML 뷰어를 ZIP으로 묶는다."""
+    buf = io.BytesIO()
+    cards_html: list[str] = []
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for stem, title, svg in charts:
+            if not svg:
+                continue
+            zf.writestr(f"{stem}.svg", svg.encode("utf-8"))
+            b64 = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+            cards_html.append(
+                f'<div class="card"><h3>{html_lib.escape(title)}</h3>'
+                f'<img src="data:image/svg+xml;base64,{b64}" data-name="{html_lib.escape(stem)}" style="width:100%;border-radius:10px;border:1px solid #e2e8f0;" /></div>'
+            )
+        viewer = (
+            "<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>발표용 그래프 일괄 PNG 변환기</title>"
+            "<style>body{font-family:'Malgun Gothic',sans-serif;max-width:1280px;margin:24px auto;padding:0 16px;background:#f8fafc;}"
+            "button{background:#0f172a;color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:18px;}"
+            ".card{background:#fff;padding:18px;border-radius:14px;border:1px solid #e2e8f0;margin-bottom:18px;}</style></head><body>"
+            "<h1>📸 발표용 RAG 평가 그래프 팩 (3x PNG 일괄 저장)</h1>"
+            "<button onclick='exportAll()'>📥 아래 그래프 전체 3x 고해상도 PNG 일괄 다운로드</button>"
+            + "".join(cards_html)
+            + "<script>async function exportAll(){for(const img of document.querySelectorAll('img[data-name]')){"
+            "const c=document.createElement('canvas');c.width=img.naturalWidth*3;c.height=img.naturalHeight*3;"
+            "const x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);x.scale(3,3);x.drawImage(img,0,0);"
+            "const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download=img.dataset.name+'_3x.png';a.click();"
+            "await new Promise(r=>setTimeout(r,350));}}</script></body></html>"
+        )
+        zf.writestr("00_발표용_PNG_일괄변환기.html", viewer.encode("utf-8"))
+    return buf.getvalue()
+
+
+def _render_presentation_export_panel(
+    steps: list[dict],
+    before_s: dict | None,
+    after_s: dict | None,
+    target: float,
+    eval_ver: str,
+    owner_key: str,
+    key_scope: str = "lab",
+) -> None:
+    """발표 시연·슬라이드 삽입용 고해상도 그래프(PNG 3x / SVG / ZIP) Export 패널."""
+    if not steps:
+        return
+    safe_ver = re.sub(r"[^a-zA-Z0-9_\-]", "_", eval_ver or "all")
+    svg_ragas = _build_standalone_svg_line_chart(
+        steps,
+        [
+            ("f", RAGAS_LABELS["faithfulness"], "#16a34a"),
+            ("ar", RAGAS_LABELS["answer_relevancy"], "#dc2626"),
+            ("cp", RAGAS_LABELS["llm_context_precision_with_reference"], "#2563eb"),
+            ("cr", RAGAS_LABELS["context_recall"], "#7c3aed"),
+        ],
+        title=f"RAGAS 4대 지표 추이 ({eval_ver})",
+        subtitle=f"담당: {owner_key} · 총 {len(steps)}개 실행 스텝 · 빨간 점선 = 공식 목표({target:.2f})",
+        target=target,
+    )
+    svg_ret = _build_standalone_svg_line_chart(
+        steps,
+        [
+            ("recall12", RETRIEVAL_LABELS["recall@12"], "#0d9488"),
+            ("hit5_rate", "Hit@5 (적중률@5)", "#2563eb"),
+            ("top1_rate", RETRIEVAL_LABELS["top1"], "#d97706"),
+            ("mrr5", RETRIEVAL_LABELS["mrr@5"], "#7c3aed"),
+        ],
+        title=f"검색 4대 지표 추이 ({eval_ver})",
+        subtitle=f"담당: {owner_key} · Recall@12 · Hit@5 · Top1 · MRR@5 단계별 상승 궤적",
+        target=None,
+    )
+    svg_bar = (
+        _build_standalone_svg_bar_compare(
+            before_s,
+            after_s,
+            title=f"Before vs After 8대 핵심 지표 비교 ({eval_ver})",
+            subtitle=f"{before_s['step_label']}  →  {after_s['step_label']}",
+            target=target,
+        )
+        if (before_s is not None and after_s is not None)
+        else ""
+    )
+    svg_lat = _build_standalone_svg_latency_chart(
+        steps,
+        title=f"지연시간 중앙값 (Latency Median / p95) 비교 ({eval_ver})",
+        subtitle=f"담당: {owner_key} · 0.3ms 캐시 히트 vs 리랭킹/리라이트 체감 속도 대비",
+    )
+
+    with st.expander("📸 발표용 고해상도 그래프 이미지 Export (3x PNG · 벡터 SVG · 일괄 ZIP)", expanded=True):
+        st.caption(
+            "💡 각 인터랙티브 Altair 차트 우측 상단 `•••` 메뉴에서도 기본 PNG/SVG 저장이 가능하며, "
+            "아래 버튼은 **제목·수치 라벨·Δ 배지·흰 배경이 포함된 발표 슬라이드 전용 3배 해상도 PNG(`3720px`) & 벡터 SVG**를 즉시 내려받습니다."
+        )
+        bundle = _build_chart_bundle_zip(
+            [
+                (f"01_{owner_key}_{safe_ver}_ragas_trend", f"RAGAS 4대 지표 추이 ({eval_ver})", svg_ragas),
+                (f"02_{owner_key}_{safe_ver}_retrieval_trend", f"검색 4대 지표 추이 ({eval_ver})", svg_ret),
+                (f"03_{owner_key}_{safe_ver}_before_after_bar", f"Before vs After 8대 지표 비교 ({eval_ver})", svg_bar),
+                (f"04_{owner_key}_{safe_ver}_latency", f"지연시간 비교 ({eval_ver})", svg_lat),
+            ]
+        )
+        st.download_button(
+            f"📦 현재 시험지({eval_ver}) 발표용 그래프 4종 일괄 ZIP 저장 (SVG 4개 + PNG 일괄변환 HTML)",
+            data=bundle,
+            file_name=f"presentation_charts_{owner_key}_{safe_ver}.zip",
+            mime="application/zip",
+            key=f"dl_zip_{key_scope}_{owner_key}_{safe_ver}",
+            use_container_width=True,
+        )
+        show_prev = st.checkbox("발표용 Export 이미지 미리보기 펼치기", value=False, key=f"prev_svg_{key_scope}_{owner_key}_{safe_ver}")
+
+        e1, e2 = st.columns(2)
+        with e1:
+            st.markdown("**1) RAGAS 4대 지표 추이**")
+            if show_prev and svg_ragas:
+                st.image(svg_ragas, use_container_width=True)
+            _render_svg_png_export_pair(svg_ragas, f"01_{owner_key}_{safe_ver}_ragas_trend", f"{key_scope}_ragas_{safe_ver}")
+        with e2:
+            st.markdown("**2) 검색 4대 지표 추이**")
+            if show_prev and svg_ret:
+                st.image(svg_ret, use_container_width=True)
+            _render_svg_png_export_pair(svg_ret, f"02_{owner_key}_{safe_ver}_retrieval_trend", f"{key_scope}_ret_{safe_ver}")
+
+        e3, e4 = st.columns(2)
+        with e3:
+            if svg_bar:
+                st.markdown("**3) Before vs After 8대 지표 막대 비교**")
+                if show_prev:
+                    st.image(svg_bar, use_container_width=True)
+                _render_svg_png_export_pair(svg_bar, f"03_{owner_key}_{safe_ver}_before_after_bar", f"{key_scope}_bar_{safe_ver}")
+        with e4:
+            if svg_lat:
+                st.markdown("**4) 지연시간 (Median / p95) 비교**")
+                if show_prev:
+                    st.image(svg_lat, use_container_width=True)
+                _render_svg_png_export_pair(svg_lat, f"04_{owner_key}_{safe_ver}_latency", f"{key_scope}_lat_{safe_ver}")
+
+
 def _export_html(
     cur_step: dict,
     prev_step: dict | None,
@@ -2585,6 +3121,20 @@ def render_decision_tab(
     else:
         st.info("연동된 `.jsonl` 상세 로그가 없어 혼동행렬을 산출할 수 없습니다.")
 
+    st.divider()
+    with st.expander("📸 발표용 Before vs After 8대 지표 비교 그래프 (미리보기 & 3x PNG / SVG 저장)", expanded=False):
+        eval_v = after_s.get("eval_version", "eval")
+        safe_v = re.sub(r"[^a-zA-Z0-9_\-]", "_", eval_v)
+        svg_cmp = _build_standalone_svg_bar_compare(
+            before_s,
+            after_s,
+            title=f"Before vs After 8대 핵심 지표 비교 ({eval_v})",
+            subtitle=f"{before_s['step_label']}  →  {after_s['step_label']}",
+            target=target,
+        )
+        st.image(svg_cmp, use_container_width=True)
+        _render_svg_png_export_pair(svg_cmp, f"before_after_{safe_v}", f"home_cmp_{safe_v}_{before_s['order']}_{after_s['order']}")
+
 
 # ==================== TAB 2: 문항별 X-Ray 해부 ====================
 def render_xray_tab(before_s: dict, after_s: dict, target: float, coach_mode: bool = True) -> None:
@@ -2790,7 +3340,15 @@ def render_xray_tab(before_s: dict, after_s: dict, target: float, coach_mode: bo
 
 
 # ==================== TAB 3: 회차별 랩노트 & 추이 선그래프 ====================
-def render_lab_history_tab(steps: list[dict], target: float, selected_eval_ver: str, coach_mode: bool = True) -> None:
+def render_lab_history_tab(
+    steps: list[dict],
+    target: float,
+    selected_eval_ver: str,
+    coach_mode: bool = True,
+    before_s: dict | None = None,
+    after_s: dict | None = None,
+    owner_key: str = "kh",
+) -> None:
     st.subheader("📈 회차별 실험 랩노트 & 수치 변화 추이 (연결 선 그래프)")
     if coach_mode:
         st.caption(
@@ -2849,6 +3407,16 @@ def render_lab_history_tab(steps: list[dict], target: float, selected_eval_ver: 
             ],
             target=None,
         )
+
+    _render_presentation_export_panel(
+        shown,
+        before_s=before_s or (shown[0] if shown else None),
+        after_s=after_s or (shown[-1] if shown else None),
+        target=target,
+        eval_ver=selected_eval_ver,
+        owner_key=owner_key,
+        key_scope="lab",
+    )
 
     st.divider()
     st.markdown("#### 3) 단일 변인 실험 랩노트 통합표")
@@ -3488,7 +4056,15 @@ def main() -> None:
         else:
             t_hist, t_rep = st.tabs(["📈 추이 선그래프 & 랩노트", "📝 회차별 분석 리포트 & 내보내기"])
             with t_hist:
-                render_lab_history_tab(scoped_steps, target, sel_eval_ver, coach_mode=coach_mode)
+                render_lab_history_tab(
+                    scoped_steps,
+                    target,
+                    sel_eval_ver,
+                    coach_mode=coach_mode,
+                    before_s=before_s,
+                    after_s=after_s,
+                    owner_key=sel_owner,
+                )
             with t_rep:
                 render_per_test_report_tab(scoped_steps, target, coach_mode=coach_mode)
 
